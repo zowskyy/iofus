@@ -120,6 +120,7 @@ export function parsePageDocument(input: unknown): PageDocument {
   return result.data;
 }
 
+/** Converts a raw SQLite row into a StoredPage, running schema migration when the stored version is outdated. */
 function rowToStored(row: {
   document_json: string;
   draft_document_json: string | null;
@@ -259,6 +260,7 @@ export function getMiniPage(document: PageDocument, slug: string) {
   return document.miniPages.find((p) => p.slug === slug) ?? null;
 }
 
+/** Replaces all page_tags rows for *userId* with the normalized *tags* list. */
 function syncPageTags(userId: string, tags: string[]): void {
   const db = getDb();
   db.prepare("DELETE FROM page_tags WHERE user_id = ?").run(userId);

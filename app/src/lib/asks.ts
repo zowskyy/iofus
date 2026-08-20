@@ -49,6 +49,7 @@ interface AskRow {
   answer_count: number;
 }
 
+/** Converts a raw SQLite ask row into a public Ask object, masking the asker identity when anonymous and the viewer is not the asker. */
 function rowToAsk(row: AskRow, viewerId: string | null): Ask {
   const isOwner = viewerId !== null && viewerId === row.asker_id;
   const anonymous = row.is_anonymous === 1;

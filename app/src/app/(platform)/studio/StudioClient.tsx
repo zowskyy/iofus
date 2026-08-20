@@ -54,6 +54,7 @@ const TABS: { id: TabId; label: string }[] = [
   { id: "publish", label: "Publish" },
 ];
 
+/** Builds the live Top Eight preview list from the current handle selections and the user's friend list. */
 function buildTopEightPreview(handles: string[], friends: FriendSummary[]): TopEightLink[] {
   return handles.map((handle) => ({
     handle,
@@ -75,10 +76,12 @@ export interface StudioClientProps {
   guestbookEntries: GuestbookEntry[];
 }
 
+/** Generates a new random UUID for client-side module identifiers. */
 function newId(): string {
   return crypto.randomUUID();
 }
 
+/** Resizes a flat pixel array to new dimensions, preserving existing pixels and filling added cells with transparent. */
 function resizePixelGrid(
   width: number,
   height: number,
@@ -99,6 +102,7 @@ function resizePixelGrid(
   return next;
 }
 
+/** Returns a blank 8×8 pixel art piece with a generated id and all pixels set to transparent. */
 function defaultPixelArtPiece(): PixelArtPiece {
   const width = 8;
   const height = 8;
@@ -454,6 +458,7 @@ export function StudioClient({
   );
 }
 
+/** Studio tab for colors, fonts, background, and theme publishing. */
 function LookTab({
   document: doc,
   onChange,
@@ -665,6 +670,7 @@ function LookTab({
   );
 }
 
+/** Studio tab for reordering and toggling the visible page sections. */
 function LayoutTab({
   document: doc,
   onChange,
@@ -762,6 +768,7 @@ function LayoutTab({
   );
 }
 
+/** Studio tab for editing all page content: identity, links, modules, Top 8, and more. */
 function ContentTab({
   document: doc,
   onChange,
@@ -1609,6 +1616,7 @@ function ContentTab({
   );
 }
 
+/** Studio tab for custom CSS, contrast warnings, and scoped CSS preview. */
 function AccessTab({
   document: doc,
   onChange,
@@ -1726,6 +1734,7 @@ function AccessTab({
   );
 }
 
+/** Studio tab for publish state, visibility, discovery, guestbook, and page management actions. */
 function PublishTab({
   document: doc,
   onChange,

@@ -1,6 +1,7 @@
 import type { Answer, Ask } from "@/lib/asks";
 import { AnswerForm } from "./AnswerForm";
 
+/** Formats an ISO date string as a short locale date for display in ask cards. */
 function formatDate(iso: string): string {
   const date = new Date(iso);
   if (Number.isNaN(date.getTime())) return iso;

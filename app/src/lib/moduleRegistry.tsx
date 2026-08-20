@@ -25,6 +25,7 @@ export interface PageModuleDefinition {
   render: (ctx: PageRenderContext) => ReactNode | null;
 }
 
+/** Formats an ISO date string for display in page modules. Returns the raw string on parse failure. */
 function formatDate(iso: string): string {
   try {
     return new Date(iso).toLocaleDateString(undefined, { year: "numeric", month: "short", day: "numeric" });
@@ -33,6 +34,7 @@ function formatDate(iso: string): string {
   }
 }
 
+/** Fallback rendered when a page contains a module *type* that this version of the registry does not recognize. */
 function UnsupportedModule({ type }: { type: string }) {
   return (
     <section className="page-part page-unsupported" aria-label="Unsupported module">

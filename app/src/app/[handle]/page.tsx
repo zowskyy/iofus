@@ -20,6 +20,7 @@ interface Props {
   searchParams: Promise<{ reader?: string; preview?: string }>;
 }
 
+/** Resolves raw handle strings into TopEightLink objects, skipping handles with no published page. */
 function resolveTopEight(handles: string[]): TopEightLink[] {
   const links: TopEightLink[] = [];
   for (const raw of handles) {

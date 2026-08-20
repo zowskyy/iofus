@@ -9,6 +9,7 @@ import { getDb } from "./db";
 
 export class FriendRequestError extends Error {}
 
+/** Returns true when a block row exists between *a* and *b* in either direction. */
 function isBlocked(db: ReturnType<typeof getDb>, a: string, b: string): boolean {
   const row = db
     .prepare(
