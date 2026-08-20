@@ -9,7 +9,7 @@ import {
   createAsk,
   setReachableForAsks,
 } from "@/lib/asks";
-import { checkRateLimit, RateLimitError, rateLimitActorKey } from "@/lib/rateLimit";
+import { RateLimitError } from "@/lib/rateLimit";
 import { getCurrentUser } from "@/lib/session";
 
 export interface AskActionState {
@@ -36,8 +36,6 @@ export async function createAskAction(
   const isSensitive = formData.get("sensitive") === "on";
 
   try {
-    const key = await rateLimitActorKey("ask-view", viewer.id);
-    checkRateLimit(key, 20);
     createAsk({ askerId: viewer.id, body, domain, isAnonymous, isSensitive });
   } catch (e) {
     return handleAskError(e);

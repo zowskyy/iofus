@@ -146,9 +146,14 @@ export function countUnreadMessages(userId: string): number {
     .prepare(
       `SELECT COUNT(*) as n FROM messages m
        JOIN conversations c ON c.id = m.conversation_id
-       WHERE (c.user_a_id = ? OR c.user_b_id = ?) AND m.sender_id != ? AND m.read_at IS NULL`,
+       WHERE (c.user_a_id = ? OR c.user_b_id = ?) AND m.sender_id != ? AND m.read_at IS NULL
+         AND NOT EXISTS (
+           SELECT 1 FROM blocks b
+           WHERE (b.blocker_id = ? AND b.blocked_id = m.sender_id)
+              OR (b.blocker_id = m.sender_id AND b.blocked_id = ?)
+         )`,
     )
-    .get(userId, userId, userId) as { n: number };
+    .get(userId, userId, userId, userId, userId) as { n: number };
   return row.n;
 }
 

@@ -1,7 +1,7 @@
 # Multi-stage build for a small, self-contained production image.
 # Needs Node 22.5+ for node:sqlite (same requirement as local dev).
 
-FROM node:22-slim AS base
+FROM node:22.13-slim AS base
 
 FROM base AS deps
 WORKDIR /app

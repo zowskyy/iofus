@@ -41,7 +41,7 @@ export function checkRateLimit(key: string, maxCount: number, windowMs: number =
       db.prepare("INSERT INTO rate_limits (key, count, window_start) VALUES (?, 1, ?)").run(key, new Date(now).toISOString());
     } else {
       const windowStart = new Date(row.window_start).getTime();
-      if (now - windowStart > windowMs) {
+      if (now - windowStart >= windowMs) {
         db.prepare("UPDATE rate_limits SET count = 1, window_start = ? WHERE key = ?").run(new Date(now).toISOString(), key);
       } else if (row.count >= maxCount) {
         limitError = new RateLimitError(Math.ceil((windowMs - (now - windowStart)) / 1000));

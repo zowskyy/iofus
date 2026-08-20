@@ -25,7 +25,7 @@ const POOL_SIZE = 8;
 
 export interface Ask {
   id: string;
-  askerId: string;
+  askerId: string | null; // null for anonymous asks when viewer is not the owner
   askerHandle: string | null; // null when anonymous — never leaked to non-owners
   body: string;
   domain: string | null;
@@ -54,7 +54,7 @@ function rowToAsk(row: AskRow, viewerId: string | null): Ask {
   const anonymous = row.is_anonymous === 1;
   return {
     id: row.id,
-    askerId: row.asker_id,
+    askerId: anonymous && !isOwner ? null : row.asker_id,
     askerHandle: anonymous && !isOwner ? null : row.asker_handle,
     body: row.body,
     domain: row.domain,
@@ -73,9 +73,17 @@ const SELECT_ASK = `
   FROM asks a JOIN users u ON u.id = a.asker_id
 `;
 
-/** Opt in or out of being reachable by strangers' asks. Off by default. */
+/** Opt in or out of being reachable by strangers' asks. Off by default.
+ *  When disabling, also closes the user's existing open non-sensitive asks
+ *  so they stop appearing in other members' pools immediately. */
 export function setReachableForAsks(userId: string, reachable: boolean): void {
-  getDb().prepare("UPDATE users SET reachable_for_asks = ? WHERE id = ?").run(reachable ? 1 : 0, userId);
+  const db = getDb();
+  db.prepare("UPDATE users SET reachable_for_asks = ? WHERE id = ?").run(reachable ? 1 : 0, userId);
+  if (!reachable) {
+    db.prepare(
+      "UPDATE asks SET status = 'closed', closed_at = ? WHERE asker_id = ? AND status = 'open' AND is_sensitive = 0",
+    ).run(new Date().toISOString(), userId);
+  }
 }
 
 export function isReachableForAsks(userId: string): boolean {
@@ -204,14 +212,35 @@ export function answerAsk(askId: string, answererId: string, body: string): Answ
   }
 
   const db = getDb();
-  const ask = db.prepare("SELECT asker_id, status FROM asks WHERE id = ?").get(askId) as
-    | { asker_id: string; status: string }
+  const ask = db.prepare("SELECT asker_id, status, is_sensitive FROM asks WHERE id = ?").get(askId) as
+    | { asker_id: string; status: string; is_sensitive: number }
     | undefined;
   if (!ask) throw new AskError("This ask no longer exists.");
   if (ask.status !== "open") throw new AskError("This ask is closed.");
   if (ask.asker_id === answererId) throw new AskError("You can't answer your own ask.");
   if (hasBlockRelationship(ask.asker_id, answererId)) {
     throw new AskError("You can't answer this ask.");
+  }
+
+  // Re-check the same eligibility rules as listAsksForViewer on this write path.
+  // A user can submit a previously rendered form after their eligibility changes.
+  if (ask.is_sensitive === 0) {
+    const reachable = db.prepare("SELECT reachable_for_asks FROM users WHERE id = ?").get(answererId) as
+      | { reachable_for_asks: number }
+      | undefined;
+    if (!reachable || reachable.reachable_for_asks !== 1) {
+      throw new AskError("You can't answer this ask.");
+    }
+  } else {
+    const friendship = db
+      .prepare(
+        `SELECT 1 FROM friend_links WHERE status = 'accepted'
+         AND ((requester_id = ? AND addressee_id = ?) OR (addressee_id = ? AND requester_id = ?))`,
+      )
+      .get(ask.asker_id, answererId, ask.asker_id, answererId);
+    if (!friendship) {
+      throw new AskError("You can't answer this ask.");
+    }
   }
 
   const existing = db

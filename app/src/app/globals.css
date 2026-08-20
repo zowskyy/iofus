@@ -2575,7 +2575,7 @@ select {
   margin: 0;
   font-size: 0.9rem;
   line-height: 1.4;
-  word-break: break-word;
+  overflow-wrap: anywhere;
 }
 
 .aim-msg-from {

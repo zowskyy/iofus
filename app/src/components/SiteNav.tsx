@@ -1,8 +1,8 @@
 import Link from "next/link";
 import { getCurrentUser } from "@/lib/session";
 import { isModerator } from "@/lib/moderation";
-import { listIncomingRequests } from "@/lib/friends";
-import { listPendingGuestbookEntries } from "@/lib/guestbook";
+import { countIncomingRequests } from "@/lib/friends";
+import { countPendingGuestbookEntries } from "@/lib/guestbook";
 import { countUnreadMessages } from "@/lib/messages";
 
 // Six screens, per the plan: Explore, Make, Ask Us, Messages, Studio,
@@ -25,7 +25,7 @@ export async function SiteNav() {
   const viewer = await getCurrentUser();
   const moderator = viewer ? isModerator(viewer.id) : false;
   const pendingCount = viewer
-    ? listIncomingRequests(viewer.id).length + listPendingGuestbookEntries(viewer.id).length
+    ? countIncomingRequests(viewer.id) + countPendingGuestbookEntries(viewer.id)
     : 0;
   const unreadMessages = viewer ? countUnreadMessages(viewer.id) : 0;
 

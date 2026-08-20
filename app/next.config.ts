@@ -12,7 +12,7 @@ const nextConfig: NextConfig = {
   // it's running on unless that origin is explicitly allowed here.
   experimental: {
     serverActions: {
-      allowedOrigins: ["localhost:3000", "*.app.github.dev", "*.trycloudflare.com"],
+      allowedOrigins: ["localhost:3000", "*.trycloudflare.com"],
     },
   },
 };

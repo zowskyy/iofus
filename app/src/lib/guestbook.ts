@@ -31,6 +31,14 @@ export function listApprovedGuestbookEntries(pageOwnerId: string, limit = 50): G
   }));
 }
 
+/** Count of pending guestbook entries, for nav badge use. */
+export function countPendingGuestbookEntries(pageOwnerId: string): number {
+  const row = getDb()
+    .prepare("SELECT COUNT(*) as n FROM guestbook_entries WHERE page_owner_id = ? AND status = 'pending'")
+    .get(pageOwnerId) as { n: number };
+  return row.n;
+}
+
 export function listPendingGuestbookEntries(pageOwnerId: string): GuestbookEntry[] {
   const db = getDb();
   const rows = db

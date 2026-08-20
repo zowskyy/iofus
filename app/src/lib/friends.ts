@@ -123,6 +123,14 @@ export interface PendingRequest {
   createdAt: string;
 }
 
+/** Count of pending incoming friend requests, for nav badge use. */
+export function countIncomingRequests(userId: string): number {
+  const row = getDb()
+    .prepare("SELECT COUNT(*) as n FROM friend_links WHERE addressee_id = ? AND status = 'pending'")
+    .get(userId) as { n: number };
+  return row.n;
+}
+
 /** Requests this user has received and hasn't responded to yet. */
 export function listIncomingRequests(userId: string): PendingRequest[] {
   const db = getDb();
