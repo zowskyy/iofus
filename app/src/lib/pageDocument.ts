@@ -36,6 +36,9 @@ export function defaultPageDocument(displayName: string): PageDocument {
       reduceMotion: false,
       customCss: "",
       customCssEnabled: false,
+      backgroundImageUrl: undefined,
+      backgroundTile: false,
+      marqueeStatus: false,
       attribution: undefined,
     },
     pageParts: ["identity", "links", "now"],
@@ -47,6 +50,14 @@ export function defaultPageDocument(displayName: string): PageDocument {
 
 export function migrateDocument(input: Record<string, unknown>): PageDocument {
   if (input.version === CURRENT_SCHEMA_VERSION) return parsePageDocument(input);
+
+  if (input.version === 3) {
+    // v3 -> v4 only adds optional/defaulted theme fields
+    // (backgroundImageUrl, backgroundTile, marqueeStatus) — Zod fills
+    // them in automatically via .optional()/.default(), so nothing
+    // needs to be rewritten here beyond bumping the version number.
+    return parsePageDocument({ ...input, version: CURRENT_SCHEMA_VERSION });
+  }
 
   if (input.version === 2) {
     const theme = input.theme as Record<string, unknown> | undefined;

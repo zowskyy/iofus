@@ -570,6 +570,50 @@ function LookTab({
       </label>
 
       <fieldset className="studio-fieldset">
+        <legend>Y2K flourishes</legend>
+        <p className="studio-hint">
+          Tiled backgrounds and a scrolling status line — straight out of 2003. Turning on "Reduce motion"
+          (Access tab) always wins over the marquee.
+        </p>
+        <label className="field">
+          <span>Background image URL</span>
+          <input
+            type="url"
+            value={doc.theme.backgroundImageUrl ?? ""}
+            onChange={(e) =>
+              onChange({
+                ...doc,
+                theme: { ...doc.theme, backgroundImageUrl: e.target.value || undefined },
+              })
+            }
+            placeholder="https://example.com/sparkle-bg.gif"
+          />
+        </label>
+        {doc.theme.backgroundImageUrl && (
+          <label className="studio-toggle">
+            <input
+              type="checkbox"
+              checked={doc.theme.backgroundTile}
+              onChange={(e) =>
+                onChange({ ...doc, theme: { ...doc.theme, backgroundTile: e.target.checked } })
+              }
+            />
+            <span>Tile it (repeat the image edge-to-edge, instead of one full-bleed cover image)</span>
+          </label>
+        )}
+        <label className="studio-toggle">
+          <input
+            type="checkbox"
+            checked={doc.theme.marqueeStatus}
+            onChange={(e) =>
+              onChange({ ...doc, theme: { ...doc.theme, marqueeStatus: e.target.checked } })
+            }
+          />
+          <span>Scroll my status line marquee-style</span>
+        </label>
+      </fieldset>
+
+      <fieldset className="studio-fieldset">
         <legend>Themes</legend>
         <p className="studio-hint">
           Share your current look — template, colors, density, font, motion, and custom CSS settings — with

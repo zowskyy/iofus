@@ -8,8 +8,15 @@
 | `--page-bg` | `theme.background` |
 | `--page-ink` | derived via `readableTextFor()` |
 | `--page-ink-soft` | derived via `readableTextFor()` |
+| `--page-bg-image` | `url("{theme.backgroundImageUrl}")` — only set when the field is non-empty; `globals.css` falls back to `none` |
+| `--page-bg-repeat` | `repeat` when `theme.backgroundTile`, else `no-repeat` |
+| `--page-bg-size` | `auto` when tiled, else `cover` |
 
-Applied on `.page-body` via inline style — never raw user CSS in the global stylesheet.
+Applied on `.page-body` via inline style — never raw user CSS in the global stylesheet. All of these are stripped entirely in Reader Mode.
+
+## Marquee status line
+
+`theme.marqueeStatus` (boolean) adds the `marquee` class to `.page-status` and wraps the status text in a `<span>` that scrolls via the `page-status-marquee` keyframe animation in `globals.css`. `.reduce-motion` (below) already forces `animation: none !important` on every `.page-body` descendant, so turning on Reduce Motion silently stops the marquee too — no separate override needed.
 
 ## Template attribute
 

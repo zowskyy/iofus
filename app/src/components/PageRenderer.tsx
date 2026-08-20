@@ -35,6 +35,13 @@ export function PageRenderer({
         "--page-bg": document.theme.background,
         "--page-ink": ink,
         "--page-ink-soft": inkSoft,
+        ...(document.theme.backgroundImageUrl
+          ? {
+              "--page-bg-image": `url("${document.theme.backgroundImageUrl}")`,
+              "--page-bg-repeat": document.theme.backgroundTile ? "repeat" : "no-repeat",
+              "--page-bg-size": document.theme.backgroundTile ? "auto" : "cover",
+            }
+          : {}),
       } as React.CSSProperties);
 
   const bodyClasses = [

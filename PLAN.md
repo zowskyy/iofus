@@ -252,6 +252,42 @@ pattern · scoped custom CSS.
 else reuses and remixes a theme, without losing creator credit or
 accessibility guarantees. ✓
 
+### Phase 5.5 — Y2K/Tumblr-era expressiveness *(first slice shipped)*
+
+A user test flagged that Studio didn't yet capture the maximalist,
+decorate-your-corner spirit of 2003–2006 MySpace and Tumblr's heyday.
+Schema version bumped to **4** (`migrateDocument()` upgrades v1–v3
+losslessly). Shipped:
+
+- `theme.backgroundImageUrl` + `theme.backgroundTile` — a tiled or
+  full-bleed background image, exposed in Studio's Look tab.
+- `theme.marqueeStatus` — scrolls the identity status line, CSS-only,
+  and is silently disabled whenever Reduce Motion is on (same
+  `.reduce-motion *` rule that already kills every other animation —
+  no separate override needed, so it can't be forgotten later).
+
+**Deliberately deferred**, not silently dropped — each is a bigger,
+separately-scoped piece:
+- **Avatar images**: `identity.avatarAssetId` has existed in the schema
+  since an earlier phase but was never actually rendered on the page —
+  found while researching this pass. Fixing it properly needs a real
+  asset upload/serving system (nothing like that exists yet — today's
+  gallery/shrine images are just URL fields), which is real
+  infrastructure work, not a quick add.
+- **Custom cursor picker**: wanted a small bundled set of built-in
+  cursor styles (not arbitrary external URLs — hotlinking a stranger's
+  cursor image is a privacy/tracking surface, not something to expose
+  by default), which means shipping actual cursor image assets first.
+- **Badge images**: badges are emoji + text only today; image/GIF
+  badges (the classic 80×15 web-badge format) need the same
+  URL-vs-upload decision as avatars.
+
+Custom CSS (`theme.customCssEnabled`) already technically permits
+hand-written cursor URLs, `@keyframes` animations, and
+`::-webkit-scrollbar` styling — `cssScope.ts`'s denylist never blocked
+these — but there's no UI pointing anyone at that, so it stays
+expert-only until it has a real editor.
+
 ### Phase 6 — Ask Us *(data layer built; no UI yet)*
 
 The first capability built on the "Internet of Us" principle: a

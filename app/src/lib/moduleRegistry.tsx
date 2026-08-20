@@ -49,7 +49,11 @@ export const PAGE_MODULE_REGISTRY: Record<string, PageModuleDefinition> = {
     render: ({ document }) => (
       <section className="page-identity page-part">
         <h1>{document.identity.displayName}</h1>
-        {document.identity.status && <p className="page-status">{document.identity.status}</p>}
+        {document.identity.status && (
+          <p className={document.theme.marqueeStatus ? "page-status marquee" : "page-status"}>
+            {document.theme.marqueeStatus ? <span>{document.identity.status}</span> : document.identity.status}
+          </p>
+        )}
         {document.identity.bio && <p className="page-bio">{document.identity.bio}</p>}
       </section>
     ),

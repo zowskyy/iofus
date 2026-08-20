@@ -1,6 +1,6 @@
 import { z } from "zod";
 
-export const CURRENT_SCHEMA_VERSION = 3;
+export const CURRENT_SCHEMA_VERSION = 4;
 
 const TEMPLATE_IDS = [
   "soft-web",
@@ -58,6 +58,13 @@ const ThemeSchema = z.object({
   reduceMotion: z.boolean().default(false),
   customCss: z.string().max(8000).default(""),
   customCssEnabled: z.boolean().default(false),
+  // Y2K/personal-page-era flourishes (Phase 5.5): a tiled or full-bleed
+  // background image, and a scrolling "marquee" status line. Both are
+  // pure presentation — reduceMotion still wins over marqueeStatus at
+  // render time (see PageRenderer.tsx), same as every other animation.
+  backgroundImageUrl: httpUrl.optional(),
+  backgroundTile: z.boolean().default(false),
+  marqueeStatus: z.boolean().default(false),
   attribution: ThemeAttributionSchema,
 });
 

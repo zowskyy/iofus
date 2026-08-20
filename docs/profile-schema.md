@@ -1,13 +1,13 @@
 # Profile schema
 
-Canonical shape: `PageDocument` in `src/lib/pageDocumentTypes.ts` (schema version **3**).
+Canonical shape: `PageDocument` in `src/lib/pageDocumentTypes.ts` (schema version **4**).
 
 ## Top-level fields
 
 | Field | Purpose |
 |-------|---------|
 | `identity` | displayName, bio, optional status |
-| `theme` | template, colors, density, font, custom CSS, attribution |
+| `theme` | template, colors, density, font, custom CSS, attribution, background image/tile, marquee status (v4) |
 | `pageParts` | ordered list of enabled module ids |
 | `links`, `now` | curated links and status line |
 | `gallery`, `blog`, `devlog`, `badges` | media and writing modules |
@@ -19,7 +19,7 @@ Canonical shape: `PageDocument` in `src/lib/pageDocumentTypes.ts` (schema versio
 
 ## Migration
 
-`migrateDocument()` in `pageDocument.ts` upgrades v1 and v2 documents to v3 without data loss. Never write unvalidated JSON to `page_documents`.
+`migrateDocument()` in `pageDocument.ts` upgrades v1, v2, and v3 documents to v4 without data loss. Never write unvalidated JSON to `page_documents`.
 
 ## Export / import
 

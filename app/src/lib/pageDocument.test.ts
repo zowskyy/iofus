@@ -41,6 +41,29 @@ describe("parsePageDocument", () => {
     expect(() => parsePageDocument(doc)).toThrow(PageDocumentValidationError);
   });
 
+  it("accepts a valid backgroundImageUrl", () => {
+    const doc = defaultPageDocument("Void");
+    doc.theme.backgroundImageUrl = "https://example.com/tile.gif";
+    doc.theme.backgroundTile = true;
+    expect(() => parsePageDocument(doc)).not.toThrow();
+  });
+
+  it("rejects a javascript: backgroundImageUrl", () => {
+    const doc = defaultPageDocument("Void");
+    (doc.theme as unknown as Record<string, string>).backgroundImageUrl = "javascript:alert(1)";
+    expect(() => parsePageDocument(doc)).toThrow(PageDocumentValidationError);
+  });
+
+  it("defaults marqueeStatus and backgroundTile to false when omitted", () => {
+    const doc = defaultPageDocument("Void");
+    const { backgroundTile, marqueeStatus, ...rest } = doc.theme;
+    void backgroundTile;
+    void marqueeStatus;
+    const parsed = parsePageDocument({ ...doc, theme: rest });
+    expect(parsed.theme.backgroundTile).toBe(false);
+    expect(parsed.theme.marqueeStatus).toBe(false);
+  });
+
   it("rejects a javascript: URL in a link", () => {
     const doc = defaultPageDocument("Void");
     doc.links.push({ label: "click me", url: "javascript:alert(1)" });
@@ -130,9 +153,30 @@ describe("migrateDocument", () => {
       access: { altTextReminder: true, contrastWarningsEnabled: true },
     };
     const migrated = migrateDocument(v2);
-    expect(migrated.version).toBe(3);
+    expect(migrated.version).toBe(CURRENT_SCHEMA_VERSION);
     expect(migrated.miniPages).toEqual([]);
     expect(migrated.theme.customCssEnabled).toBe(false);
+    expect(migrated.theme.backgroundImageUrl).toBeUndefined();
+    expect(migrated.theme.backgroundTile).toBe(false);
+    expect(migrated.theme.marqueeStatus).toBe(false);
+  });
+
+  it("upgrades v3 documents to v4 by defaulting the new Y2K theme fields", () => {
+    const v3 = {
+      ...defaultPageDocument("V3 Page"),
+      version: 3,
+    };
+    // A real v3 document never had these keys at all.
+    delete (v3.theme as Record<string, unknown>).backgroundImageUrl;
+    delete (v3.theme as Record<string, unknown>).backgroundTile;
+    delete (v3.theme as Record<string, unknown>).marqueeStatus;
+
+    const migrated = migrateDocument(v3);
+    expect(migrated.version).toBe(CURRENT_SCHEMA_VERSION);
+    expect(migrated.theme.backgroundImageUrl).toBeUndefined();
+    expect(migrated.theme.backgroundTile).toBe(false);
+    expect(migrated.theme.marqueeStatus).toBe(false);
+    expect(migrated.identity.displayName).toBe("V3 Page");
   });
 });
 
