@@ -25,8 +25,12 @@ what the rename means and doesn't mean.
 
 ## What it is
 
-Not social media with feeds, DMs, trends, short-form video, ads, and
+Not social media with feeds, trends, short-form video, ads, and
 engagement scores. Not a full website builder or code sandbox either.
+Private messaging exists (Phase 7, see below) but it's a deliberate,
+narrow exception, not the mainstream always-on DM inbox: real 1:1
+threads you start on purpose, with the same block/rate-limit guardrails
+as the rest of the platform.
 
 It's the blend MySpace-era personal publishing actually was, rebuilt safe
 and modern:
@@ -48,7 +52,7 @@ Accessibility is part of the product contract, not a later feature: every
 page needs a readable, keyboard-usable fallback even when its decoration
 is highly expressive (WCAG 2.2 is the relevant standard here).
 
-## The four screens, and nothing else in V1
+## The screens
 
 | Screen | Verb | Purpose |
 |---|---|---|
@@ -56,10 +60,14 @@ is highly expressive (WCAG 2.2 is the relevant standard here).
 | **Make** | Create | Start a page from a short guided flow |
 | **My Page** | Publish | View and share your public space |
 | **Studio** | Shape | Change appearance, content, and layout |
+| **Ask Us** | Reach out | Post a need, get answered by people outside your friend graph (Phase 6) |
+| **Messages** | Talk | Private 1:1 threads between two handles (Phase 7) |
 
-No infinite feed, marketplace, DMs, trend screen, notification center,
+No infinite feed, marketplace, trend screen, notification center,
 creator-analytics dashboard, plugin screen, or federation controls in V1.
-Friends are a graph you browse, not a feed you're fed.
+Friends are a graph you browse, not a feed you're fed. Messages are the
+one screen that's a deliberate, narrow exception to "no DMs" — see
+Phase 7 below for the guardrails that keep it safe.
 
 ## First five minutes
 
@@ -288,7 +296,7 @@ hand-written cursor URLs, `@keyframes` animations, and
 these — but there's no UI pointing anyone at that, so it stays
 expert-only until it has a real editor.
 
-### Phase 6 — Ask Us *(data layer built; no UI yet)*
+### Phase 6 — Ask Us *(shipped: data layer + UI)*
 
 The first capability built on the "Internet of Us" principle: a
 structured, rate-limited, consent-gated way to reach people *outside*
@@ -319,9 +327,11 @@ algorithm — a member posts an ask, and anyone in the matching pool
   asker's handle is only ever returned to the asker themselves — every
   other viewer sees `askerHandle: null`.
 
+**UI shipped**: `/asks` (reachability toggle, compose form with domain/
+anonymous/sensitive fields, the answerable pool) and `/asks/mine` (a
+member's own asks and their answers), wired into `SiteNav.tsx`.
+
 **Not yet built** (deliberately deferred, not silently dropped):
-- Any UI — no Studio flow, no route, no forms. This is a tested data
-  layer only; a member can't actually post or answer an ask yet.
 - "I can help with…" self-attested tags and community-chosen matching
   dimensions — `domain` today is a single plain string the asker
   types, not a structured, community-owned dimension set.
@@ -338,15 +348,48 @@ off); the daily rate limit is real and tested, not aspirational.
 Automatic translation remains out of scope, per the paper's own named
 mistranslation risk.
 
-**Success test (not yet reachable — needs the UI above):** someone gets
-a genuinely useful answer from a stranger they'd never have met through
-their existing friend graph, without anyone being contacted more than
-they consented to, and without a single support ticket about unwanted
-contact.
+**Success test:** someone gets a genuinely useful answer from a stranger
+they'd never have met through their existing friend graph, without
+anyone being contacted more than they consented to, and without a
+single support ticket about unwanted contact.
+
+### Phase 7 — Messages *(shipped: real 1:1 DMs, a deliberate reversal)*
+
+Originally excluded on purpose ("no DMs, ever" — see the git history of
+this section). Reversed on explicit product direction: real private
+messaging between two handles, styled after old-school black-and-white
+AIM windows (`app/src/app/globals.css`'s `.aim-*` classes) — a
+deliberate exception to "product chrome, not decoration" everywhere
+else on the platform.
+
+This is **not** Ask Us's safety model reused — it's a different shape
+of risk (a specific person contacting a specific person, not a public
+opt-in pool) with its own guardrails, built in `app/src/lib/messages.ts`
+and fully tested (`messages.test.ts`, 23 cases):
+- A block relationship in either direction always wins, checked at
+  every `sendMessage()` call — never assumed safe just because a thread
+  already exists.
+- Starting a conversation with someone **new** is rate-limited to 10/day
+  per sender (same `checkRateLimit` + `DAY_MS` mechanism Ask Us uses).
+  Messages within an *existing* thread are not separately capped — a
+  real back-and-forth isn't stranger contact.
+- No read receipts are exposed to the other person. `read_at` is
+  recorded only so the viewer's *own* unread count is accurate
+  (surfaced as a nav badge, same pattern as the Settings pending-count
+  badge) — never shown to the sender.
+- A non-participant can't read or mark a thread read
+  (`ConversationAccessError`), even if they know the conversation id.
+- Messaging is reachable from a profile page's controls bar (a "Message"
+  link, next to Report/Block) and from `/messages` (the buddy list) —
+  never a default-open inbox pushed at anyone.
+
+**Not yet built**: presence/"away message" simulation, message editing
+or deletion, group threads. All deliberately out of scope for this
+pass, not silently dropped.
 
 ## What V1 excludes
 
-Infinite feed, DMs, arbitrary CSS/HTML, JavaScript in pages, third-party
+Infinite feed, arbitrary CSS/HTML, JavaScript in pages, third-party
 embeds, autoplay music, plugin system, marketplace, AI-generated pages,
 federation, self-hosting, recommendation algorithms, real-time
 collaborative editing.

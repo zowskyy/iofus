@@ -227,3 +227,33 @@ CREATE TABLE IF NOT EXISTS ask_answers (
 );
 
 CREATE INDEX IF NOT EXISTS idx_ask_answers_ask ON ask_answers(ask_id, created_at);
+
+-- Direct messages (Phase 7): private 1:1 threads between two handles.
+-- user_a_id is always the lexicographically smaller id of the pair, so
+-- a conversation between two people has exactly one row no matter who
+-- started it. A block relationship in either direction (see
+-- friends.hasBlockRelationship) always wins over an existing thread —
+-- checked at send time, never assumed from conversation existence alone.
+CREATE TABLE IF NOT EXISTS conversations (
+  id TEXT PRIMARY KEY,
+  user_a_id TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  user_b_id TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  created_at TEXT NOT NULL,
+  last_message_at TEXT NOT NULL,
+  CHECK (user_a_id < user_b_id),
+  UNIQUE (user_a_id, user_b_id)
+);
+
+CREATE INDEX IF NOT EXISTS idx_conversations_a ON conversations(user_a_id, last_message_at);
+CREATE INDEX IF NOT EXISTS idx_conversations_b ON conversations(user_b_id, last_message_at);
+
+CREATE TABLE IF NOT EXISTS messages (
+  id TEXT PRIMARY KEY,
+  conversation_id TEXT NOT NULL REFERENCES conversations(id) ON DELETE CASCADE,
+  sender_id TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  body TEXT NOT NULL,
+  created_at TEXT NOT NULL,
+  read_at TEXT
+);
+
+CREATE INDEX IF NOT EXISTS idx_messages_conversation ON messages(conversation_id, created_at);

@@ -64,6 +64,22 @@ describe("parsePageDocument", () => {
     expect(parsed.theme.marqueeStatus).toBe(false);
   });
 
+  it("accepts a gallery image with empty alt text (decorative, not required)", () => {
+    const doc = defaultPageDocument("Void");
+    doc.gallery.push({ id: crypto.randomUUID(), url: "https://example.com/pic.jpg", alt: "" });
+    expect(() => parsePageDocument(doc)).not.toThrow();
+  });
+
+  it("defaults a missing gallery alt field to an empty string", () => {
+    const doc = defaultPageDocument("Void");
+    const withGallery = {
+      ...doc,
+      gallery: [{ id: crypto.randomUUID(), url: "https://example.com/pic.jpg" }],
+    };
+    const parsed = parsePageDocument(withGallery);
+    expect(parsed.gallery[0]!.alt).toBe("");
+  });
+
   it("rejects a javascript: URL in a link", () => {
     const doc = defaultPageDocument("Void");
     doc.links.push({ label: "click me", url: "javascript:alert(1)" });

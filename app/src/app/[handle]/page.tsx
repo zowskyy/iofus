@@ -96,6 +96,7 @@ export default async function ProfilePage({ params, searchParams }: Props) {
           <Link href={readerMode ? `/@${user.handle}` : `/@${user.handle}?reader=1`}>
             {readerMode ? "Exit Reader" : "Reader"}
           </Link>
+          {!isOwner && viewer && <Link href={`/messages/${user.handle}`}>Message</Link>}
           {!isOwner && <Link href={`/@${user.handle}/report`}>Report</Link>}
           {!isOwner && <Link href={`/@${user.handle}/block`}>Block</Link>}
         </div>

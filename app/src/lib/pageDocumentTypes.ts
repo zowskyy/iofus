@@ -83,7 +83,11 @@ const IdentitySchema = z.object({
 const GalleryItemSchema = z.object({
   id: z.string().uuid(),
   url: httpUrl,
-  alt: z.string().trim().min(1).max(200),
+  // Optional, not required: an empty alt is valid HTML for a decorative
+  // image (screen readers skip it rather than announcing nothing useful),
+  // so this never blocks saving. The Access tab's altTextReminder toggle
+  // is how we nudge people to fill it in, not a hard requirement.
+  alt: z.string().trim().max(200).default(""),
   caption: z.string().trim().max(280).optional(),
 });
 

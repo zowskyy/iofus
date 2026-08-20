@@ -206,6 +206,27 @@ select {
   cursor: pointer;
 }
 
+.nav-settings-link {
+  display: inline-flex !important;
+  align-items: center;
+  gap: 0.35rem;
+}
+
+.nav-badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 1.1rem;
+  height: 1.1rem;
+  padding: 0 0.3rem;
+  border-radius: 999px;
+  background: var(--accent);
+  color: var(--paper);
+  font-size: 0.7rem;
+  font-weight: 700;
+  line-height: 1;
+}
+
 /* Public page rendering. Theme colors arrive only as the two custom
    properties below, always pre-validated hex strings — never raw text
    interpolated into a stylesheet or style attribute. */
@@ -1664,6 +1685,75 @@ select {
   color: var(--ink-soft);
 }
 
+/* Landing splash: how-it-works steps + feature tour (logged-out home page) */
+.splash-steps {
+  margin-top: 2.5rem;
+}
+
+.splash-steps-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+  gap: 0.75rem;
+}
+
+.splash-steps-list li {
+  display: grid;
+  gap: 0.2rem;
+  padding: 1rem;
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  background: var(--paper-raised);
+}
+
+.splash-step-number {
+  color: var(--accent);
+  font-size: 0.8rem;
+}
+
+.splash-step-label {
+  font-weight: 700;
+  font-size: 1.05rem;
+}
+
+.splash-step-desc {
+  font-size: 0.85rem;
+  color: var(--ink-soft);
+}
+
+.splash-features {
+  margin-top: 3rem;
+}
+
+.splash-feature-grid {
+  margin-top: 1rem;
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: 1rem;
+}
+
+.splash-feature-card {
+  padding: 1.1rem;
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  background: var(--paper-raised);
+}
+
+.splash-feature-card h3 {
+  margin: 0 0 0.4rem;
+  font-size: 1rem;
+  color: var(--accent);
+}
+
+.splash-feature-card p {
+  margin: 0;
+  font-size: 0.9rem;
+  color: var(--ink-soft);
+  line-height: 1.5;
+}
+
 /* Shrine module */
 .page-shrine .shrine-list {
   list-style: none;
@@ -2366,3 +2456,147 @@ select {
   }
 }
 
+
+/* Messages (Phase 7): deliberately styled after old-school black-and-
+   white AIM windows — beveled borders, a titlebar, monochrome. This is
+   the one part of iofus that intentionally looks like software, not a
+   personal page — messages are plain product chrome, not decoration. */
+.aim-page {
+  display: flex;
+  justify-content: center;
+}
+
+.aim-window {
+  width: 100%;
+  max-width: 480px;
+  border: 2px solid #000;
+  background: #fff;
+  color: #000;
+  font-family: Tahoma, "Segoe UI", Helvetica, Arial, sans-serif;
+  box-shadow: 3px 3px 0 rgba(0, 0, 0, 0.15);
+}
+
+.aim-titlebar {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  background: #000;
+  color: #fff;
+  padding: 0.4rem 0.6rem;
+  font-size: 0.85rem;
+  font-weight: 700;
+}
+
+.aim-back {
+  color: #fff !important;
+  text-decoration: none;
+  font-weight: 700;
+}
+
+.aim-window-body {
+  padding: 0.85rem;
+}
+
+.aim-hint {
+  font-size: 0.8rem;
+  color: #444;
+  margin: 0 0 0.75rem;
+}
+
+.aim-empty {
+  font-size: 0.85rem;
+  color: #666;
+  padding: 0.5rem 0;
+}
+
+.aim-buddy-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  border-top: 1px solid #000;
+}
+
+.aim-buddy {
+  border-bottom: 1px solid #ccc;
+}
+
+.aim-buddy a {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.5rem 0.25rem;
+  color: #000;
+  text-decoration: none;
+}
+
+.aim-buddy.unread a {
+  font-weight: 700;
+}
+
+.aim-buddy-icon {
+  font-size: 0.7rem;
+}
+
+.aim-buddy.unread .aim-buddy-icon {
+  color: #000;
+}
+
+.aim-buddy:not(.unread) .aim-buddy-icon {
+  color: #999;
+}
+
+.aim-buddy-handle {
+  flex-shrink: 0;
+}
+
+.aim-buddy-preview {
+  color: #666;
+  font-weight: 400;
+  font-size: 0.85rem;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  flex: 1;
+}
+
+.aim-thread {
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+  max-height: 50vh;
+  overflow-y: auto;
+  padding: 0.5rem;
+  border: 1px solid #000;
+  background: #fff;
+  margin-bottom: 0.75rem;
+}
+
+.aim-msg {
+  margin: 0;
+  font-size: 0.9rem;
+  line-height: 1.4;
+  word-break: break-word;
+}
+
+.aim-msg-from {
+  font-weight: 700;
+  color: #000;
+}
+
+.aim-msg-mine .aim-msg-from {
+  color: #555;
+}
+
+.aim-composer-row {
+  display: flex;
+  gap: 0.5rem;
+  align-items: flex-end;
+}
+
+.aim-composer-row textarea {
+  flex: 1;
+  border: 1px solid #000;
+  font-family: inherit;
+  padding: 0.4rem;
+  resize: vertical;
+}
