@@ -664,6 +664,71 @@ select {
   color: var(--ink-soft);
 }
 
+/* Ask Us */
+.ask-card {
+  display: flex;
+  flex-direction: column;
+  gap: 0.6rem;
+  padding: 1rem;
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  background: var(--paper-raised);
+}
+
+.ask-meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  align-items: center;
+  font-size: 0.85rem;
+  color: var(--ink-soft);
+}
+
+.ask-tag {
+  display: inline-flex;
+  align-items: center;
+  padding: 0.2rem 0.55rem;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  font-size: 0.8rem;
+}
+
+.ask-tag-sensitive {
+  color: var(--danger);
+  border-color: color-mix(in srgb, var(--danger) 40%, var(--line));
+}
+
+.ask-body {
+  margin: 0;
+  white-space: pre-wrap;
+}
+
+.ask-answers {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: 0.5rem;
+}
+
+.ask-answer {
+  padding: 0.65rem 0.85rem;
+  border-left: 2px solid var(--line);
+  background: color-mix(in srgb, var(--paper) 60%, transparent);
+}
+
+.ask-answer-meta {
+  font-size: 0.8rem;
+  color: var(--ink-soft);
+  margin: 0 0 0.25rem;
+}
+
+.ask-answer-form {
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+}
+
 /* Reader mode overrides for new parts */
 .page-body.reader-mode .gallery-image {
   border-color: #ccc;
