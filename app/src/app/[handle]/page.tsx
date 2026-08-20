@@ -72,7 +72,7 @@ export default async function ProfilePage({ params, searchParams }: Props) {
     <>
       <div className="top-bar">
         <span>
-          iofus / @{user.handle}
+          <Link href="/">iofus</Link> / @{user.handle}
           {isOwner && !stored!.isPublished && (
             <span className="mono" style={{ color: "var(--accent)" }}> · draft, not published</span>
           )}
@@ -81,6 +81,13 @@ export default async function ProfilePage({ params, searchParams }: Props) {
           )}
         </span>
         <div className="controls">
+          {isOwner && (
+            <>
+              <Link href="/explore">Explore</Link>
+              <Link href="/studio">Studio</Link>
+              <Link href="/settings">Settings</Link>
+            </>
+          )}
           {isOwner && stored!.draftDocument && (
             <Link href={safePreview ? `/@${user.handle}` : `/@${user.handle}?preview=1`}>
               {safePreview ? "Live page" : "Preview draft"}

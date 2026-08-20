@@ -1,3 +1,4 @@
+import { Fragment } from "react";
 import type { PageDocument } from "@/lib/pageDocumentTypes";
 import type { FriendSummary } from "@/lib/friends";
 import type { GuestbookEntry } from "@/lib/guestbook";
@@ -63,7 +64,9 @@ export function PageRenderer({
         <p className="theme-attribution mono">{document.theme.attribution.credit}</p>
       )}
       {scopedCss && <style>{scopedCss}</style>}
-      {document.pageParts.map((partId) => renderPagePart(partId, ctx))}
+      {document.pageParts.map((partId) => (
+        <Fragment key={partId}>{renderPagePart(partId, ctx)}</Fragment>
+      ))}
       <p className="page-footer mono">@{handle} on iofus</p>
     </div>
   );
