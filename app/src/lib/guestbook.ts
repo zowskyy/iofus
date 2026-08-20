@@ -92,18 +92,17 @@ export function signGuestbook(
   );
 }
 
-/** Approve or reject a pending guestbook entry. Only *pageOwnerId* may call this. Throws when the entry doesn't exist. */
+/** Approve or reject a pending guestbook entry. Only *pageOwnerId* may call this. Throws when the entry doesn't exist or has already been moderated. */
 export function moderateGuestbookEntry(pageOwnerId: string, entryId: string, approve: boolean): void {
   const db = getDb();
   const row = db
     .prepare("SELECT id FROM guestbook_entries WHERE id = ? AND page_owner_id = ?")
     .get(entryId, pageOwnerId);
   if (!row) throw new GuestbookError("No such guestbook entry.");
-  db.prepare("UPDATE guestbook_entries SET status = ?, reviewed_at = ? WHERE id = ?").run(
-    approve ? "approved" : "rejected",
-    new Date().toISOString(),
-    entryId,
-  );
+  const result = db
+    .prepare("UPDATE guestbook_entries SET status = ?, reviewed_at = ? WHERE id = ? AND status = 'pending'")
+    .run(approve ? "approved" : "rejected", new Date().toISOString(), entryId);
+  if (result.changes === 0) throw new GuestbookError("Entry has already been moderated.");
 }
 
 /** Permanently delete a guestbook entry. Only *pageOwnerId* may delete entries on their page. */
