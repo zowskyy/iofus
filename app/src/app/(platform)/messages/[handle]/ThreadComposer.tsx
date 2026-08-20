@@ -5,6 +5,7 @@ import { sendMessageAction, type SendMessageState } from "../actions";
 
 const initialState: SendMessageState = {};
 
+/** Message-composition form for a direct-message thread with *recipientHandle*. */
 export function ThreadComposer({ recipientHandle }: { recipientHandle: string }) {
   const boundAction = sendMessageAction.bind(null, recipientHandle);
   const [state, formAction, pending] = useActionState(boundAction, initialState);

@@ -17,6 +17,7 @@ interface Props {
   topEightLinks: TopEightLink[];
 }
 
+/** Renders all enabled page modules for a user's profile page, applying the stored theme as inline CSS variables. */
 export function PageRenderer({
   document,
   friends,

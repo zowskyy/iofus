@@ -11,6 +11,7 @@ interface Props {
   params: Promise<{ handle: string }>;
 }
 
+/** Server page rendering the direct-message thread between the signed-in user and the profile at *handle*. */
 export default async function MessageThreadPage({ params }: Props) {
   const { handle: rawParam } = await params;
   const viewer = await getCurrentUser();

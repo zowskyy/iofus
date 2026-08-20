@@ -6,6 +6,7 @@ import { setReachableAction } from "./actions";
 import { AskCard } from "./AskCard";
 import { AskForm } from "./AskForm";
 
+/** Server page rendering the public Ask Us pool, with the ask form for signed-in users. */
 export default async function AsksPage() {
   const viewer = await getCurrentUser();
   if (!viewer) redirect("/login?next=/asks");

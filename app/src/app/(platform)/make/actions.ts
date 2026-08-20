@@ -18,6 +18,7 @@ export interface MakeState {
   error?: string;
 }
 
+/** Server action for the page-creation wizard. Validates template and display name, builds and saves the page document, then redirects to the new profile. */
 export async function makeFlowAction(_prevState: MakeState, formData: FormData): Promise<MakeState> {
   const viewer = await getCurrentUser();
   if (!viewer) redirect("/login?next=/make");

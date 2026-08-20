@@ -41,6 +41,7 @@ const STEPS = [
   { label: "Wander", desc: "Discover other pages, no feed required" },
 ];
 
+/** Server page rendering the platform landing page — signed-in users see their dashboard, visitors see the public feature overview. */
 export default async function HomePage() {
   const viewer = await getCurrentUser();
 

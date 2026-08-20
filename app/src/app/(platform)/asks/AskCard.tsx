@@ -7,6 +7,7 @@ function formatDate(iso: string): string {
   return date.toLocaleDateString("en-US", { year: "numeric", month: "short", day: "numeric" });
 }
 
+/** Renders a single ask with its answers and, for the page owner, an answer form. */
 export function AskCard({
   ask,
   answers,

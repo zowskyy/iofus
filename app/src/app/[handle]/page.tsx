@@ -35,6 +35,7 @@ function resolveTopEight(handles: string[]): TopEightLink[] {
   return links;
 }
 
+/** Server page for a user's public profile at `/@handle`, enforcing visibility and block rules before rendering. */
 export default async function ProfilePage({ params, searchParams }: Props) {
   const { handle: rawParam } = await params;
   const { reader, preview } = await searchParams;

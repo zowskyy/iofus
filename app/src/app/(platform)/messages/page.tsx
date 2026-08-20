@@ -3,6 +3,7 @@ import Link from "next/link";
 import { getCurrentUser } from "@/lib/session";
 import { listConversations } from "@/lib/messages";
 
+/** Server page listing all direct-message conversations for the signed-in user. */
 export default async function MessagesPage() {
   const viewer = await getCurrentUser();
   if (!viewer) redirect("/login?next=/messages");

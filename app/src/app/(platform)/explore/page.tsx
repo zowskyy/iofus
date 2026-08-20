@@ -14,6 +14,7 @@ interface Props {
   searchParams: Promise<{ q?: string }>;
 }
 
+/** Server page for the public Explore/discovery feed, with tag and text search. */
 export default async function ExplorePage({ searchParams }: Props) {
   ensureSeedRings();
   ensureSeedCollections();

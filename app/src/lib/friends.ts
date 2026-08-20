@@ -23,6 +23,7 @@ export function hasBlockRelationship(userIdA: string, userIdB: string): boolean 
   return isBlocked(getDb(), userIdA, userIdB);
 }
 
+/** Send a friend request from *requesterId* to *addresseeId*. Auto-accepts if the other party already requested. Throws on self-request, block, or duplicate. */
 export function sendFriendRequest(requesterId: string, addresseeId: string): void {
   if (requesterId === addresseeId) {
     throw new FriendRequestError("You can't send a friend request to yourself.");
@@ -64,6 +65,7 @@ export function sendFriendRequest(requesterId: string, addresseeId: string): voi
 
 export class FriendLinkNotFoundError extends Error {}
 
+/** Accept the pending friend request *requestId* on behalf of *currentUserId*. Idempotent if already accepted. Throws when the request doesn't exist or *currentUserId* is not the addressee. */
 export function acceptFriendRequest(currentUserId: string, requestId: string): void {
   const db = getDb();
   const row = db
@@ -145,6 +147,7 @@ export function listIncomingRequests(userId: string): PendingRequest[] {
   return rows.map((r) => ({ id: r.id, fromUserId: r.from_id, fromHandle: r.from_handle, createdAt: r.created_at }));
 }
 
+/** Block *blockedId* as *blockerId*, immediately removing any existing friend link in either direction. Idempotent. */
 export function blockUser(blockerId: string, blockedId: string): void {
   if (blockerId === blockedId) throw new FriendRequestError("You can't block yourself.");
   const db = getDb();
@@ -159,6 +162,7 @@ export function blockUser(blockerId: string, blockedId: string): void {
   ).run(blockerId, blockedId, blockedId, blockerId);
 }
 
+/** Remove the block that *blockerId* placed on *blockedId*. No-op when the block doesn't exist. */
 export function unblockUser(blockerId: string, blockedId: string): void {
   const db = getDb();
   db.prepare("DELETE FROM blocks WHERE blocker_id = ? AND blocked_id = ?").run(blockerId, blockedId);
@@ -170,6 +174,7 @@ export type FriendRelationship =
   | { status: "pending_received"; requestId: string }
   | { status: "accepted"; requestId: string };
 
+/** Returns the friendship status between *viewerId* and *otherUserId* from the viewer's perspective. */
 export function getFriendRelationship(viewerId: string, otherUserId: string): FriendRelationship {
   const db = getDb();
   const row = db
@@ -187,6 +192,7 @@ export function getFriendRelationship(viewerId: string, otherUserId: string): Fr
   return { status: "pending_received", requestId: row.id };
 }
 
+/** All users that *blockerId* has blocked, newest block first. */
 export function listBlockedUsers(blockerId: string): { userId: string; handle: string }[] {
   const db = getDb();
   const rows = db

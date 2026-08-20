@@ -192,6 +192,7 @@ export interface StoredPage {
   updatedAt: string;
 }
 
+/** Returns an object with empty defaults for all v3 page-document fields (gallery, blog, devlog, badges, topEight, shrines, playlist, pixelArt, miniPages, tags). */
 export function defaultPageDocumentFieldsV3() {
   return {
     gallery: [] as PageDocument["gallery"],

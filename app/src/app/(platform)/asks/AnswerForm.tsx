@@ -5,6 +5,7 @@ import { answerAskAction, type AskActionState } from "./actions";
 
 const initialState: AskActionState = {};
 
+/** Form that lets the page owner submit an answer to a specific ask. */
 export function AnswerForm({ askId }: { askId: string }) {
   const boundAction = answerAskAction.bind(null, askId);
   const [state, formAction, pending] = useActionState(boundAction, initialState);

@@ -21,6 +21,7 @@ import { countUnreadMessages } from "@/lib/messages";
 // until you happen to click in — confirmed as a real dead end during
 // live testing, not a hypothetical. These are count badges on existing
 // links, not a notification center.
+/** Server component that renders the site navigation bar with pending-activity badges for the signed-in user. */
 export async function SiteNav() {
   const viewer = await getCurrentUser();
   const moderator = viewer ? isModerator(viewer.id) : false;

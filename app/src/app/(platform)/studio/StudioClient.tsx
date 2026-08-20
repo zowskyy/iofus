@@ -111,6 +111,7 @@ function defaultPixelArtPiece(): PixelArtPiece {
   };
 }
 
+/** Interactive client component for the page editor Studio, managing draft state, live preview, and all module editors. */
 export function StudioClient({
   initialDocument,
   publishedDocument,
