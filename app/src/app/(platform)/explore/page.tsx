@@ -52,7 +52,7 @@ export default async function ExplorePage({ searchParams }: Props) {
               name="q"
               type="search"
               placeholder="Handle, name, tag, or vibe…"
-              value={query}
+              defaultValue={query}
               className="explore-search-input"
             />
             <button type="submit" className="btn">Search</button>
