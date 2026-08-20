@@ -54,6 +54,7 @@ function migrate(db: DatabaseSync): void {
   }
 }
 
+/** Returns the singleton database connection, opening and migrating it on first call. */
 export function getDb(): DatabaseSync {
   if (dbInstance) return dbInstance;
   const path = process.env.IOFUS_DB_PATH ?? join(__dirname, "..", "..", "iofus.db");
@@ -64,6 +65,7 @@ export function getDb(): DatabaseSync {
   return dbInstance;
 }
 
+/** Closes and clears the singleton so the next `getDb()` call opens a fresh connection. Only for use in tests. */
 export function resetDbForTests(): void {
   if (dbInstance) {
     dbInstance.close();

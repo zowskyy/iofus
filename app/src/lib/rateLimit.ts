@@ -4,7 +4,11 @@ import { getDb } from "./db";
 const DEFAULT_WINDOW_MS = 60_000;
 export const DAY_MS = 24 * 60 * 60 * 1000;
 
-/** Builds a rate-limit key from a logged-in user id or the request IP. */
+/**
+ * Builds a stable rate-limit key scoped to *prefix*.
+ * Uses *userId* when the caller is authenticated; falls back to the
+ * request IP (from X-Forwarded-For or X-Real-IP) for anonymous callers.
+ */
 export async function rateLimitActorKey(prefix: string, userId: string | null): Promise<string> {
   if (userId) return `${prefix}:${userId}`;
   const h = await headers();

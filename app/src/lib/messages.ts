@@ -140,7 +140,11 @@ export function listConversations(userId: string): Conversation[] {
     }));
 }
 
-/** Total unread messages across every conversation *userId* is part of — for the nav badge. */
+/**
+ * Total unread messages across all conversations *userId* participates in.
+ * Excludes conversations where either participant has blocked the other.
+ * Used for the nav badge — call `listConversations` for per-thread counts.
+ */
 export function countUnreadMessages(userId: string): number {
   const row = getDb()
     .prepare(

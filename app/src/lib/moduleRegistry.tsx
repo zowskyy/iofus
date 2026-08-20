@@ -352,6 +352,7 @@ export const PAGE_MODULE_REGISTRY: Record<string, PageModuleDefinition> = {
   },
 };
 
+/** Render the page module for *partId*, returning a fallback element when the module is unknown or throws. */
 export function renderPagePart(partId: string, ctx: PageRenderContext): ReactNode | null {
   const mod = PAGE_MODULE_REGISTRY[partId];
   if (!mod) return <UnsupportedModule type={partId} />;
@@ -362,6 +363,7 @@ export function renderPagePart(partId: string, ctx: PageRenderContext): ReactNod
   }
 }
 
+/** Returns all registered page module definitions, for use in the Studio module picker. */
 export function listPageModules(): PageModuleDefinition[] {
   return Object.values(PAGE_MODULE_REGISTRY);
 }

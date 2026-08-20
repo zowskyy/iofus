@@ -86,6 +86,7 @@ export function setReachableForAsks(userId: string, reachable: boolean): void {
   }
 }
 
+/** Returns true if *userId* has opted in to receiving strangers' asks. */
 export function isReachableForAsks(userId: string): boolean {
   const row = getDb().prepare("SELECT reachable_for_asks FROM users WHERE id = ?").get(userId) as
     | { reachable_for_asks: number }
@@ -101,6 +102,7 @@ export interface CreateAskInput {
   isSensitive?: boolean;
 }
 
+/** Validate and persist a new ask. Throws AskError on validation failure, RateLimitError when the daily cap is reached. */
 export function createAsk(input: CreateAskInput): Ask {
   const body = input.body.trim();
   if (!body) throw new AskError("Your ask can't be empty.");
@@ -162,7 +164,7 @@ export function listAsksForViewer(viewerId: string, domain?: string): Ask[] {
     .map((row) => rowToAsk(row, viewerId));
 }
 
-/** All asks a member has posted, for their own "My asks" view. */
+/** All asks *askerId* has posted, for their own "My asks" view, newest first. */
 export function listAsksByUser(askerId: string): Ask[] {
   const db = getDb();
   const rows = db
@@ -171,6 +173,7 @@ export function listAsksByUser(askerId: string): Ask[] {
   return rows.map((row) => rowToAsk(row, askerId));
 }
 
+/** Fetch a single ask by id, applying the same anonymity rules as listAsksForViewer. Returns null when not found. */
 export function getAsk(askId: string, viewerId: string | null): Ask | null {
   const row = getDb().prepare(`${SELECT_ASK} WHERE a.id = ?`).get(askId) as unknown as AskRow | undefined;
   return row ? rowToAsk(row, viewerId) : null;
@@ -185,6 +188,7 @@ export interface Answer {
   createdAt: string;
 }
 
+/** All answers for *askId*, oldest first. */
 export function listAnswers(askId: string): Answer[] {
   const rows = getDb()
     .prepare(
@@ -204,6 +208,7 @@ export function listAnswers(askId: string): Answer[] {
   }));
 }
 
+/** Submit *answererId*'s answer to *askId*. Re-validates eligibility at write time. Throws AskError on auth/validation failure. */
 export function answerAsk(askId: string, answererId: string, body: string): Answer {
   const trimmed = body.trim();
   if (!trimmed) throw new AskError("Your answer can't be empty.");
@@ -264,6 +269,7 @@ export function answerAsk(askId: string, answererId: string, body: string): Answ
   };
 }
 
+/** Close *askId* so it no longer appears in the pool. Only the original asker may do this. Idempotent. */
 export function closeAsk(askId: string, askerId: string): void {
   const db = getDb();
   const row = db.prepare("SELECT asker_id, status FROM asks WHERE id = ?").get(askId) as

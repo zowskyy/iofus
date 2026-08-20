@@ -32,6 +32,7 @@ export function listApprovedGuestbookEntries(pageOwnerId: string, limit = 50): G
 }
 
 /** Count of pending guestbook entries, for nav badge use. */
+/** Count of pending (unapproved) guestbook entries for *pageOwnerId* — for nav badge use. */
 export function countPendingGuestbookEntries(pageOwnerId: string): number {
   const row = getDb()
     .prepare("SELECT COUNT(*) as n FROM guestbook_entries WHERE page_owner_id = ? AND status = 'pending'")
