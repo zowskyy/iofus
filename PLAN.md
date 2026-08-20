@@ -252,7 +252,7 @@ pattern · scoped custom CSS.
 else reuses and remixes a theme, without losing creator credit or
 accessibility guarantees. ✓
 
-### Phase 6 — Ask iofus *(planned, not yet built)*
+### Phase 6 — Ask Us *(planned, not yet built)*
 
 The first capability built on the "Internet of Us" principle: a
 structured, rate-limited, consent-gated way to reach people *outside*
@@ -345,7 +345,7 @@ internet that's actually theirs. The rename marks the start of building
 the other half — a way to reach people beyond who you already know, when
 you actually need to — without breaking any of the no-feed, no-DM,
 no-algorithm rules this product has held from day one. See the roadmap
-above for what ships first (`Ask iofus`) and the ethical guardrails ported
+above for what ships first (`Ask Us`) and the ethical guardrails ported
 directly from that research, not invented from scratch.
 
 This repo (`zowskyy/iofus`) is now iofus's own dedicated home, separate
