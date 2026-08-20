@@ -196,6 +196,7 @@ export function StudioClient({
     [],
   );
 
+  /** Saves the current editor state as a draft without publishing it. */
   const saveDraft = () => {
     runAction("Draft saved — safe to preview without publishing.", () =>
       saveDraftAction(JSON.stringify(document)).then((r) => {
@@ -205,6 +206,7 @@ export function StudioClient({
     );
   };
 
+  /** Saves and immediately publishes the current editor state, discarding any pending draft. */
   const saveAndPublish = () => {
     runAction("Published live.", () =>
       saveAndPublishAction(JSON.stringify(document)).then((r) => {
@@ -214,6 +216,7 @@ export function StudioClient({
     );
   };
 
+  /** Publishes the saved draft without changing the editor's working state. */
   const publishExistingDraft = () => {
     runAction("Draft published live.", () =>
       publishDraftAction().then((r) => {
@@ -227,6 +230,7 @@ export function StudioClient({
     );
   };
 
+  /** Exports the current page document as a JSON file download. */
   const handleExport = () => {
     startTransition(async () => {
       setMessage(null);
@@ -248,6 +252,7 @@ export function StudioClient({
     });
   };
 
+  /** Reads *file*, imports it as the current page document, and publishes it immediately. */
   const handleImport = (file: File) => {
     startTransition(async () => {
       setMessage(null);
@@ -268,6 +273,7 @@ export function StudioClient({
     });
   };
 
+  /** Restores a previously saved version by *versionId* and reloads the editor state. */
   const restoreVersion = (versionId: string) => {
     runAction("Version restored.", () =>
       restoreVersionAction(versionId).then((r) => {
