@@ -49,6 +49,9 @@ function migrate(db: DatabaseSync): void {
       "CREATE UNIQUE INDEX idx_appeals_one_open_per_user ON appeals(user_id) WHERE status = 'open'",
     );
   }
+  if (!columnExists(db, "users", "reachable_for_asks")) {
+    db.exec("ALTER TABLE users ADD COLUMN reachable_for_asks INTEGER NOT NULL DEFAULT 0");
+  }
 }
 
 export function getDb(): DatabaseSync {

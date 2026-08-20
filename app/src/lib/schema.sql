@@ -10,7 +10,8 @@ CREATE TABLE IF NOT EXISTS users (
   password_hash TEXT NOT NULL,
   created_at TEXT NOT NULL,
   is_blocked_platform INTEGER NOT NULL DEFAULT 0,
-  is_moderator INTEGER NOT NULL DEFAULT 0
+  is_moderator INTEGER NOT NULL DEFAULT 0,
+  reachable_for_asks INTEGER NOT NULL DEFAULT 0
 );
 
 CREATE TABLE IF NOT EXISTS sessions (
@@ -194,3 +195,35 @@ CREATE TABLE IF NOT EXISTS appeals (
 
 CREATE INDEX IF NOT EXISTS idx_appeals_status ON appeals(status, created_at);
 CREATE UNIQUE INDEX IF NOT EXISTS idx_appeals_one_open_per_user ON appeals(user_id) WHERE status = 'open';
+
+-- Ask Us (Phase 6): a structured, rate-limited, consent-gated way to reach
+-- people outside your friend graph. Never a DM inbox — asks are posted
+-- once and answered by anyone in the matching pool, not addressed to a
+-- specific person. asker_id is always stored (for moderation/abuse
+-- handling) even for anonymous asks; the application layer is responsible
+-- for never exposing it to other users when is_anonymous = 1.
+CREATE TABLE IF NOT EXISTS asks (
+  id TEXT PRIMARY KEY,
+  asker_id TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  body TEXT NOT NULL,
+  domain TEXT,
+  is_anonymous INTEGER NOT NULL DEFAULT 0,
+  is_sensitive INTEGER NOT NULL DEFAULT 0,
+  status TEXT NOT NULL DEFAULT 'open' CHECK (status IN ('open', 'closed')),
+  created_at TEXT NOT NULL,
+  closed_at TEXT
+);
+
+CREATE INDEX IF NOT EXISTS idx_asks_asker ON asks(asker_id, created_at);
+CREATE INDEX IF NOT EXISTS idx_asks_status ON asks(status, created_at);
+
+CREATE TABLE IF NOT EXISTS ask_answers (
+  id TEXT PRIMARY KEY,
+  ask_id TEXT NOT NULL REFERENCES asks(id) ON DELETE CASCADE,
+  answerer_id TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  body TEXT NOT NULL,
+  created_at TEXT NOT NULL,
+  UNIQUE (ask_id, answerer_id)
+);
+
+CREATE INDEX IF NOT EXISTS idx_ask_answers_ask ON ask_answers(ask_id, created_at);

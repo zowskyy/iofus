@@ -252,44 +252,61 @@ pattern · scoped custom CSS.
 else reuses and remixes a theme, without losing creator credit or
 accessibility guarantees. ✓
 
-### Phase 6 — Ask Us *(planned, not yet built)*
+### Phase 6 — Ask Us *(data layer built; no UI yet)*
 
 The first capability built on the "Internet of Us" principle: a
 structured, rate-limited, consent-gated way to reach people *outside*
 your friend graph when you need help, knowledge, or perspective you
 don't already have access to — grounded in the WeNet "Internet of Us"
 research, not invented from scratch. Never a DM inbox, never an
-algorithm — a member posts a need, optionally anonymous and
-audience-narrowed for sensitive topics, routed to a small pool of
-opted-in members within an existing tag or ring. Answering earns an
-"earned" helper badge, distinct from decorative ones.
+algorithm — a member posts an ask, and anyone in the matching pool
+(never a specific person) can answer it.
 
-Concrete pieces (each reuses an existing pattern rather than inventing
-one — see `docs/architecture.md` once this lands):
-- Opt-in "reachability" setting + per-relationship contact-rate norm
-  (reuses `rateLimit.ts` and the block-relationship pattern in
-  `friends.ts`)
-- Optional, self-attested "I can help with…" tags — separate from
-  decorative page content, never used for matching without explicit
-  opt-in, never inferred or scored
-- Anonymous + audience-narrowed asks for sensitive topics (reuses the
-  existing `private`/`unlisted`/`public` visibility model)
-- Community-chosen matching dimensions: a ring or tag owner picks which
-  optional profile fields matter for routing within it — off by default
+**Built so far** — `app/src/lib/asks.ts`, fully tested
+(`asks.test.ts`, adversarial-style, same standard as `friends.test.ts`):
+- Opt-in "reachability" setting on the account, off by default
+  (`setReachableForAsks`/`isReachableForAsks`) — no one is ever
+  contactable by strangers without turning this on themselves.
+- `createAsk`, rate-limited to 5/day per asker (reuses `rateLimit.ts`,
+  parameterized to a day-long window instead of a new mechanism).
+- `listAsksForViewer`: a non-sensitive ask is shown only to reachable,
+  non-blocked members, optionally filtered by an asker-chosen `domain`
+  string; a **sensitive** ask is shown only to the asker's own accepted
+  friends — never the open pool, matching the paper's "restrict to a
+  trusted pool of peers" safeguard exactly, not a diluted version of it.
+  Blocked relationships are excluded in both directions regardless of
+  reachability.
+- `answerAsk`: rejects self-answers, duplicate answers from the same
+  person, answers on a closed ask, and answers from anyone in a blocked
+  relationship with the asker.
+- Anonymous asks: `asker_id` is always stored (for moderation), but the
+  asker's handle is only ever returned to the asker themselves — every
+  other viewer sees `askerHandle: null`.
 
-Explicit guardrails carried over from the research, not left implicit:
-diversity exposure never overrides safety; no profile dimension is ever
-used for matching without the member's own opt-in; a member can always
-see and revoke what's being used to match them; the per-relationship
-rate limit is the mechanism that makes this safe to ship, not optional
-polish; automatic translation is a named real need but also a named real
-risk (mistranslation read as offense) and is explicitly out of scope
-until there's a concrete plan for handling that failure gracefully.
+**Not yet built** (deliberately deferred, not silently dropped):
+- Any UI — no Studio flow, no route, no forms. This is a tested data
+  layer only; a member can't actually post or answer an ask yet.
+- "I can help with…" self-attested tags and community-chosen matching
+  dimensions — `domain` today is a single plain string the asker
+  types, not a structured, community-owned dimension set.
+- Helper badges / recognition for answering.
+- Per-relationship contact-rate norm (the paper's "don't ask the same
+  person more than 3x/week") — not applicable yet since there's no
+  1:1 follow-up mechanism; today's rate limit is per-asker daily
+  volume only.
 
-**Success test:** someone gets a genuinely useful answer from a stranger
-they'd never have met through their existing friend graph, without
-anyone being contacted more than they consented to, and without a single
-support ticket about unwanted contact.
+Guardrails already enforced in code, not just documented: diversity/
+reach never overrides safety (sensitive → friends-only, no exception);
+no profile dimension used without opt-in (`reachable_for_asks` defaults
+off); the daily rate limit is real and tested, not aspirational.
+Automatic translation remains out of scope, per the paper's own named
+mistranslation risk.
+
+**Success test (not yet reachable — needs the UI above):** someone gets
+a genuinely useful answer from a stranger they'd never have met through
+their existing friend graph, without anyone being contacted more than
+they consented to, and without a single support ticket about unwanted
+contact.
 
 ## What V1 excludes
 
