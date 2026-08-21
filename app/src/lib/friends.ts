@@ -219,7 +219,7 @@ export function listPublicFriends(userId: string, viewerId: string | null): Frie
       )
       .get(f.userId) as { visibility: string; is_published: number; hidden_from_discovery: number } | undefined;
     if (!row || !row.is_published) return false;
-    if (row.visibility === "private") return viewerId === f.userId;
+    if (row.visibility === "private") return viewerId === f.userId || viewerId === userId;
     if (row.visibility === "unlisted") return viewerId === f.userId || viewerId === userId;
     return !row.hidden_from_discovery || viewerId === f.userId;
   });
