@@ -1860,8 +1860,10 @@ select {
 
 .splash-feature-card h3 {
   margin: 0 0 0.4rem;
-  font-size: 1rem;
-  color: var(--accent);
+  font-size: 1.25rem;
+  color: var(--paper);
+  -webkit-text-stroke: 1.5px var(--ink);
+  paint-order: stroke fill;
 }
 
 .splash-feature-card p {
