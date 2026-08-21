@@ -94,7 +94,15 @@ h3 {
   text-transform: uppercase;
   text-wrap: balance;
   margin: 0 0 0.5rem;
+  /* outlined graffiti style: white fill, black stroke */
+  color: var(--paper);
+  -webkit-text-stroke: 2px var(--ink);
+  paint-order: stroke fill;
 }
+
+h1 { font-size: 3rem; }
+h2 { font-size: 2.25rem; }
+h3 { font-size: 1.6rem; }
 
 a {
   color: var(--accent);
@@ -251,6 +259,22 @@ select {
   filter: invert(1);
 }
 
+/* In dark mode, flip heading fill to black so white-on-black-wall reads as black-outline white-fill */
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) h1,
+  :root:not([data-theme="light"]) h2,
+  :root:not([data-theme="light"]) h3 {
+    color: var(--paper);
+    -webkit-text-stroke: 2px var(--ink);
+  }
+}
+:root[data-theme="dark"] h1,
+:root[data-theme="dark"] h2,
+:root[data-theme="dark"] h3 {
+  color: var(--paper);
+  -webkit-text-stroke: 2px var(--ink);
+}
+
 .top-bar .controls {
   display: flex;
   gap: 0.5rem;
@@ -319,8 +343,11 @@ select {
   margin: 0 auto;
 }
 
-.page-body h1 {
+.page-body h1,
+.page-body h2,
+.page-body h3 {
   color: var(--page-accent);
+  -webkit-text-stroke: 0;
 }
 
 .page-status {
