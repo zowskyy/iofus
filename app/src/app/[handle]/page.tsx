@@ -14,6 +14,7 @@ import { PageRenderer, type TopEightLink } from "@/components/PageRenderer";
 import { parseHandleParam } from "@/lib/handleParam";
 import { FriendActions } from "./friends/FriendActions";
 import { GuestbookSignForm } from "./guestbook/GuestbookSignForm";
+import { listByTag } from "@/lib/discovery";
 
 interface Props {
   params: Promise<{ handle: string }>;
@@ -69,6 +70,12 @@ export default async function ProfilePage({ params, searchParams }: Props) {
 
   const showGuestbookForm =
     document.guestbook.enabled && !stored!.guestbookDisabled && !isOwner;
+
+  // Similar pages: pick the first tag and find up to 4 pages with it, excluding this user
+  const firstTag = document.tags?.[0] ?? null;
+  const similarPages = firstTag
+    ? listByTag(firstTag, 8).filter((p) => p.handle !== handle).slice(0, 4)
+    : [];
 
   return (
     <>
@@ -145,6 +152,49 @@ export default async function ProfilePage({ params, searchParams }: Props) {
               </li>
             ))}
           </ul>
+        </section>
+      )}
+
+      {/* After-page actions: sign guestbook + similar pages */}
+      {!isOwner && (
+        <section className="after-page-panel container-narrow" aria-label="Keep exploring">
+          {showGuestbookForm && (
+            <div style={{ marginBottom: "0.75rem" }}>
+              <h3>Leave your mark</h3>
+              <div className="after-page-actions">
+                <Link href={`/@${handle}/guestbook`} className="btn">
+                  Sign the guestbook
+                </Link>
+                {viewer && (
+                  <Link href={`/messages/${handle}`} className="btn secondary">
+                    Send a message
+                  </Link>
+                )}
+              </div>
+            </div>
+          )}
+          {similarPages.length > 0 && (
+            <div>
+              <h3>More like this</h3>
+              <p className="mono" style={{ fontSize: "0.78rem", color: "var(--ink-soft)", margin: "0 0 0.5rem" }}>
+                Tagged #{firstTag}
+              </p>
+              <ul style={{ listStyle: "none", padding: 0, margin: 0, display: "flex", flexWrap: "wrap", gap: "0.5rem" }}>
+                {similarPages.map((p) => (
+                  <li key={p.handle}>
+                    <Link href={`/@${p.handle}`} className="btn secondary" style={{ fontSize: "0.85rem" }}>
+                      @{p.handle}
+                    </Link>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          )}
+          <div style={{ marginTop: "0.75rem" }}>
+            <Link href="/wander" className="btn secondary">
+              Keep wandering →
+            </Link>
+          </div>
         </section>
       )}
     </>

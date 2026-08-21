@@ -44,14 +44,15 @@ const PART_LABELS: Record<PagePartId, string> = {
   miniPages: "Mini-pages",
 };
 
-type TabId = "look" | "layout" | "content" | "access" | "publish";
+type TabId = "look" | "layout" | "content" | "access" | "publish" | "preview";
 
-const TABS: { id: TabId; label: string }[] = [
+const TABS: { id: TabId; label: string; mobileOnly?: boolean }[] = [
   { id: "look", label: "Look" },
   { id: "layout", label: "Layout" },
   { id: "content", label: "Content" },
   { id: "access", label: "Access" },
   { id: "publish", label: "Publish" },
+  { id: "preview", label: "Preview", mobileOnly: true },
 ];
 
 /** Builds the live Top Eight preview list from the current handle selections and the user's friend list. */
@@ -339,7 +340,10 @@ export function StudioClient({
               <button
                 key={t.id}
                 type="button"
-                className={tab === t.id ? "studio-tab active" : "studio-tab"}
+                className={[
+                  tab === t.id ? "studio-tab active" : "studio-tab",
+                  t.mobileOnly ? "studio-tab-mobile-only" : "",
+                ].join(" ").trim()}
                 onClick={() => setTab(t.id)}
                 aria-current={tab === t.id ? "page" : undefined}
               >
@@ -349,6 +353,44 @@ export function StudioClient({
           </nav>
 
           <div className="studio-tab-panel">
+            {tab === "preview" && (
+              <div className="studio-mobile-preview">
+                <div className="studio-preview-toolbar">
+                  <span className="mono" style={{ fontSize: "0.8rem" }}>Live preview</span>
+                  <div className="studio-preview-toggles">
+                    <button
+                      type="button"
+                      className={!previewMobile ? "studio-chip active" : "studio-chip"}
+                      onClick={() => setPreviewMobile(false)}
+                    >
+                      Desktop
+                    </button>
+                    <button
+                      type="button"
+                      className={previewMobile ? "studio-chip active" : "studio-chip"}
+                      onClick={() => setPreviewMobile(true)}
+                    >
+                      Mobile
+                    </button>
+                  </div>
+                </div>
+                <div className={previewMobile ? "studio-preview-frame mobile" : "studio-preview-frame desktop"}>
+                  <PageRenderer
+                    document={previewDocument}
+                    friends={friends}
+                    handle={handle}
+                    readerMode={false}
+                    guestbookEntries={guestbookEntries}
+                    topEightLinks={previewTopEight}
+                  />
+                </div>
+                <p className="studio-preview-note mono">
+                  {safePreview ? "Showing your current edits" : "Showing what's live"}
+                  {" · "}
+                  <Link href={`/@${handle}`}>Open page</Link>
+                </p>
+              </div>
+            )}
             {tab === "look" && (
               <LookTab
                 document={document}
