@@ -1,15 +1,31 @@
-import type { Metadata } from "next";
+import type { Metadata, Viewport } from "next";
 import "./globals.css";
+import { PwaRegistrar } from "@/components/PwaRegistrar";
 
 export const metadata: Metadata = {
   title: "iofus",
-  description: "Make your corner of the internet. Keep it yours.",
+  description: "Your corner of the internet. No feed, no algorithm, just yours.",
+  manifest: "/manifest.json",
+  appleWebApp: {
+    capable: true,
+    statusBarStyle: "black-translucent",
+    title: "iofus",
+  },
+};
+
+export const viewport: Viewport = {
+  width: "device-width",
+  initialScale: 1,
+  themeColor: "#111111",
 };
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
     <html lang="en">
       <head>
+        {/* Preload self-hosted fonts so they don't block first paint */}
+        <link rel="preload" href="/fonts/VandalBlowGraffiti.ttf" as="font" type="font/ttf" crossOrigin="anonymous" />
+        <link rel="preload" href="/fonts/BebasNeue-Regular.ttf" as="font" type="font/ttf" crossOrigin="anonymous" />
         <link rel="preconnect" href="https://fonts.googleapis.com" />
         <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="anonymous" />
         <link
@@ -17,7 +33,10 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
           rel="stylesheet"
         />
       </head>
-      <body>{children}</body>
+      <body>
+        {children}
+        <PwaRegistrar />
+      </body>
     </html>
   );
 }

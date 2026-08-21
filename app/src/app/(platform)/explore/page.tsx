@@ -37,10 +37,9 @@ export default async function ExplorePage({ searchParams }: Props) {
     <main className="container explore-container">
       <header className="explore-header">
         <p className="mono explore-kicker">Explore</p>
-        <h1>Wander without a feed</h1>
+        <h1>Find your people</h1>
         <p className="explore-lead">
-          Recently redecorated pages, tags, web rings, curated collections, and friend-graph walks — pick a path and
-          see what people made.
+          Fresh pages, tags, web rings, curated collections, friend-of-friend walks — pick a path. No algorithm. Just what people actually made.
         </p>
       </header>
 

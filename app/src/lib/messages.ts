@@ -20,6 +20,7 @@ export class MessageError extends Error {}
 
 const MAX_BODY_LENGTH = 4000;
 const MAX_NEW_CONVERSATIONS_PER_DAY = 10;
+const MAX_MESSAGES_PER_MINUTE = 60;
 
 export interface Conversation {
   id: string;
@@ -75,6 +76,9 @@ export function sendMessage(senderId: string, recipientId: string, body: string)
   const [userAId, userBId] = orderedPair(senderId, recipientId);
   const existing = findConversationRow(db, userAId, userBId);
 
+  // Per-sender message rate limit applies to all sends (new or existing thread).
+  // New-conversation cap is an additional, stricter daily guard.
+  checkRateLimit(`dm:msg:${senderId}`, MAX_MESSAGES_PER_MINUTE);
   if (!existing) {
     checkRateLimit(`dm:new-conversation:${senderId}`, MAX_NEW_CONVERSATIONS_PER_DAY, DAY_MS);
   }

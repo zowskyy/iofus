@@ -366,7 +366,12 @@ export function importPageData(userId: string, json: string): PageDocument {
   } catch {
     throw new PageDocumentValidationError(["import file is not valid JSON"]);
   }
+  if (typeof parsed !== "object" || parsed === null || Array.isArray(parsed)) {
+    throw new PageDocumentValidationError(["import file must be a JSON object"]);
+  }
   const obj = parsed as { document?: unknown };
-  if (!obj.document) throw new PageDocumentValidationError(["import file must contain a document field"]);
+  if (!obj.document || typeof obj.document !== "object" || Array.isArray(obj.document)) {
+    throw new PageDocumentValidationError(["import file must contain a document object field"]);
+  }
   return savePageDocument(userId, migrateDocument(obj.document as Record<string, unknown>));
 }

@@ -86,13 +86,12 @@ export function scopeProfileCss(raw: string, scopeClass: string): CssScopeResult
       continue;
     }
 
-    if (/position\s*:\s*fixed/i.test(body) && /z-index/i.test(body)) {
-      rejected.push("Fixed overlays with z-index are not allowed.");
-      continue;
-    }
-
-    if (/position\s*:\s*absolute/i.test(body) && /z-index/i.test(body)) {
-      rejected.push("Absolute overlays with z-index are not allowed.");
+    // Block fixed/absolute/sticky positioning unconditionally — they can
+    // cover the nav bar or other profiles regardless of z-index, and the
+    // z-index check can be defeated by splitting the properties across two
+    // rules that are both applied by the browser to the same element.
+    if (/position\s*:\s*(fixed|absolute|sticky)/i.test(body)) {
+      rejected.push("Custom CSS may not use fixed, absolute, or sticky positioning.");
       continue;
     }
 
