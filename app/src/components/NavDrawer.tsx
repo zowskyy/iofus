@@ -5,9 +5,10 @@ interface Props {
   children: React.ReactNode;
   pendingCount: number;
   unreadMessages: number;
+  unreadNotifications: number;
 }
 
-export function NavDrawer({ children, pendingCount, unreadMessages }: Props) {
+export function NavDrawer({ children, pendingCount, unreadMessages, unreadNotifications }: Props) {
   const [open, setOpen] = useState(false);
   return (
     <div className="nav-drawer-wrap">
@@ -18,9 +19,9 @@ export function NavDrawer({ children, pendingCount, unreadMessages }: Props) {
         onClick={() => setOpen((o) => !o)}
       >
         {open ? "✕" : "☰"}
-        {!open && (pendingCount > 0 || unreadMessages > 0) && (
+        {!open && (pendingCount > 0 || unreadMessages > 0 || unreadNotifications > 0) && (
           <span className="nav-badge nav-hamburger-badge" aria-hidden="true">
-            {pendingCount + unreadMessages}
+            {pendingCount + unreadMessages + unreadNotifications}
           </span>
         )}
       </button>

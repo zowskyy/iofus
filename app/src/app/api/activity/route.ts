@@ -3,6 +3,7 @@ import { getCurrentUser } from "@/lib/session";
 import { countUnreadMessages } from "@/lib/messages";
 import { countIncomingRequests } from "@/lib/friends";
 import { countPendingGuestbookEntries } from "@/lib/guestbook";
+import { countUnread } from "@/lib/notifications";
 
 /** Lightweight poll endpoint for unread activity counts. Returns 401 when not signed in. */
 export async function GET() {
@@ -14,6 +15,7 @@ export async function GET() {
   const unreadMessages = countUnreadMessages(viewer.id);
   const pendingGuestbook =
     countIncomingRequests(viewer.id) + countPendingGuestbookEntries(viewer.id);
+  const unreadNotifications = countUnread(viewer.id);
 
-  return NextResponse.json({ unreadMessages, pendingGuestbook });
+  return NextResponse.json({ unreadMessages, pendingGuestbook, unreadNotifications });
 }

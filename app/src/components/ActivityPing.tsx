@@ -6,6 +6,7 @@ import Link from "next/link";
 interface PingData {
   unreadMessages: number;
   pendingGuestbook: number;
+  unreadNotifications: number;
 }
 
 interface Props {
@@ -34,6 +35,7 @@ export function ActivityPing({ handle, initial }: Props) {
 
       const newMessages = data.unreadMessages - prev.unreadMessages;
       const newGuestbook = data.pendingGuestbook - prev.pendingGuestbook;
+      const newNotifications = data.unreadNotifications - prev.unreadNotifications;
 
       if (newMessages > 0) {
         setToast(`${newMessages} new message${newMessages > 1 ? "s" : ""}`);
@@ -41,6 +43,9 @@ export function ActivityPing({ handle, initial }: Props) {
       } else if (newGuestbook > 0) {
         setToast(`${newGuestbook} new guestbook ${newGuestbook > 1 ? "entries" : "entry"}`);
         setToastHref(`/@${handle}/guestbook`);
+      } else if (newNotifications > 0) {
+        setToast(`${newNotifications} new notification${newNotifications > 1 ? "s" : ""}`);
+        setToastHref("/notifications");
       }
 
       setPrev(data);

@@ -1,6 +1,8 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { ensureSeedRings, getWebRingBySlug, listRingMembers } from "@/lib/webRings";
+import { getCurrentUser } from "@/lib/session";
+import { ensureSeedRings, getWebRingBySlug, hasPendingJoinRequest, isRingMember, listRingMembers } from "@/lib/webRings";
+import { joinRingAction, leaveRingAction } from "@/app/(platform)/rings/[slug]/join/actions";
 
 interface Props {
   params: Promise<{ slug: string }>;
@@ -15,6 +17,12 @@ export default async function ExploreRingPage({ params, searchParams }: Props) {
 
   const ring = getWebRingBySlug(slug);
   if (!ring) notFound();
+
+  const viewer = await getCurrentUser();
+  const member = viewer ? isRingMember(ring.id, viewer.id) : false;
+  const pendingRequest = viewer && !member ? hasPendingJoinRequest(ring.id, viewer.id) : false;
+  const joinAction = joinRingAction.bind(null, slug);
+  const leaveAction = leaveRingAction.bind(null, slug);
 
   const members = listRingMembers(ring.id);
   const atHandle = at?.replace(/^@/, "").trim().toLowerCase() ?? members[0]?.handle;
@@ -31,6 +39,22 @@ export default async function ExploreRingPage({ params, searchParams }: Props) {
       </p>
       <h1>{ring.name}</h1>
       <p className="explore-lead">{ring.description}</p>
+
+      {viewer && (
+        <div style={{ marginBottom: "1rem" }}>
+          {member ? (
+            <form action={leaveAction}>
+              <button type="submit" className="btn secondary">Leave ring</button>
+            </form>
+          ) : pendingRequest ? (
+            <p style={{ color: "var(--ink-soft)", fontSize: "0.875rem" }}>Your join request is pending.</p>
+          ) : (
+            <form action={joinAction}>
+              <button type="submit" className="btn">{ring.isOpen ? "Join ring" : "Request to join"}</button>
+            </form>
+          )}
+        </div>
+      )}
 
       {members.length === 0 ? (
         <p className="explore-empty">This ring has no public members yet.</p>

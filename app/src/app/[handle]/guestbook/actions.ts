@@ -3,6 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { findUserByHandle } from "@/lib/auth";
 import { GuestbookError, signGuestbook } from "@/lib/guestbook";
+import { createNotification } from "@/lib/notifications";
 import { canViewPage, getPageDocument } from "@/lib/pageDocument";
 import { checkRateLimit, RateLimitError, rateLimitActorKey } from "@/lib/rateLimit";
 import { getCurrentUser } from "@/lib/session";
@@ -49,6 +50,7 @@ export async function signGuestbookAction(
       stored.document.guestbook.requireApproval,
       viewer?.id ?? null,
     );
+    createNotification(owner.id, "guestbook_signed", viewer?.handle ?? null, { handle });
   } catch (e) {
     if (e instanceof GuestbookError) return { error: e.message };
     if (e instanceof RateLimitError) return { error: e.message };
