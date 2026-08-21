@@ -5,6 +5,7 @@ import { getCurrentUser } from "@/lib/session";
 import { countUnreadMessages } from "@/lib/messages";
 import { countIncomingRequests } from "@/lib/friends";
 import { countPendingGuestbookEntries } from "@/lib/guestbook";
+import { countUnread } from "@/lib/notifications";
 
 export default async function PlatformLayout({ children }: { children: React.ReactNode }) {
   const viewer = await getCurrentUser();
@@ -12,8 +13,9 @@ export default async function PlatformLayout({ children }: { children: React.Rea
     ? {
         unreadMessages: countUnreadMessages(viewer.id),
         pendingGuestbook: countIncomingRequests(viewer.id) + countPendingGuestbookEntries(viewer.id),
+        unreadNotifications: countUnread(viewer.id),
       }
-    : { unreadMessages: 0, pendingGuestbook: 0 };
+    : { unreadMessages: 0, pendingGuestbook: 0, unreadNotifications: 0 };
 
   return (
     <>

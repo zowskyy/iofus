@@ -55,6 +55,38 @@ function migrate(db: DatabaseSync): void {
   if (!columnExists(db, "users", "reachable_for_asks")) {
     db.exec("ALTER TABLE users ADD COLUMN reachable_for_asks INTEGER NOT NULL DEFAULT 0");
   }
+  if (!columnExists(db, "web_rings", "creator_user_id")) {
+    db.exec("ALTER TABLE web_rings ADD COLUMN creator_user_id TEXT REFERENCES users(id) ON DELETE SET NULL");
+  }
+  if (!columnExists(db, "web_rings", "is_open")) {
+    db.exec("ALTER TABLE web_rings ADD COLUMN is_open INTEGER NOT NULL DEFAULT 1");
+  }
+  db.exec(`
+    CREATE TABLE IF NOT EXISTS web_ring_join_requests (
+      ring_id TEXT NOT NULL REFERENCES web_rings(id) ON DELETE CASCADE,
+      user_id TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+      status TEXT NOT NULL DEFAULT 'pending' CHECK (status IN ('pending', 'accepted', 'rejected')),
+      created_at TEXT NOT NULL,
+      PRIMARY KEY (ring_id, user_id)
+    )
+  `);
+  db.exec(`
+    CREATE TABLE IF NOT EXISTS notifications (
+      id TEXT PRIMARY KEY,
+      user_id TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+      kind TEXT NOT NULL CHECK (kind IN (
+        'guestbook_signed', 'friend_request', 'friend_accepted',
+        'ask_answered', 'ring_join_request', 'ring_join_accepted'
+      )),
+      actor_handle TEXT,
+      payload_json TEXT NOT NULL DEFAULT '{}',
+      read_at TEXT,
+      created_at TEXT NOT NULL
+    )
+  `);
+  if (!indexExists(db, "idx_notifications_user")) {
+    db.exec("CREATE INDEX IF NOT EXISTS idx_notifications_user ON notifications(user_id, read_at, created_at)");
+  }
 }
 
 /** Returns the singleton database connection, opening and migrating it on first call. */

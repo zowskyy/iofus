@@ -6,6 +6,16 @@ export interface WebRing {
   slug: string;
   name: string;
   description: string;
+  creatorUserId: string | null;
+  isOpen: boolean;
+}
+
+export interface WebRingJoinRequest {
+  ringId: string;
+  userId: string;
+  handle: string;
+  status: "pending" | "accepted" | "rejected";
+  createdAt: string;
 }
 
 export interface WebRingMember {
@@ -14,22 +24,28 @@ export interface WebRingMember {
   position: number;
 }
 
+type RingRow = { id: string; slug: string; name: string; description: string; creator_user_id: string | null; is_open: number };
+
+function rowToRing(r: RingRow): WebRing {
+  return { id: r.id, slug: r.slug, name: r.name, description: r.description, creatorUserId: r.creator_user_id, isOpen: r.is_open !== 0 };
+}
+
 /** Returns all web rings ordered alphabetically by name. */
 export function listWebRings(): WebRing[] {
   const db = getDb();
   const rows = db
-    .prepare("SELECT id, slug, name, description FROM web_rings ORDER BY name ASC")
-    .all() as { id: string; slug: string; name: string; description: string }[];
-  return rows;
+    .prepare("SELECT id, slug, name, description, creator_user_id, is_open FROM web_rings ORDER BY name ASC")
+    .all() as RingRow[];
+  return rows.map(rowToRing);
 }
 
 /** Looks up a web ring by its URL slug. Returns null when no ring matches. */
 export function getWebRingBySlug(slug: string): WebRing | null {
   const db = getDb();
   const row = db
-    .prepare("SELECT id, slug, name, description FROM web_rings WHERE slug = ?")
-    .get(slug) as { id: string; slug: string; name: string; description: string } | undefined;
-  return row ?? null;
+    .prepare("SELECT id, slug, name, description, creator_user_id, is_open FROM web_rings WHERE slug = ?")
+    .get(slug) as RingRow | undefined;
+  return row ? rowToRing(row) : null;
 }
 
 /** Returns public, discovery-visible members of *ringId* ordered by position then join date. */
@@ -76,14 +92,179 @@ export function listUserWebRings(userId: string): WebRing[] {
   const db = getDb();
   const rows = db
     .prepare(
-      `SELECT wr.id, wr.slug, wr.name, wr.description
+      `SELECT wr.id, wr.slug, wr.name, wr.description, wr.creator_user_id, wr.is_open
        FROM web_rings wr
        JOIN web_ring_members wrm ON wrm.ring_id = wr.id
        WHERE wrm.user_id = ?
        ORDER BY wr.name ASC`,
     )
-    .all(userId) as { id: string; slug: string; name: string; description: string }[];
-  return rows;
+    .all(userId) as RingRow[];
+  return rows.map(rowToRing);
+}
+
+function slugify(name: string): string {
+  return name
+    .toLowerCase()
+    .trim()
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/^-+|-+$/g, "")
+    .slice(0, 60);
+}
+
+export class WebRingError extends Error {}
+
+export function createWebRing(
+  userId: string,
+  opts: { name: string; description: string; isOpen: boolean },
+): WebRing {
+  const name = opts.name.trim();
+  if (!name) throw new WebRingError("Ring name is required.");
+  if (name.length > 80) throw new WebRingError("Ring name is too long.");
+  const db = getDb();
+  const base = slugify(name) || "ring";
+  let slug = base;
+  let attempt = 0;
+  while (db.prepare("SELECT 1 FROM web_rings WHERE slug = ?").get(slug)) {
+    attempt++;
+    slug = `${base}-${attempt}`;
+  }
+  const id = randomUUID();
+  const now = new Date().toISOString();
+  db.prepare(
+    "INSERT INTO web_rings (id, slug, name, description, creator_user_id, is_open, created_at) VALUES (?, ?, ?, ?, ?, ?, ?)",
+  ).run(id, slug, name, opts.description.trim(), userId, opts.isOpen ? 1 : 0, now);
+  return { id, slug, name, description: opts.description.trim(), creatorUserId: userId, isOpen: opts.isOpen };
+}
+
+export function getUserOwnedRings(userId: string): WebRing[] {
+  const db = getDb();
+  const rows = db
+    .prepare(
+      "SELECT id, slug, name, description, creator_user_id, is_open FROM web_rings WHERE creator_user_id = ? ORDER BY name ASC",
+    )
+    .all(userId) as RingRow[];
+  return rows.map(rowToRing);
+}
+
+export function deleteWebRing(ringId: string, userId: string): void {
+  const db = getDb();
+  const ring = db.prepare("SELECT creator_user_id FROM web_rings WHERE id = ?").get(ringId) as { creator_user_id: string | null } | undefined;
+  if (!ring) throw new WebRingError("Ring not found.");
+  if (ring.creator_user_id !== userId) throw new WebRingError("Only the ring owner can delete it.");
+  db.prepare("DELETE FROM web_rings WHERE id = ?").run(ringId);
+}
+
+export function updateWebRing(
+  ringId: string,
+  userId: string,
+  opts: { name?: string; description?: string },
+): void {
+  const db = getDb();
+  const ring = db.prepare("SELECT creator_user_id FROM web_rings WHERE id = ?").get(ringId) as { creator_user_id: string | null } | undefined;
+  if (!ring) throw new WebRingError("Ring not found.");
+  if (ring.creator_user_id !== userId) throw new WebRingError("Only the ring owner can update it.");
+  if (opts.name !== undefined) {
+    const name = opts.name.trim();
+    if (!name) throw new WebRingError("Ring name is required.");
+    db.prepare("UPDATE web_rings SET name = ? WHERE id = ?").run(name, ringId);
+  }
+  if (opts.description !== undefined) {
+    db.prepare("UPDATE web_rings SET description = ? WHERE id = ?").run(opts.description.trim(), ringId);
+  }
+}
+
+export function joinWebRing(ringId: string, userId: string): "joined" | "requested" {
+  const db = getDb();
+  const ring = db.prepare("SELECT is_open FROM web_rings WHERE id = ?").get(ringId) as { is_open: number } | undefined;
+  if (!ring) throw new WebRingError("Ring not found.");
+
+  const alreadyMember = db.prepare("SELECT 1 FROM web_ring_members WHERE ring_id = ? AND user_id = ?").get(ringId, userId);
+  if (alreadyMember) return "joined";
+
+  if (ring.is_open) {
+    const maxPos = db.prepare("SELECT COALESCE(MAX(position), 0) as m FROM web_ring_members WHERE ring_id = ?").get(ringId) as { m: number };
+    db.prepare(
+      "INSERT INTO web_ring_members (ring_id, user_id, position, joined_at) VALUES (?, ?, ?, ?)",
+    ).run(ringId, userId, maxPos.m + 1, new Date().toISOString());
+    return "joined";
+  } else {
+    db.prepare(
+      "INSERT OR IGNORE INTO web_ring_join_requests (ring_id, user_id, status, created_at) VALUES (?, ?, 'pending', ?)",
+    ).run(ringId, userId, new Date().toISOString());
+    return "requested";
+  }
+}
+
+export function leaveWebRing(ringId: string, userId: string): void {
+  const db = getDb();
+  db.prepare("DELETE FROM web_ring_members WHERE ring_id = ? AND user_id = ?").run(ringId, userId);
+  db.prepare("DELETE FROM web_ring_join_requests WHERE ring_id = ? AND user_id = ?").run(ringId, userId);
+}
+
+export function listJoinRequests(ringId: string, userId: string): WebRingJoinRequest[] {
+  const db = getDb();
+  const ring = db.prepare("SELECT creator_user_id FROM web_rings WHERE id = ?").get(ringId) as { creator_user_id: string | null } | undefined;
+  if (!ring || ring.creator_user_id !== userId) throw new WebRingError("Not authorized.");
+  const rows = db
+    .prepare(
+      `SELECT r.ring_id, r.user_id, u.handle, r.status, r.created_at
+       FROM web_ring_join_requests r JOIN users u ON u.id = r.user_id
+       WHERE r.ring_id = ? AND r.status = 'pending'
+       ORDER BY r.created_at ASC`,
+    )
+    .all(ringId) as { ring_id: string; user_id: string; handle: string; status: string; created_at: string }[];
+  return rows.map((r) => ({
+    ringId: r.ring_id,
+    userId: r.user_id,
+    handle: r.handle,
+    status: r.status as "pending",
+    createdAt: r.created_at,
+  }));
+}
+
+export function reviewJoinRequest(
+  ringId: string,
+  requestUserId: string,
+  ownerId: string,
+  accept: boolean,
+): void {
+  const db = getDb();
+  const ring = db.prepare("SELECT creator_user_id FROM web_rings WHERE id = ?").get(ringId) as { creator_user_id: string | null } | undefined;
+  if (!ring || ring.creator_user_id !== ownerId) throw new WebRingError("Not authorized.");
+  const req = db
+    .prepare("SELECT status FROM web_ring_join_requests WHERE ring_id = ? AND user_id = ?")
+    .get(ringId, requestUserId) as { status: string } | undefined;
+  if (!req || req.status !== "pending") return;
+
+  db.prepare("UPDATE web_ring_join_requests SET status = ? WHERE ring_id = ? AND user_id = ?").run(
+    accept ? "accepted" : "rejected",
+    ringId,
+    requestUserId,
+  );
+
+  if (accept) {
+    const maxPos = db.prepare("SELECT COALESCE(MAX(position), 0) as m FROM web_ring_members WHERE ring_id = ?").get(ringId) as { m: number };
+    db.prepare(
+      "INSERT OR IGNORE INTO web_ring_members (ring_id, user_id, position, joined_at) VALUES (?, ?, ?, ?)",
+    ).run(ringId, requestUserId, maxPos.m + 1, new Date().toISOString());
+  }
+}
+
+export function countRingMembers(ringId: string): number {
+  const row = getDb()
+    .prepare("SELECT COUNT(*) as n FROM web_ring_members WHERE ring_id = ?")
+    .get(ringId) as { n: number };
+  return row.n;
+}
+
+export function isRingMember(ringId: string, userId: string): boolean {
+  return !!getDb().prepare("SELECT 1 FROM web_ring_members WHERE ring_id = ? AND user_id = ?").get(ringId, userId);
+}
+
+export function hasPendingJoinRequest(ringId: string, userId: string): boolean {
+  return !!getDb()
+    .prepare("SELECT 1 FROM web_ring_join_requests WHERE ring_id = ? AND user_id = ? AND status = 'pending'")
+    .get(ringId, userId);
 }
 
 /** Seeds the database with the three default web rings if none exist yet. Idempotent. */
@@ -99,7 +280,7 @@ export function ensureSeedRings(): void {
   ];
   const now = new Date().toISOString();
   for (const ring of rings) {
-    db.prepare("INSERT INTO web_rings (id, slug, name, description, created_at) VALUES (?, ?, ?, ?, ?)").run(
+    db.prepare("INSERT INTO web_rings (id, slug, name, description, creator_user_id, is_open, created_at) VALUES (?, ?, ?, ?, NULL, 1, ?)").run(
       randomUUID(), ring.slug, ring.name, ring.description, now,
     );
   }
