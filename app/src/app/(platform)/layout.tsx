@@ -1,3 +1,5 @@
+import "../nav.css";
+import "../platform.css";
 import { SiteNav } from "@/components/SiteNav";
 import { ActivityPing } from "@/components/ActivityPing";
 import { getCurrentUser } from "@/lib/session";

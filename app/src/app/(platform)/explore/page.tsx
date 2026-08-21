@@ -1,3 +1,4 @@
+import "../../explore.css";
 import Link from "next/link";
 import { ExplorePageList } from "@/components/explore/ExplorePageList";
 import { ensureSeedCollections, listCollections } from "@/lib/collections";

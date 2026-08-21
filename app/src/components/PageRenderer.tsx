@@ -1,4 +1,5 @@
 import { Fragment } from "react";
+import "../app/page.css";
 import type { PageDocument } from "@/lib/pageDocumentTypes";
 import type { FriendSummary } from "@/lib/friends";
 import type { GuestbookEntry } from "@/lib/guestbook";
