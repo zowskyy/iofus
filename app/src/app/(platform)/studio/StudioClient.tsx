@@ -152,7 +152,7 @@ export function StudioClient({
     [previewDocument.topEight, friends],
   );
 
-  /** Pushes *next* onto the undo stack and updates the working document. */
+  /** Saves the current document on the undo stack and updates the working document to *next*. */
   const commitEdit = useCallback(
     (next: PageDocument) => {
       setUndoStack((prev) => {
