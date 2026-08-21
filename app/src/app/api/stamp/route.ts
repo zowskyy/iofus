@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getCurrentUser } from "@/lib/session";
 import { addStamp, listStamps, StampError } from "@/lib/stamps";
+import { getDb } from "@/lib/db";
 
 export async function GET(req: NextRequest) {
   const pageOwnerId = req.nextUrl.searchParams.get("pageOwnerId");
@@ -12,7 +13,6 @@ export async function GET(req: NextRequest) {
   let viewerStampedToday = false;
   if (viewer) {
     const since = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString();
-    const { getDb } = await import("@/lib/db");
     const row = getDb()
       .prepare(
         "SELECT id FROM page_stamps WHERE page_owner_id = ? AND stamper_id = ? AND created_at >= ?",

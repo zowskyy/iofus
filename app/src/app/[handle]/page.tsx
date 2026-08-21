@@ -3,6 +3,7 @@ import Link from "next/link";
 import type { Metadata } from "next";
 import { findUserByHandle } from "@/lib/auth";
 import { canViewPage, getEffectiveDocument, getPageDocument, listVersions } from "@/lib/pageDocument";
+import { getDb } from "@/lib/db";
 import {
   getFriendRelationship,
   hasBlockRelationship,
@@ -48,16 +49,30 @@ interface Props {
 
 /** Resolves raw handle strings into TopEightLink objects, skipping handles with no published page. */
 function resolveTopEight(handles: string[]): TopEightLink[] {
+  if (!handles.length) return [];
+  const placeholders = handles.map(() => "?").join(", ");
+  const rows = getDb()
+    .prepare(
+      `SELECT u.handle, pd.document_json, pd.is_published, pd.visibility, pd.hidden_from_discovery
+       FROM users u
+       JOIN page_documents pd ON pd.user_id = u.id
+       WHERE u.handle IN (${placeholders})
+         AND pd.is_published = 1`,
+    )
+    .all(...handles) as { handle: string; document_json: string; is_published: number; visibility: string; hidden_from_discovery: number }[];
+
+  // Preserve the original order from the handles array
+  const byHandle = new Map(rows.map((r) => [r.handle, r]));
   const links: TopEightLink[] = [];
   for (const raw of handles) {
-    const user = findUserByHandle(raw);
-    if (!user) continue;
-    const page = getPageDocument(user.id);
-    if (!page?.isPublished) continue;
-    links.push({
-      handle: user.handle,
-      label: page.document.identity.displayName,
-    });
+    const r = byHandle.get(raw);
+    if (!r) continue;
+    let displayName = raw;
+    try {
+      const doc = JSON.parse(r.document_json) as { identity?: { displayName?: string } };
+      if (doc.identity?.displayName) displayName = doc.identity.displayName;
+    } catch { /* fall back */ }
+    links.push({ handle: r.handle, label: displayName });
   }
   return links;
 }

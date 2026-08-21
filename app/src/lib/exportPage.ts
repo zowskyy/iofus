@@ -24,6 +24,15 @@ function readCss(filename: string): string {
   return css;
 }
 
+let _cssCache: string | null = null;
+function getInlinedCss(): string {
+  if (_cssCache) return _cssCache;
+  const globalsCss = readCss("globals.css");
+  const pageCss = readCss("page.css");
+  _cssCache = globalsCss + "\n" + pageCss;
+  return _cssCache;
+}
+
 function getHandleForUser(userId: string): string {
   const db = getDb();
   const row = db.prepare("SELECT handle FROM users WHERE id = ?").get(userId) as
@@ -279,9 +288,7 @@ export function exportPageAsHtml(userId: string): string {
   const friends = listPublicFriends(userId, null);
   const friendHandles = friends.map((f) => f.handle);
 
-  const globalsCss = readCss("globals.css");
-  const pageCss = readCss("page.css");
-  const cssContent = globalsCss + "\n" + pageCss;
+  const cssContent = getInlinedCss();
 
   const exportedAt = new Date().toISOString();
   return buildPageHtml(doc, handle, guestbookEntries, friendHandles, cssContent, exportedAt);
