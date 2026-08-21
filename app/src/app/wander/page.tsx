@@ -1,5 +1,4 @@
 import "../wander.css";
-import "../explore.css";
 import { listRandomPages } from "@/lib/discovery";
 import { WanderClient } from "./WanderClient";
 
