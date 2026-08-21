@@ -26,6 +26,7 @@ describe("PAGE_MODULE_REGISTRY", () => {
 });
 
 describe("identity module status marquee", () => {
+  /** Builds a minimal render context with a status line and the given *marqueeStatus* setting. */
   function ctxWithStatus(marqueeStatus: boolean) {
     const doc = defaultPageDocument("Test");
     doc.identity.status = "listening to blink-182";
