@@ -87,6 +87,32 @@ function migrate(db: DatabaseSync): void {
   if (!indexExists(db, "idx_notifications_user")) {
     db.exec("CREATE INDEX IF NOT EXISTS idx_notifications_user ON notifications(user_id, read_at, created_at)");
   }
+
+  db.exec(`
+    CREATE TABLE IF NOT EXISTS page_visits (
+      id TEXT PRIMARY KEY,
+      page_owner_id TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+      visitor_session TEXT,
+      visited_at TEXT NOT NULL
+    )
+  `);
+  if (!indexExists(db, "idx_visits_owner")) {
+    db.exec("CREATE INDEX IF NOT EXISTS idx_visits_owner ON page_visits(page_owner_id, visited_at)");
+  }
+
+  db.exec(`
+    CREATE TABLE IF NOT EXISTS page_stamps (
+      id TEXT PRIMARY KEY,
+      page_owner_id TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+      stamper_id TEXT REFERENCES users(id) ON DELETE SET NULL,
+      stamper_handle TEXT,
+      stamp_emoji TEXT NOT NULL,
+      created_at TEXT NOT NULL
+    )
+  `);
+  if (!indexExists(db, "idx_stamps_owner")) {
+    db.exec("CREATE INDEX IF NOT EXISTS idx_stamps_owner ON page_stamps(page_owner_id, created_at)");
+  }
 }
 
 /** Returns the singleton database connection, opening and migrating it on first call. */
