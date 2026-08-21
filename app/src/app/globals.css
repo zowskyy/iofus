@@ -737,6 +737,8 @@ select {
 .ask-tag {
   display: inline-flex;
   align-items: center;
+  min-width: 0;
+  overflow-wrap: anywhere;
   padding: 0.2rem 0.55rem;
   border: 1px solid var(--line);
   border-radius: 999px;
@@ -751,6 +753,7 @@ select {
 .ask-body {
   margin: 0;
   white-space: pre-wrap;
+  overflow-wrap: anywhere;
 }
 
 .ask-answers {

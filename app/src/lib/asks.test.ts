@@ -62,8 +62,14 @@ describe("createAsk", () => {
     expect(() => createAsk({ askerId: asker.id, body: "x".repeat(2001) })).toThrow(AskError);
   });
 
+  it("rejects a non-sensitive ask from an opted-out asker", () => {
+    const { asker } = twoUsers();
+    expect(() => createAsk({ askerId: asker.id, body: "anyone know a plumber?" })).toThrow(AskError);
+  });
+
   it("creates an open ask with no answers", () => {
     const { asker } = twoUsers();
+    setReachableForAsks(asker.id, true);
     const ask = createAsk({ askerId: asker.id, body: "How do you learn a language fast?" });
     expect(ask.status).toBe("open");
     expect(ask.answerCount).toBe(0);
@@ -72,6 +78,7 @@ describe("createAsk", () => {
 
   it("hides the asker's handle from non-owners when anonymous", () => {
     const { asker, answerer } = twoUsers();
+    setReachableForAsks(asker.id, true);
     setReachableForAsks(answerer.id, true);
     const ask = createAsk({ askerId: asker.id, body: "sensitive topic", isAnonymous: true });
     const seenByOwner = getAsk(ask.id, asker.id);
@@ -82,6 +89,7 @@ describe("createAsk", () => {
 
   it("enforces a daily rate limit per asker", () => {
     const { asker } = twoUsers();
+    setReachableForAsks(asker.id, true);
     for (let i = 0; i < 5; i++) {
       createAsk({ askerId: asker.id, body: `ask number ${i}` });
     }
@@ -91,22 +99,32 @@ describe("createAsk", () => {
   it("does not let one asker's rate limit affect another", () => {
     const { asker } = twoUsers();
     const other = createUser("maria", "correct-horse-battery");
+    setReachableForAsks(asker.id, true);
+    setReachableForAsks(other.id, true);
     for (let i = 0; i < 5; i++) {
       createAsk({ askerId: asker.id, body: `ask number ${i}` });
     }
     expect(() => createAsk({ askerId: other.id, body: "still fine" })).not.toThrow();
+  });
+
+  it("allows a sensitive ask without reachability", () => {
+    const { asker } = twoUsers();
+    const ask = createAsk({ askerId: asker.id, body: "mental health question", isSensitive: true });
+    expect(ask.isSensitive).toBe(true);
   });
 });
 
 describe("listAsksForViewer", () => {
   it("is empty for a viewer who has not opted into reachability", () => {
     const { asker, answerer } = twoUsers();
+    setReachableForAsks(asker.id, true);
     createAsk({ askerId: asker.id, body: "anyone know a good plumber?" });
     expect(listAsksForViewer(answerer.id)).toEqual([]);
   });
 
   it("shows a non-sensitive ask to a reachable, non-blocked viewer", () => {
     const { asker, answerer } = twoUsers();
+    setReachableForAsks(asker.id, true);
     setReachableForAsks(answerer.id, true);
     createAsk({ askerId: asker.id, body: "anyone know a good plumber?" });
     const visible = listAsksForViewer(answerer.id);
@@ -122,6 +140,7 @@ describe("listAsksForViewer", () => {
 
   it("excludes asks from a blocked relationship even if reachable", () => {
     const { asker, answerer } = twoUsers();
+    setReachableForAsks(asker.id, true);
     setReachableForAsks(answerer.id, true);
     createAsk({ askerId: asker.id, body: "anyone know a good plumber?" });
     blockUser(answerer.id, asker.id);
@@ -130,6 +149,7 @@ describe("listAsksForViewer", () => {
 
   it("excludes asks from a relationship blocked in the other direction too", () => {
     const { asker, answerer } = twoUsers();
+    setReachableForAsks(asker.id, true);
     setReachableForAsks(answerer.id, true);
     createAsk({ askerId: asker.id, body: "anyone know a good plumber?" });
     blockUser(asker.id, answerer.id);
@@ -138,6 +158,7 @@ describe("listAsksForViewer", () => {
 
   it("filters by domain when provided", () => {
     const { asker, answerer } = twoUsers();
+    setReachableForAsks(asker.id, true);
     setReachableForAsks(answerer.id, true);
     createAsk({ askerId: asker.id, body: "career question", domain: "career" });
     createAsk({ askerId: asker.id, body: "hobby question", domain: "hobbies" });
@@ -148,6 +169,7 @@ describe("listAsksForViewer", () => {
 
   it("does not show a closed ask", () => {
     const { asker, answerer } = twoUsers();
+    setReachableForAsks(asker.id, true);
     setReachableForAsks(answerer.id, true);
     const ask = createAsk({ askerId: asker.id, body: "anyone know a good plumber?" });
     closeAsk(ask.id, asker.id);
@@ -184,12 +206,15 @@ describe("listAsksForViewer", () => {
 describe("answerAsk", () => {
   it("rejects answering your own ask", () => {
     const { asker } = twoUsers();
+    setReachableForAsks(asker.id, true);
     const ask = createAsk({ askerId: asker.id, body: "anyone know a good plumber?" });
     expect(() => answerAsk(ask.id, asker.id, "call Bob")).toThrow(AskError);
   });
 
   it("rejects answering twice from the same person", () => {
     const { asker, answerer } = twoUsers();
+    setReachableForAsks(asker.id, true);
+    setReachableForAsks(answerer.id, true);
     const ask = createAsk({ askerId: asker.id, body: "anyone know a good plumber?" });
     answerAsk(ask.id, answerer.id, "call Bob");
     expect(() => answerAsk(ask.id, answerer.id, "call Bob again")).toThrow(AskError);
@@ -197,12 +222,16 @@ describe("answerAsk", () => {
 
   it("rejects an empty answer", () => {
     const { asker, answerer } = twoUsers();
+    setReachableForAsks(asker.id, true);
+    setReachableForAsks(answerer.id, true);
     const ask = createAsk({ askerId: asker.id, body: "anyone know a good plumber?" });
     expect(() => answerAsk(ask.id, answerer.id, "   ")).toThrow(AskError);
   });
 
   it("rejects answering a closed ask", () => {
     const { asker, answerer } = twoUsers();
+    setReachableForAsks(asker.id, true);
+    setReachableForAsks(answerer.id, true);
     const ask = createAsk({ askerId: asker.id, body: "anyone know a good plumber?" });
     closeAsk(ask.id, asker.id);
     expect(() => answerAsk(ask.id, answerer.id, "call Bob")).toThrow(AskError);
@@ -210,6 +239,8 @@ describe("answerAsk", () => {
 
   it("rejects an answer from someone blocked by the asker", () => {
     const { asker, answerer } = twoUsers();
+    setReachableForAsks(asker.id, true);
+    setReachableForAsks(answerer.id, true);
     const ask = createAsk({ askerId: asker.id, body: "anyone know a good plumber?" });
     blockUser(asker.id, answerer.id);
     expect(() => answerAsk(ask.id, answerer.id, "call Bob")).toThrow(AskError);
@@ -222,6 +253,8 @@ describe("answerAsk", () => {
 
   it("records a valid answer and increments the ask's answer count", () => {
     const { asker, answerer } = twoUsers();
+    setReachableForAsks(asker.id, true);
+    setReachableForAsks(answerer.id, true);
     const ask = createAsk({ askerId: asker.id, body: "anyone know a good plumber?" });
     answerAsk(ask.id, answerer.id, "call Bob");
     const answers = listAnswers(ask.id);
@@ -232,7 +265,10 @@ describe("answerAsk", () => {
 
   it("allows multiple different answerers on the same ask", () => {
     const { asker, answerer } = twoUsers();
+    setReachableForAsks(asker.id, true);
+    setReachableForAsks(answerer.id, true);
     const third = createUser("beijing_student", "correct-horse-battery");
+    setReachableForAsks(third.id, true);
     const ask = createAsk({ askerId: asker.id, body: "anyone know a good plumber?" });
     answerAsk(ask.id, answerer.id, "call Bob");
     answerAsk(ask.id, third.id, "try Alice instead");
@@ -243,12 +279,14 @@ describe("answerAsk", () => {
 describe("closeAsk", () => {
   it("rejects closing someone else's ask", () => {
     const { asker, answerer } = twoUsers();
+    setReachableForAsks(asker.id, true);
     const ask = createAsk({ askerId: asker.id, body: "anyone know a good plumber?" });
     expect(() => closeAsk(ask.id, answerer.id)).toThrow(AskError);
   });
 
   it("is idempotent when called twice by the owner", () => {
     const { asker } = twoUsers();
+    setReachableForAsks(asker.id, true);
     const ask = createAsk({ askerId: asker.id, body: "anyone know a good plumber?" });
     closeAsk(ask.id, asker.id);
     expect(() => closeAsk(ask.id, asker.id)).not.toThrow();
@@ -263,6 +301,7 @@ describe("closeAsk", () => {
 describe("listAsksByUser", () => {
   it("returns all of a user's asks regardless of status", () => {
     const { asker } = twoUsers();
+    setReachableForAsks(asker.id, true);
     const a = createAsk({ askerId: asker.id, body: "first ask" });
     createAsk({ askerId: asker.id, body: "second ask" });
     closeAsk(a.id, asker.id);
@@ -271,6 +310,7 @@ describe("listAsksByUser", () => {
 
   it("reveals the asker's own handle on their own anonymous ask", () => {
     const { asker } = twoUsers();
+    setReachableForAsks(asker.id, true);
     createAsk({ askerId: asker.id, body: "anonymous ask", isAnonymous: true });
     const [ask] = listAsksByUser(asker.id);
     expect(ask!.askerHandle).toBe("jamal");

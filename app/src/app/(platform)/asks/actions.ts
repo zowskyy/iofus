@@ -94,4 +94,5 @@ export async function setReachableAction(reachable: boolean): Promise<void> {
 
   setReachableForAsks(viewer.id, reachable);
   revalidatePath("/asks");
+  revalidatePath("/asks/mine");
 }

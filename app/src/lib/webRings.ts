@@ -32,7 +32,7 @@ export function getWebRingBySlug(slug: string): WebRing | null {
   return row ?? null;
 }
 
-/** Returns all published members of *ringId* ordered by position then join date. */
+/** Returns public, discovery-visible members of *ringId* ordered by position then join date. */
 export function listRingMembers(ringId: string): WebRingMember[] {
   const db = getDb();
   const rows = db

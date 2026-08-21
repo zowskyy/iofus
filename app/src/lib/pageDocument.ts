@@ -288,7 +288,7 @@ export function restoreVersion(userId: string, versionId: string): PageDocument 
     .prepare("SELECT document_json FROM page_document_versions WHERE id = ? AND user_id = ?")
     .get(versionId, userId) as { document_json: string } | undefined;
   if (!versionRow) throw new VersionNotFoundError(`No such version: ${versionId}`);
-  return savePageDocument(userId, JSON.parse(versionRow.document_json));
+  return savePageDocument(userId, migrateDocument(JSON.parse(versionRow.document_json)));
 }
 
 /** Toggle whether *userId*'s page is publicly visible. Unpublished pages return 404 for non-owners. */
@@ -333,10 +333,12 @@ export function setGuestbookDisabled(userId: string, disabled: boolean): void {
   );
 }
 
-/** Immediately unpublish the page, set visibility to private, and disable the guestbook in one step. */
+/** Immediately unpublish the page, set visibility to private, hide from discovery, and disable the guestbook in one atomic step. */
 export function activatePanicMode(userId: string): void {
-  setHiddenFromDiscovery(userId, true);
-  setVisibility(userId, "unlisted");
+  const db = getDb();
+  db.prepare(
+    "UPDATE page_documents SET is_published = 0, visibility = 'private', hidden_from_discovery = 1, guestbook_disabled = 1, updated_at = ? WHERE user_id = ?",
+  ).run(new Date().toISOString(), userId);
 }
 
 /** Serialize the full page record for *userId* to a portable JSON string for export/backup. */
@@ -366,5 +368,5 @@ export function importPageData(userId: string, json: string): PageDocument {
   }
   const obj = parsed as { document?: unknown };
   if (!obj.document) throw new PageDocumentValidationError(["import file must contain a document field"]);
-  return savePageDocument(userId, obj.document);
+  return savePageDocument(userId, migrateDocument(obj.document as Record<string, unknown>));
 }

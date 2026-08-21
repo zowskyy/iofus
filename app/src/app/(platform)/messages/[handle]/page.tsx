@@ -15,7 +15,7 @@ interface Props {
 export default async function MessageThreadPage({ params }: Props) {
   const { handle: rawParam } = await params;
   const viewer = await getCurrentUser();
-  if (!viewer) redirect(`/login?next=/messages`);
+  if (!viewer) redirect(`/login?next=${encodeURIComponent(`/messages/${rawParam}`)}`);
 
   const handle = parseHandleParam(rawParam);
   if (!handle) notFound();

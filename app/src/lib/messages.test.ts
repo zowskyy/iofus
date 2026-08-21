@@ -143,8 +143,10 @@ describe("listConversations", () => {
     sendMessage(a.id, c2.id, "to c2");
     sendMessage(a.id, c1.id, "to c1 again");
     const list = listConversations(a.id);
-    expect(list[0]!.otherHandle).toBe("c1");
-    expect(list[1]!.otherHandle).toBe("c2");
+    // c1 has the most recent message; c2 had only the earlier one
+    const handles = list.map((c) => c.otherHandle);
+    expect(handles.indexOf("c1")).toBeLessThan(handles.indexOf("c2"));
+    expect(list.find((c) => c.otherHandle === "c1")?.lastMessagePreview).toBe("to c1 again");
   });
 });
 

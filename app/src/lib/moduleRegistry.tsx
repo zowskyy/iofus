@@ -27,11 +27,9 @@ export interface PageModuleDefinition {
 
 /** Formats an ISO date string for display in page modules. Returns the raw string on parse failure. */
 function formatDate(iso: string): string {
-  try {
-    return new Date(iso).toLocaleDateString(undefined, { year: "numeric", month: "short", day: "numeric" });
-  } catch {
-    return iso;
-  }
+  const date = new Date(iso);
+  if (isNaN(date.getTime())) return iso;
+  return date.toLocaleDateString(undefined, { year: "numeric", month: "short", day: "numeric" });
 }
 
 /** Fallback rendered when a page contains a module *type* that this version of the registry does not recognize. */

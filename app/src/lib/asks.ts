@@ -21,6 +21,7 @@ export class AskError extends Error {}
 
 const MAX_ASKS_PER_DAY = 5;
 const MAX_BODY_LENGTH = 2000;
+const MAX_DOMAIN_LENGTH = 100;
 const POOL_SIZE = 8;
 
 export interface Ask {
@@ -110,12 +111,18 @@ export function createAsk(input: CreateAskInput): Ask {
   if (body.length > MAX_BODY_LENGTH) {
     throw new AskError(`Your ask is too long (max ${MAX_BODY_LENGTH} characters).`);
   }
+  if (!input.isSensitive && !isReachableForAsks(input.askerId)) {
+    throw new AskError("Turn on reachability to post an open ask.");
+  }
 
   checkRateLimit(`ask:create:${input.askerId}`, MAX_ASKS_PER_DAY, DAY_MS);
 
   const db = getDb();
   const id = randomUUID();
   const domain = input.domain?.trim() || null;
+  if (domain && domain.length > MAX_DOMAIN_LENGTH) {
+    throw new AskError(`Your topic is too long (max ${MAX_DOMAIN_LENGTH} characters).`);
+  }
   db.prepare(
     `INSERT INTO asks (id, asker_id, body, domain, is_anonymous, is_sensitive, status, created_at)
      VALUES (?, ?, ?, ?, ?, ?, 'open', ?)`,
