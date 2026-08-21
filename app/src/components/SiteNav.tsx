@@ -69,7 +69,7 @@ export async function SiteNav() {
         {viewer && <Link href="/feed">Feed</Link>}
       </nav>
       <Link href="/" className="top-bar-logo" aria-label="iofus home">
-        <img src="/logo.png" alt="iofus" className="site-logo" width={96} height={48} />
+        <img src="/logo.png" alt="iofus" className="site-logo" width={384} height={192} />
       </Link>
       {/* Desktop right nav */}
       <nav className="controls controls-right nav-desktop-right">

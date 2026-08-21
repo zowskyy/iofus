@@ -1,5 +1,5 @@
 :root {
-  --nav-height: 74px;
+  --nav-height: 200px;
 }
 
 .top-bar {
@@ -22,7 +22,7 @@
 }
 
 .site-logo {
-  height: 3rem;
+  height: 12rem;
   width: auto;
   display: block;
   filter: none;
@@ -198,7 +198,7 @@
     font-size: 0.78rem;
   }
   .site-logo {
-    height: 2.25rem;
+    height: 9rem;
   }
   .top-bar .controls {
     gap: 0.3rem;
