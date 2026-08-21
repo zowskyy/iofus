@@ -1,7 +1,8 @@
 import { notFound } from "next/navigation";
 import Link from "next/link";
+import type { Metadata } from "next";
 import { findUserByHandle } from "@/lib/auth";
-import { canViewPage, getEffectiveDocument, getPageDocument } from "@/lib/pageDocument";
+import { canViewPage, getEffectiveDocument, getPageDocument, listVersions } from "@/lib/pageDocument";
 import {
   getFriendRelationship,
   hasBlockRelationship,
@@ -15,6 +16,30 @@ import { parseHandleParam } from "@/lib/handleParam";
 import { FriendActions } from "./friends/FriendActions";
 import { GuestbookSignForm } from "./guestbook/GuestbookSignForm";
 import { listByTag } from "@/lib/discovery";
+
+export async function generateMetadata({ params }: { params: Promise<{ handle: string }> }): Promise<Metadata> {
+  const { handle: rawParam } = await params;
+  const handle = parseHandleParam(rawParam);
+  if (!handle) return {};
+
+  const user = findUserByHandle(handle);
+  if (!user) return {};
+
+  const stored = getPageDocument(user.id);
+  if (!stored || !stored.isPublished || stored.visibility !== "public") return {};
+
+  const doc = stored.document;
+  const types: Record<string, string> = {};
+
+  if (doc.pageParts.includes("blog")) {
+    types["application/rss+xml; blog"] = `/@${handle}/blog/feed.xml`;
+  }
+  if (doc.pageParts.includes("devlog")) {
+    types["application/rss+xml; devlog"] = `/@${handle}/devlog/feed.xml`;
+  }
+
+  return { alternates: { types } };
+}
 
 interface Props {
   params: Promise<{ handle: string }>;
@@ -67,6 +92,7 @@ export default async function ProfilePage({ params, searchParams }: Props) {
   const rings = listUserWebRings(user.id);
 
   const relationship = viewer && !isOwner ? getFriendRelationship(viewer.id, user.id) : null;
+  const versions = stored!.visibility === "public" ? listVersions(user.id) : [];
 
   const showGuestbookForm =
     document.guestbook.enabled && !stored!.guestbookDisabled && !isOwner;
@@ -196,6 +222,11 @@ export default async function ProfilePage({ params, searchParams }: Props) {
             </Link>
           </div>
         </section>
+      )}
+      {versions.length > 0 && (
+        <div className="page-footer-meta mono" style={{ padding: "0.5rem 1rem", color: "var(--ink-soft)", fontSize: "0.8rem" }}>
+          <Link href={`/@${handle}/history`}>History ({versions.length} decoration{versions.length !== 1 ? "s" : ""})</Link>
+        </div>
       )}
     </>
   );
