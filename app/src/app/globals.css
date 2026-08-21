@@ -9,14 +9,6 @@
   src: url("/fonts/BebasNeue-Regular.ttf") format("truetype");
 }
 
-@font-face {
-  font-family: "Vandal Blow";
-  font-style: normal;
-  font-weight: 400;
-  font-display: swap;
-  src: url("/fonts/VandalBlowGraffiti.ttf") format("truetype"),
-       url("/fonts/VandalBlowGraffiti.otf") format("opentype");
-}
 
 /* Design tokens: black/white minimalist graffiti — white paper, black marks,
    Bebas Neue condensed headings, zero border radius, hard edges throughout. */
@@ -92,7 +84,7 @@ body {
 h1,
 h2,
 h3 {
-  font-family: "Vandal Blow", "Bebas Neue", "Impact", "Arial Narrow", sans-serif;
+  font-family: "Bebas Neue", "Impact", "Arial Narrow", sans-serif;
   font-weight: 400;
   letter-spacing: 0.03em;
   text-transform: uppercase;
@@ -234,7 +226,7 @@ select {
   color: var(--paper);
   -webkit-text-stroke: 1px var(--paper);
   paint-order: stroke fill;
-  font-family: "Vandal Blow", "Bebas Neue", "Impact", "Arial Narrow", sans-serif;
+  font-family: "Bebas Neue", "Impact", "Arial Narrow", sans-serif;
   font-size: 1.1rem;
   letter-spacing: 0.06em;
   text-transform: uppercase;
@@ -351,7 +343,7 @@ button,
 }
 
 .part-label {
-  font-family: "Vandal Blow", "Bebas Neue", "Impact", "Arial Narrow", sans-serif;
+  font-family: "Bebas Neue", "Impact", "Arial Narrow", sans-serif;
   letter-spacing: 0.08em;
   font-size: 1.15rem;
   margin-top: 2rem;
@@ -1808,7 +1800,7 @@ button,
 }
 
 .splash-step-label {
-  font-family: "Vandal Blow", "Bebas Neue", "Impact", "Arial Narrow", sans-serif;
+  font-family: "Bebas Neue", "Impact", "Arial Narrow", sans-serif;
   font-weight: 400;
   font-size: 1.3rem;
   text-transform: uppercase;
@@ -2871,7 +2863,7 @@ button,
   background: var(--paper);
 }
 .wander-handle {
-  font-family: "Vandal Blow", "Bebas Neue", "Impact", sans-serif;
+  font-family: "Bebas Neue", "Impact", sans-serif;
   font-size: 1.2rem;
   letter-spacing: 0.04em;
   color: var(--ink);
@@ -2935,7 +2927,7 @@ button,
   gap: 0.75rem;
 }
 .after-page-panel h3 {
-  font-family: "Vandal Blow", "Bebas Neue", "Impact", sans-serif;
+  font-family: "Bebas Neue", "Impact", sans-serif;
   font-size: 1.3rem;
   margin: 0 0 0.5rem;
   letter-spacing: 0.04em;
