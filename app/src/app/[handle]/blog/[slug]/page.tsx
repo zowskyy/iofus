@@ -1,12 +1,24 @@
 import { notFound } from "next/navigation";
 import Link from "next/link";
 import type { CSSProperties } from "react";
+import type { Metadata } from "next";
 import { findUserByHandle } from "@/lib/auth";
 import { canViewPage, getEffectiveDocument, getPageDocument } from "@/lib/pageDocument";
 import { hasBlockRelationship } from "@/lib/friends";
 import { getCurrentUser } from "@/lib/session";
 import { readableTextFor } from "@/lib/color";
 import { parseHandleParam } from "@/lib/handleParam";
+
+export async function generateMetadata({ params }: { params: Promise<{ handle: string; slug: string }> }): Promise<Metadata> {
+  const { handle: rawParam } = await params;
+  const handle = parseHandleParam(rawParam);
+  if (!handle) return {};
+  const user = findUserByHandle(handle);
+  if (!user) return {};
+  const stored = getPageDocument(user.id);
+  if (!stored || !stored.isPublished || stored.visibility !== "public") return {};
+  return { alternates: { types: { "application/rss+xml": `/@${handle}/blog/feed.xml` } } };
+}
 
 interface Props {
   params: Promise<{ handle: string; slug: string }>;

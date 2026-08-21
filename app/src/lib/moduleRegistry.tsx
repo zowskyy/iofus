@@ -3,6 +3,7 @@ import Link from "next/link";
 import type { PageDocument } from "./pageDocumentTypes";
 import type { FriendSummary } from "./friends";
 import type { GuestbookEntry } from "./guestbook";
+import { StampsModule } from "@/components/StampsModule";
 
 export interface TopEightLink {
   handle: string;
@@ -12,6 +13,8 @@ export interface TopEightLink {
 export interface PageRenderContext {
   document: PageDocument;
   handle: string;
+  pageOwnerId: string;
+  viewerId: string | null;
   readerMode: boolean;
   friends: FriendSummary[];
   guestbookEntries: GuestbookEntry[];
@@ -349,6 +352,15 @@ export const PAGE_MODULE_REGISTRY: Record<string, PageModuleDefinition> = {
           </ul>
         </section>
       ),
+  },
+  stamps: {
+    id: "stamps",
+    label: "Stamps",
+    description: "Visitor emoji stamp wall",
+    render: ({ document, pageOwnerId, viewerId }) =>
+      document.stamps.stampsEnabled ? (
+        <StampsModule pageOwnerId={pageOwnerId} viewerId={viewerId} />
+      ) : null,
   },
 };
 

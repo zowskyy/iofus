@@ -12,6 +12,7 @@ import type { PageDocument, PagePartId, PixelArtPiece, StoredPage, TemplateId } 
 import { profileScopeClass, scopeProfileCss } from "@/lib/cssScope";
 import { getContrastWarnings } from "@/lib/pageDocumentTheme";
 import {
+  clearStampsAction,
   exportPageAction,
   importPageAction,
   publishDraftAction,
@@ -42,6 +43,7 @@ const PART_LABELS: Record<PagePartId, string> = {
   playlist: "Playlist",
   pixelArt: "Pixel art",
   miniPages: "Mini-pages",
+  stamps: "Stamps",
 };
 
 type TabId = "look" | "layout" | "content" | "access" | "publish" | "preview";
@@ -465,6 +467,9 @@ export function StudioClient({
                 onExport={handleExport}
                 onImport={handleImport}
                 onRestoreVersion={restoreVersion}
+                onClearStamps={() =>
+                  runAction("All stamps cleared.", () => clearStampsAction())
+                }
               />
             )}
           </div>
@@ -1814,6 +1819,7 @@ function PublishTab({
   onExport,
   onImport,
   onRestoreVersion,
+  onClearStamps,
 }: {
   document: PageDocument;
   onChange: (d: PageDocument) => void;
@@ -1834,6 +1840,7 @@ function PublishTab({
   onExport: () => void;
   onImport: (file: File) => void;
   onRestoreVersion: (id: string) => void;
+  onClearStamps: () => void;
 }) {
   return (
     <>
@@ -1900,6 +1907,28 @@ function PublishTab({
         <span>Guestbook enabled in page document</span>
       </label>
 
+      <fieldset className="studio-fieldset">
+        <legend>Stamps</legend>
+        <label className="studio-toggle">
+          <input
+            type="checkbox"
+            checked={doc.stamps.stampsEnabled}
+            onChange={(e) =>
+              onChange({ ...doc, stamps: { ...doc.stamps, stampsEnabled: e.target.checked } })
+            }
+          />
+          <span>Stamp wall enabled</span>
+        </label>
+        <button
+          type="button"
+          className="btn secondary"
+          disabled={pending}
+          onClick={onClearStamps}
+        >
+          Clear all stamps
+        </button>
+      </fieldset>
+
       <label className="studio-toggle">
         <input
           type="checkbox"
@@ -1953,6 +1982,14 @@ function PublishTab({
             />
           </label>
         </div>
+        <div className="studio-publish-row" style={{ marginTop: "0.5rem" }}>
+          <a href="/api/export" className="btn secondary" download="my-page.html">
+            Download as HTML
+          </a>
+        </div>
+        <p className="studio-hint" style={{ marginTop: "0.25rem" }}>
+          Self-contained static page you can host anywhere.
+        </p>
       </fieldset>
     </>
   );

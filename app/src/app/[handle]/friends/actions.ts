@@ -10,8 +10,10 @@ import {
   removeFriendLink,
   sendFriendRequest,
 } from "@/lib/friends";
+import { createNotification } from "@/lib/notifications";
 import { checkRateLimit, RateLimitError, rateLimitActorKey } from "@/lib/rateLimit";
 import { getCurrentUser } from "@/lib/session";
+import { getDb } from "@/lib/db";
 
 export interface FriendActionState {
   error?: string;
@@ -36,6 +38,7 @@ export async function sendFriendRequestAction(handle: string): Promise<FriendAct
     const key = await rateLimitActorKey("friend", viewer.id);
     checkRateLimit(key, 10);
     sendFriendRequest(viewer.id, target.id);
+    createNotification(target.id, "friend_request", viewer.handle, {});
   } catch (e) {
     const result = handleFriendError(e);
     if (result) return result;
@@ -52,7 +55,9 @@ export async function acceptFriendRequestAction(handle: string, requestId: strin
   try {
     const key = await rateLimitActorKey("friend", viewer.id);
     checkRateLimit(key, 10);
+    const reqRow = getDb().prepare("SELECT requester_id FROM friend_links WHERE id = ?").get(requestId) as { requester_id: string } | undefined;
     acceptFriendRequest(viewer.id, requestId);
+    if (reqRow) createNotification(reqRow.requester_id, "friend_accepted", viewer.handle, {});
   } catch (e) {
     const result = handleFriendError(e);
     if (result) return result;

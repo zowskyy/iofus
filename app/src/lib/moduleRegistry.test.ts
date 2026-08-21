@@ -16,6 +16,8 @@ describe("PAGE_MODULE_REGISTRY", () => {
     const node = renderPagePart("unknown-module-xyz", {
       document: doc,
       handle: "test",
+      pageOwnerId: "test-owner-id",
+      viewerId: null,
       readerMode: false,
       friends: [],
       guestbookEntries: [],
@@ -34,6 +36,8 @@ describe("identity module status marquee", () => {
     return {
       document: doc,
       handle: "test",
+      pageOwnerId: "test-owner-id",
+      viewerId: null,
       readerMode: false,
       friends: [],
       guestbookEntries: [],
@@ -69,6 +73,8 @@ describe("identity module status marquee", () => {
     const node = renderPagePart("identity", {
       document: doc,
       handle: "test",
+      pageOwnerId: "test-owner-id",
+      viewerId: null,
       readerMode: false,
       friends: [],
       guestbookEntries: [],
