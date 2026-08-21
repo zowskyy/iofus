@@ -11,20 +11,20 @@ export function ThreadComposer({ recipientHandle }: { recipientHandle: string })
   const [state, formAction, pending] = useActionState(boundAction, initialState);
 
   return (
-    <form action={formAction} className="aim-composer">
+    <form action={formAction} className="msg-composer">
       {state.error && (
         <div className="error-banner" role="alert">
           {state.error}
         </div>
       )}
-      <div className="aim-composer-row">
-        <textarea
-          name="body"
-          rows={2}
-          maxLength={4000}
-          placeholder={`Message ${recipientHandle}...`}
-          required
-        />
+      <textarea
+        name="body"
+        rows={3}
+        maxLength={4000}
+        placeholder={`Message ${recipientHandle}...`}
+        required
+      />
+      <div className="msg-composer-actions">
         <button type="submit" className="btn" disabled={pending}>
           {pending ? "Sending…" : "Send"}
         </button>

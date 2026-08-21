@@ -36,36 +36,32 @@ export default async function MessageThreadPage({ params }: Props) {
   }
 
   return (
-    <main className="container aim-page">
-      <div className="aim-window">
-        <div className="aim-titlebar">
-          <Link href="/messages" className="aim-back">
-            ◂
-          </Link>
-          <span>{handle}</span>
-        </div>
-        <div className="aim-window-body">
-          {blocked ? (
-            <p className="aim-empty">You can&apos;t message this person.</p>
-          ) : (
-            <>
-              <div className="aim-thread">
-                {messages.length === 0 ? (
-                  <p className="aim-empty">No messages yet. Say hi.</p>
-                ) : (
-                  messages.map((m) => (
-                    <p key={m.id} className={m.senderId === viewer.id ? "aim-msg aim-msg-mine" : "aim-msg"}>
-                      <span className="aim-msg-from mono">{m.senderId === viewer.id ? viewer.handle : handle}:</span>{" "}
-                      {m.body}
-                    </p>
-                  ))
-                )}
-              </div>
-              <ThreadComposer recipientHandle={handle} />
-            </>
-          )}
-        </div>
+    <main className="container">
+      <div className="msg-thread-header">
+        <Link href="/messages" className="msg-back">
+          ← Back
+        </Link>
+        <h1>{handle}</h1>
       </div>
+      {blocked ? (
+        <p className="msg-empty">You can&apos;t message this person.</p>
+      ) : (
+        <>
+          <div className="msg-thread">
+            {messages.length === 0 ? (
+              <p className="msg-empty">No messages yet. Say hi.</p>
+            ) : (
+              messages.map((m) => (
+                <p key={m.id} className={m.senderId === viewer.id ? "msg-line msg-line-mine" : "msg-line"}>
+                  <span className="msg-sender">{m.senderId === viewer.id ? viewer.handle : handle}:</span>{" "}
+                  {m.body}
+                </p>
+              ))
+            )}
+          </div>
+          <ThreadComposer recipientHandle={handle} />
+        </>
+      )}
     </main>
   );
 }

@@ -30,8 +30,8 @@ export function defaultPageDocument(displayName: string): PageDocument {
     identity: { displayName, bio: "" },
     theme: {
       template: "start-simple",
-      accent: "#e0526b",
-      background: "#f1ede9",
+      accent: "#111111",
+      background: "#ffffff",
       density: "comfortable",
       fontStyle: "sans",
       reduceMotion: false,
