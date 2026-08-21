@@ -1041,6 +1041,21 @@ button,
 }
 
 
+/* Mobile-only studio tab (Preview) — hidden on desktop where sidebar handles it */
+.studio-tab-mobile-only {
+  display: none;
+}
+
+/* Studio mobile preview panel (shown when Preview tab is active) */
+.studio-mobile-preview {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+.studio-mobile-preview .studio-preview-frame {
+  min-height: 60vh;
+}
+
 /* Studio — split editor + live preview */
 .studio-shell {
   max-width: 1200px;
@@ -2901,9 +2916,13 @@ button,
     min-height: 44px;
   }
 
-  /* Studio: hide preview panel on mobile — editor only */
+  /* Studio: hide sidebar preview on mobile — use the Preview tab instead */
   .studio-preview {
     display: none;
+  }
+  /* Show the mobile-only Preview tab on small screens */
+  .studio-tab-mobile-only {
+    display: inline-flex;
   }
   .studio-body {
     grid-template-columns: 1fr;
