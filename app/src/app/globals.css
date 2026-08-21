@@ -203,24 +203,27 @@ select {
   gap: 0.4em;
   padding: 0.65rem 1.3rem;
   border-radius: 0;
-  border: 2px solid var(--accent);
-  background: var(--accent);
-  color: var(--accent-ink);
+  border: 2px solid var(--ink);
+  background: var(--ink);
+  color: var(--paper);
+  -webkit-text-stroke: 1px var(--paper);
+  paint-order: stroke fill;
   font-family: "Vandal Blow", "Bebas Neue", "Impact", "Arial Narrow", sans-serif;
-  font-size: 1rem;
+  font-size: 1.1rem;
   letter-spacing: 0.06em;
   text-transform: uppercase;
   cursor: pointer;
 }
 
 .btn:hover {
-  filter: brightness(1.05);
+  filter: brightness(1.15);
 }
 
 .btn.secondary {
   background: transparent;
   border: 2px solid var(--ink);
-  color: var(--ink);
+  color: var(--paper);
+  -webkit-text-stroke: 1.5px var(--ink);
 }
 
 .top-bar {
@@ -291,15 +294,20 @@ select {
 
 .top-bar .controls a,
 .top-bar .controls button {
-  color: var(--ink-soft);
+  color: var(--paper);
+  -webkit-text-stroke: 1.5px var(--ink);
+  paint-order: stroke fill;
   text-decoration: none;
   background: none;
   border: 1px solid var(--line);
   border-radius: 0;
   padding: 0.25em 0.65em;
   font: inherit;
-  cursor: pointer;
+  font-family: "Vandal Blow", "Bebas Neue", "Impact", "Arial Narrow", sans-serif;
+  font-size: 1rem;
+  text-transform: uppercase;
   letter-spacing: 0.04em;
+  cursor: pointer;
 }
 
 .nav-settings-link {
@@ -1818,8 +1826,13 @@ select {
 }
 
 .splash-step-label {
-  font-weight: 700;
-  font-size: 1.05rem;
+  font-family: "Vandal Blow", "Bebas Neue", "Impact", "Arial Narrow", sans-serif;
+  font-weight: 400;
+  font-size: 1.3rem;
+  text-transform: uppercase;
+  color: var(--paper);
+  -webkit-text-stroke: 1.5px var(--ink);
+  paint-order: stroke fill;
 }
 
 .splash-step-desc {
