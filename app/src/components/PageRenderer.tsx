@@ -1,10 +1,13 @@
 import { Fragment } from "react";
+import "../app/page.css";
 import type { PageDocument } from "@/lib/pageDocumentTypes";
 import type { FriendSummary } from "@/lib/friends";
 import type { GuestbookEntry } from "@/lib/guestbook";
 import { readableTextFor } from "@/lib/color";
 import { profileScopeClass, validateProfileCustomCss } from "@/lib/cssScope";
 import { renderPagePart, type TopEightLink } from "@/lib/moduleRegistry";
+import { VisitorCounter } from "./VisitorCounter";
+import { PresenceIndicator } from "./PresenceIndicator";
 
 export type { TopEightLink };
 
@@ -12,6 +15,10 @@ interface Props {
   document: PageDocument;
   friends: FriendSummary[];
   handle: string;
+  /** The user ID of the page owner — used for visitor counter, presence, and stamps. */
+  pageOwnerId?: string;
+  /** The user ID of the current viewer, or null for anonymous visitors. */
+  viewerId?: string | null;
   readerMode: boolean;
   guestbookEntries: GuestbookEntry[];
   topEightLinks: TopEightLink[];
@@ -22,6 +29,8 @@ export function PageRenderer({
   document,
   friends,
   handle,
+  pageOwnerId,
+  viewerId = null,
   readerMode,
   guestbookEntries,
   topEightLinks,
@@ -75,17 +84,31 @@ export function PageRenderer({
         })()
       : "";
 
-  const ctx = { document, handle, readerMode, friends, guestbookEntries, topEightLinks };
+  const ctx = {
+    document,
+    handle,
+    pageOwnerId: pageOwnerId ?? "",
+    viewerId: viewerId ?? null,
+    readerMode,
+    friends,
+    guestbookEntries,
+    topEightLinks,
+  };
+
+  // Only show interactive features on public pages where we have the owner ID
+  const showInteractive = !readerMode && !!pageOwnerId;
 
   return (
     <div className={bodyClasses} style={themeStyle} data-template={readerMode ? undefined : document.theme.template}>
       {document.theme.attribution?.credit && !readerMode && (
         <p className="theme-attribution mono">{document.theme.attribution.credit}</p>
       )}
+      {showInteractive && <PresenceIndicator pageOwnerId={pageOwnerId!} />}
       {scopedCss && <style>{scopedCss}</style>}
       {document.pageParts.map((partId) => (
         <Fragment key={partId}>{renderPagePart(partId, ctx)}</Fragment>
       ))}
+      {showInteractive && <VisitorCounter pageOwnerId={pageOwnerId!} />}
       <p className="page-footer mono">@{handle} on iofus</p>
     </div>
   );

@@ -27,6 +27,7 @@ export const PAGE_PART_IDS = [
   "playlist",
   "pixelArt",
   "miniPages",
+  "stamps",
 ] as const;
 export type PagePartId = (typeof PAGE_PART_IDS)[number];
 
@@ -173,6 +174,11 @@ export const PageDocumentSchema = z.object({
       requireApproval: z.boolean().default(true),
     })
     .default({ enabled: true, requireApproval: true }),
+  stamps: z
+    .object({
+      stampsEnabled: z.boolean().default(true),
+    })
+    .default({ stampsEnabled: true }),
   access: AccessSchema.default({ altTextReminder: true, contrastWarningsEnabled: true }),
 });
 
@@ -206,6 +212,7 @@ export function defaultPageDocumentFieldsV3() {
     pixelArt: [] as PageDocument["pixelArt"],
     miniPages: [] as PageDocument["miniPages"],
     guestbook: { enabled: true, requireApproval: true },
+    stamps: { stampsEnabled: true },
     access: { altTextReminder: true, contrastWarningsEnabled: true },
   };
 }

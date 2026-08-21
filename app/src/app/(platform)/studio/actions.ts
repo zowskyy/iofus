@@ -24,6 +24,7 @@ import {
   type StoredPage,
 } from "@/lib/pageDocument";
 import { getSharedTheme, installThemeOnDocument, publishTheme } from "@/lib/sharedThemes";
+import { clearStamps } from "@/lib/stamps";
 
 export interface StudioActionResult {
   ok?: boolean;
@@ -293,6 +294,15 @@ export async function publishThemeAction(
     if (e instanceof Error) return { error: e.message };
     throw e;
   }
+}
+
+/** Deletes all stamps on the owner's page. */
+export async function clearStampsAction(): Promise<StudioActionResult> {
+  const viewer = await getCurrentUser();
+  if (!viewer) redirect("/login?next=/studio");
+  clearStamps(viewer.id);
+  revalidateOwnerPaths(viewer.handle);
+  return { ok: true };
 }
 
 /** Installs a shared theme identified by *themeId* onto the owner's current draft document. */

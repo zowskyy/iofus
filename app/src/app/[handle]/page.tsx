@@ -131,6 +131,8 @@ export default async function ProfilePage({ params, searchParams }: Props) {
         document={document}
         friends={friends}
         handle={user.handle}
+        pageOwnerId={user.id}
+        viewerId={viewerId}
         readerMode={readerMode}
         guestbookEntries={guestbookEntries}
         topEightLinks={topEightLinks}
