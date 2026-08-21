@@ -48,16 +48,16 @@ export function checkRateLimit(key: string, maxCount: number, windowMs: number =
       if (now - windowStart >= windowMs) {
         db.prepare("UPDATE rate_limits SET count = 1, window_start = ? WHERE key = ?").run(new Date(now).toISOString(), key);
       } else if (row.count >= maxCount) {
-        limitError = new RateLimitError(Math.ceil((windowMs - (now - windowStart)) / 1000));
+        db.exec("ROLLBACK");
+        throw new RateLimitError(Math.ceil((windowMs - (now - windowStart)) / 1000));
       } else {
         db.prepare("UPDATE rate_limits SET count = count + 1 WHERE key = ?").run(key);
       }
     }
     db.exec("COMMIT");
   } catch (err) {
-    db.exec("ROLLBACK");
+    // ROLLBACK is a no-op if the tx already committed or was explicitly rolled back above
+    try { db.exec("ROLLBACK"); } catch { /* already resolved */ }
     throw err;
   }
-
-  if (limitError) throw limitError;
 }

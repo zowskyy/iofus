@@ -222,8 +222,8 @@ select {
 .btn.secondary {
   background: transparent;
   border: 2px solid var(--ink);
-  color: var(--paper);
-  -webkit-text-stroke: 1.5px var(--ink);
+  color: var(--ink);
+  -webkit-text-stroke: 0;
 }
 
 .top-bar {
@@ -450,15 +450,24 @@ select {
 }
 
 @media (prefers-color-scheme: dark) {
-  .page-body.reader-mode {
+  :root:not([data-theme="light"]) .page-body.reader-mode {
     background: #0e0e0e;
     color: #f2f2f2;
   }
-  .page-body.reader-mode h1,
-  .page-body.reader-mode .part-label {
+  :root:not([data-theme="light"]) .page-body.reader-mode h1,
+  :root:not([data-theme="light"]) .page-body.reader-mode .part-label {
     color: #f2f2f2;
     border-bottom-color: #f2f2f2;
   }
+}
+:root[data-theme="dark"] .page-body.reader-mode {
+  background: #0e0e0e;
+  color: #f2f2f2;
+}
+:root[data-theme="dark"] .page-body.reader-mode h1,
+:root[data-theme="dark"] .page-body.reader-mode .part-label {
+  color: #f2f2f2;
+  border-bottom-color: #f2f2f2;
 }
 
 @media (max-width: 480px) {
@@ -1272,7 +1281,7 @@ select {
   width: 1.75rem;
   height: 1.75rem;
   border: 1px solid var(--line);
-  border-radius: 2px;
+  border-radius: 0;
   overflow: hidden;
   cursor: pointer;
 }
@@ -1306,8 +1315,8 @@ select {
   top: 0;
   right: 0;
   border: none;
-  background: rgba(0, 0, 0, 0.45);
-  color: #fff;
+  background: var(--ink);
+  color: var(--accent-ink);
   font-size: 0.55rem;
   line-height: 1;
   padding: 0.05rem 0.15rem;
@@ -1947,7 +1956,7 @@ select {
 
 .pixel-art-canvas {
   border: 2px solid color-mix(in srgb, var(--page-ink) 18%, transparent);
-  border-radius: 2px;
+  border-radius: 0;
   overflow: hidden;
   image-rendering: pixelated;
 }
@@ -2370,7 +2379,7 @@ select {
 
 .template-mood-swatches span {
   flex: 1;
-  border-radius: 4px;
+  border-radius: 0;
   border: 1px solid color-mix(in srgb, var(--ink) 12%, transparent);
 }
 
@@ -2461,7 +2470,7 @@ select {
   width: 1.5rem;
   height: 1.5rem;
   border: 2px solid var(--line);
-  border-radius: 4px;
+  border-radius: 0;
   cursor: pointer;
   padding: 0;
 }
