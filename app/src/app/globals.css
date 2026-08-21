@@ -2600,3 +2600,158 @@ select {
   padding: 0.4rem;
   resize: vertical;
 }
+
+/* ─── Mobile & Tablet responsive overrides ────────────────────────────────── */
+
+/* Tablet (≤ 768px) */
+@media (max-width: 768px) {
+  /* Nav: shrink padding and tighten controls */
+  .top-bar {
+    padding: 0.6rem 1rem;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+    font-size: 0.8rem;
+  }
+  .top-bar .controls {
+    gap: 0.4rem;
+    flex-wrap: wrap;
+  }
+  .top-bar .controls a,
+  .top-bar .controls button {
+    padding: 0.2em 0.55em;
+    font-size: 0.78rem;
+  }
+
+  /* Studio: stack earlier, tighter padding */
+  .studio-shell {
+    padding: 1rem 0.85rem 3rem;
+  }
+  .studio-header {
+    flex-direction: column;
+    gap: 0.75rem;
+  }
+  .studio-header-actions {
+    width: 100%;
+  }
+  .studio-header-actions .btn {
+    flex: 1;
+    text-align: center;
+  }
+
+  /* Explore grid: allow cards as narrow as 200px */
+  .explore-grid {
+    grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+  }
+  .explore-container {
+    padding: 0 0.85rem;
+  }
+}
+
+/* Mobile (≤ 640px) */
+@media (max-width: 640px) {
+  /* Nav: single-line logo + controls, smaller text */
+  .top-bar {
+    padding: 0.5rem 0.75rem;
+    font-size: 0.76rem;
+  }
+  .top-bar .controls a,
+  .top-bar .controls button {
+    padding: 0.18em 0.45em;
+  }
+
+  /* Studio: hide preview panel on mobile — editor only */
+  .studio-preview {
+    display: none;
+  }
+  .studio-body {
+    grid-template-columns: 1fr;
+  }
+  .studio-tabs {
+    overflow-x: auto;
+    flex-wrap: nowrap;
+    -webkit-overflow-scrolling: touch;
+    scrollbar-width: none;
+  }
+  .studio-tabs::-webkit-scrollbar {
+    display: none;
+  }
+  .studio-tab {
+    white-space: nowrap;
+    flex-shrink: 0;
+  }
+  .studio-tab-panel {
+    padding: 0.75rem;
+  }
+  .studio-shell {
+    padding: 0.75rem 0 3rem;
+  }
+
+  /* Explore grid: single column on narrow phones */
+  .explore-grid {
+    grid-template-columns: 1fr;
+  }
+  .explore-container {
+    padding: 0 0.75rem;
+  }
+
+  /* AIM messages: full-width, shorter thread */
+  .aim-window {
+    max-width: 100%;
+    border-left: none;
+    border-right: none;
+    box-shadow: none;
+  }
+  .aim-thread {
+    max-height: 40vh;
+  }
+  .aim-page {
+    padding: 0;
+  }
+
+  /* Asks: tighter card padding */
+  .ask-card {
+    padding: 0.75rem;
+  }
+  .ask-meta {
+    font-size: 0.78rem;
+  }
+
+  /* Studio fieldsets: full-width */
+  .studio-pixel-size-row {
+    grid-template-columns: 1fr 1fr;
+  }
+  .studio-template-grid {
+    grid-template-columns: repeat(auto-fill, minmax(120px, 1fr));
+  }
+
+  /* WonderStrip: scroll on mobile */
+  .wonder-strip {
+    overflow-x: auto;
+    flex-wrap: nowrap;
+    -webkit-overflow-scrolling: touch;
+    scrollbar-width: none;
+    padding-bottom: 0.25rem;
+  }
+  .wonder-strip::-webkit-scrollbar {
+    display: none;
+  }
+}
+
+/* Small phones (≤ 400px) */
+@media (max-width: 400px) {
+  .top-bar {
+    font-size: 0.72rem;
+  }
+  /* Nav controls: very tight */
+  .top-bar .controls a,
+  .top-bar .controls button {
+    padding: 0.15em 0.35em;
+  }
+  /* Stack buttons fully */
+  .studio-header-actions {
+    flex-direction: column;
+  }
+  .aim-thread {
+    max-height: 35vh;
+  }
+}
