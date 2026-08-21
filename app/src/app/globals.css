@@ -156,10 +156,17 @@ select {
 .field input,
 .field textarea {
   padding: 0.6rem 0.75rem;
-  border: 1px solid var(--line);
+  border: 1.5px solid var(--ink);
   border-radius: var(--radius);
-  background: var(--paper-raised);
+  background: var(--paper);
   color: var(--ink);
+  transition: box-shadow 0.1s;
+}
+
+.field input:focus,
+.field textarea:focus {
+  outline: none;
+  box-shadow: 3px 3px 0 var(--ink);
 }
 
 .field textarea {
@@ -227,6 +234,12 @@ select {
   border: 2px solid var(--ink);
   color: var(--ink);
   -webkit-text-stroke: 0;
+}
+
+.btn.secondary:hover {
+  background: var(--ink);
+  color: var(--paper);
+  filter: none;
 }
 
 .top-bar {
@@ -298,12 +311,11 @@ select {
 
 .top-bar .controls a,
 .top-bar .controls button {
-  color: var(--paper);
-  -webkit-text-stroke: 1.5px var(--ink);
-  paint-order: stroke fill;
+  color: var(--ink);
+  -webkit-text-stroke: 0;
   text-decoration: none;
   background: none;
-  border: 1px solid var(--line);
+  border: 1.5px solid transparent;
   border-radius: 0;
   padding: 0.25em 0.65em;
   font: inherit;
@@ -312,6 +324,19 @@ select {
   text-transform: uppercase;
   letter-spacing: 0.04em;
   cursor: pointer;
+  transition: background 0.1s, border-color 0.1s;
+}
+
+.top-bar .controls a:hover,
+.top-bar .controls button:hover {
+  background: var(--accent-wash);
+  border-color: var(--ink);
+}
+
+.top-bar .controls a:active,
+.top-bar .controls button:active {
+  background: var(--ink);
+  color: var(--paper);
 }
 
 .nav-settings-link {
@@ -350,15 +375,20 @@ select {
   background: none;
   border: 2px solid var(--ink);
   border-radius: 0;
-  color: var(--paper);
-  -webkit-text-stroke: 1px var(--ink);
-  paint-order: stroke fill;
+  color: var(--ink);
+  -webkit-text-stroke: 0;
   font-family: "Vandal Blow", "Bebas Neue", "Impact", sans-serif;
   font-size: 1.1rem;
   padding: 0.3rem 0.65rem;
   cursor: pointer;
   min-height: 44px;
   line-height: 1;
+  transition: background 0.1s;
+}
+
+.nav-hamburger:hover {
+  background: var(--ink);
+  color: var(--paper);
 }
 
 .nav-hamburger-badge {
@@ -386,9 +416,8 @@ select {
   display: block;
   width: 100%;
   padding: 0.75rem 1rem;
-  color: var(--paper);
-  -webkit-text-stroke: 1.5px var(--ink);
-  paint-order: stroke fill;
+  color: var(--ink);
+  -webkit-text-stroke: 0;
   text-decoration: none;
   background: none;
   border: none;
@@ -400,6 +429,12 @@ select {
   text-align: left;
   cursor: pointer;
   min-height: 44px;
+  transition: background 0.1s;
+}
+
+.nav-drawer-panel a:hover,
+.nav-drawer-panel button:hover {
+  background: var(--accent-wash);
 }
 
 .nav-drawer-panel a:last-child,
@@ -1922,9 +1957,14 @@ button,
   display: grid;
   gap: 0.15rem;
   padding: 0.75rem 1rem;
-  border: 1px solid var(--line);
+  border: 1.5px solid var(--ink);
   border-radius: var(--radius);
   background: var(--paper-raised);
+  transition: box-shadow 0.1s;
+}
+
+.home-explore-list li:hover {
+  box-shadow: 3px 3px 0 var(--ink);
 }
 
 .home-explore-list a {
@@ -1954,7 +1994,7 @@ button,
   display: grid;
   gap: 0.2rem;
   padding: 1rem;
-  border: 1px solid var(--line);
+  border: 1.5px solid var(--ink);
   border-radius: var(--radius);
   background: var(--paper-raised);
 }
@@ -1969,9 +2009,8 @@ button,
   font-weight: 400;
   font-size: 1.3rem;
   text-transform: uppercase;
-  color: var(--paper);
-  -webkit-text-stroke: 1.5px var(--ink);
-  paint-order: stroke fill;
+  color: var(--ink);
+  -webkit-text-stroke: 0;
 }
 
 .splash-step-desc {
@@ -1992,17 +2031,21 @@ button,
 
 .splash-feature-card {
   padding: 1.1rem;
-  border: 1px solid var(--line);
+  border: 1.5px solid var(--ink);
   border-radius: var(--radius);
   background: var(--paper-raised);
+  transition: box-shadow 0.1s;
+}
+
+.splash-feature-card:hover {
+  box-shadow: 3px 3px 0 var(--ink);
 }
 
 .splash-feature-card h3 {
   margin: 0 0 0.4rem;
   font-size: 1.25rem;
-  color: var(--paper);
-  -webkit-text-stroke: 1.5px var(--ink);
-  paint-order: stroke fill;
+  color: var(--ink);
+  -webkit-text-stroke: 0;
 }
 
 .splash-feature-card p {
