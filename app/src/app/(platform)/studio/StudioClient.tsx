@@ -216,7 +216,7 @@ export function StudioClient({
     );
   };
 
-  /** Publishes the saved draft without changing the editor's working state. */
+  /** Publishes the saved draft and updates the editor state to the newly published document. */
   const publishExistingDraft = () => {
     runAction("Draft published live.", () =>
       publishDraftAction().then((r) => {
