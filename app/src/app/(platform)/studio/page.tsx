@@ -1,3 +1,4 @@
+import "../../studio.css";
 import { redirect } from "next/navigation";
 import { listFriends } from "@/lib/friends";
 import { listApprovedGuestbookEntries } from "@/lib/guestbook";

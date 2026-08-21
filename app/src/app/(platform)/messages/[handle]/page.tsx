@@ -1,3 +1,4 @@
+import "../../../messages.css";
 import { notFound, redirect } from "next/navigation";
 import Link from "next/link";
 import { findUserByHandle } from "@/lib/auth";
