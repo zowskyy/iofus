@@ -182,6 +182,14 @@ export function listAsksByUser(askerId: string): Ask[] {
 }
 
 /** Fetch a single ask by id, applying the same anonymity rules as listAsksForViewer. Returns null when not found. */
+/** Returns the raw asker_id for *askId* without masking — for internal use (e.g. sending notifications). */
+export function getAskerIdByAskId(askId: string): string | null {
+  const row = getDb()
+    .prepare("SELECT asker_id FROM asks WHERE id = ?")
+    .get(askId) as { asker_id: string } | undefined;
+  return row?.asker_id ?? null;
+}
+
 export function getAsk(askId: string, viewerId: string | null): Ask | null {
   const row = getDb().prepare(`${SELECT_ASK} WHERE a.id = ?`).get(askId) as unknown as AskRow | undefined;
   return row ? rowToAsk(row, viewerId) : null;

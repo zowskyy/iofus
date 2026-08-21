@@ -9,6 +9,14 @@ import { getDb } from "./db";
 
 export class FriendRequestError extends Error {}
 
+/** Returns the requester_id for a pending friend request by its *requestId*, or null when not found. For internal use (e.g. sending notifications). */
+export function getRequesterIdByRequestId(requestId: string): string | null {
+  const row = getDb()
+    .prepare("SELECT requester_id FROM friend_links WHERE id = ?")
+    .get(requestId) as { requester_id: string } | undefined;
+  return row?.requester_id ?? null;
+}
+
 /** Returns true when a block row exists between *a* and *b* in either direction. */
 function isBlocked(db: ReturnType<typeof getDb>, a: string, b: string): boolean {
   const row = db

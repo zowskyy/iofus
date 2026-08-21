@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { getCurrentUser } from "@/lib/session";
-import { ensureSeedRings, getWebRingBySlug, hasPendingJoinRequest, isRingMember, listRingMembers } from "@/lib/webRings";
+import { getWebRingBySlug, hasPendingJoinRequest, isRingMember, listRingMembers } from "@/lib/webRings";
 import { joinRingAction, leaveRingAction } from "@/app/(platform)/rings/[slug]/join/actions";
 
 interface Props {
@@ -10,8 +10,6 @@ interface Props {
 }
 
 export default async function ExploreRingPage({ params, searchParams }: Props) {
-  ensureSeedRings();
-
   const { slug } = await params;
   const { at } = await searchParams;
 
