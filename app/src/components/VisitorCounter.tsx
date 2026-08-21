@@ -11,13 +11,6 @@ export function VisitorCounter({ pageOwnerId }: Props) {
   const [count, setCount] = useState<number | null>(null);
 
   useEffect(() => {
-    let visitorToken: string | undefined;
-    try {
-      visitorToken = localStorage.getItem("iofus_visitor") ?? undefined;
-    } catch {
-      // localStorage may be unavailable in some contexts
-    }
-
     fetch("/api/visit", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -27,18 +20,8 @@ export function VisitorCounter({ pageOwnerId }: Props) {
       .then((data) => {
         if (!data) return;
         setCount(data.count as number);
-        // Store token from server if we got a new one
-        if (data.visitorToken) {
-          try {
-            localStorage.setItem("iofus_visitor", data.visitorToken as string);
-          } catch {
-            // ignore
-          }
-        }
       })
       .catch(() => {/* ignore network errors */});
-
-    void visitorToken; // suppress unused warning
   }, [pageOwnerId]);
 
   if (count === null) return null;
