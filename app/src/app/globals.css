@@ -1,6 +1,13 @@
-/* Design tokens match the iofus plan/pitch identity: warm parchment,
-   ink-plum text, coral accent, moss for safe/success states. Same three
-   type roles too (Fraunces display, Karla body, Space Mono utility). */
+@font-face {
+  font-family: "Bebas Neue";
+  font-style: normal;
+  font-weight: 400;
+  font-display: swap;
+  src: url("/fonts/BebasNeue-Regular.ttf") format("truetype");
+}
+
+/* Design tokens: black/white minimalist graffiti — white paper, black marks,
+   Bebas Neue condensed headings, zero border radius, hard edges throughout. */
 
 :root {
   --paper:        #ffffff;
