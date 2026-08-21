@@ -7,9 +7,9 @@ import {
   AskError,
   closeAsk,
   createAsk,
+  getAskerIdByAskId,
   setReachableForAsks,
 } from "@/lib/asks";
-import { getDb } from "@/lib/db";
 import { createNotification } from "@/lib/notifications";
 import { checkRateLimit, RateLimitError, rateLimitActorKey } from "@/lib/rateLimit";
 import { getCurrentUser } from "@/lib/session";
@@ -64,9 +64,9 @@ export async function answerAskAction(
   try {
     const key = await rateLimitActorKey("ask-answer", viewer.id);
     checkRateLimit(key, 20);
-    const askRow = getDb().prepare("SELECT asker_id FROM asks WHERE id = ?").get(askId) as { asker_id: string } | undefined;
+    const askerId = getAskerIdByAskId(askId);
     answerAsk(askId, viewer.id, body);
-    if (askRow) createNotification(askRow.asker_id, "ask_answered", viewer.handle, { askId });
+    if (askerId) createNotification(askerId, "ask_answered", viewer.handle, { askId });
   } catch (e) {
     return handleAskError(e);
   }

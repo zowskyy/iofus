@@ -2,6 +2,7 @@ import { DatabaseSync } from "node:sqlite";
 import { readFileSync } from "node:fs";
 import { join, dirname } from "node:path";
 import { fileURLToPath } from "node:url";
+import { randomUUID } from "node:crypto";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 
@@ -112,6 +113,80 @@ function migrate(db: DatabaseSync): void {
   `);
   if (!indexExists(db, "idx_stamps_owner")) {
     db.exec("CREATE INDEX IF NOT EXISTS idx_stamps_owner ON page_stamps(page_owner_id, created_at)");
+  }
+
+  seedWebRings(db);
+  seedCollections(db);
+  seedSharedThemes(db);
+}
+
+/** Seed the default web rings if none exist yet. Idempotent. */
+function seedWebRings(db: DatabaseSync): void {
+  const count = db.prepare("SELECT COUNT(*) as c FROM web_rings").get() as { c: number };
+  if (count.c > 0) return;
+  const now = new Date().toISOString();
+  const rings = [
+    { slug: "soft-web-webring", name: "Soft Web Webring", description: "Gentle pages, warm colors, quiet corners." },
+    { slug: "pixel-tavern-ring", name: "Pixel Tavern Ring", description: "Retro vibes, monospace energy, late-night pages." },
+    { slug: "creative-coders", name: "Creative Coders", description: "People making things and writing about the process." },
+  ];
+  const stmt = db.prepare(
+    "INSERT INTO web_rings (id, slug, name, description, creator_user_id, is_open, created_at) VALUES (?, ?, ?, ?, NULL, 1, ?)",
+  );
+  for (const ring of rings) {
+    stmt.run(randomUUID(), ring.slug, ring.name, ring.description, now);
+  }
+}
+
+/** Seed the default collections if none exist yet. Idempotent. */
+function seedCollections(db: DatabaseSync): void {
+  const count = db.prepare("SELECT COUNT(*) as c FROM collections").get() as { c: number };
+  if (count.c > 0) return;
+  const now = new Date().toISOString();
+  const collections = [
+    { slug: "freshly-painted", title: "Freshly Painted", description: "Pages recently redecorated and worth a look." },
+    { slug: "quiet-corners", title: "Quiet Corners", description: "Small, personal spaces with a calm mood." },
+  ];
+  const stmt = db.prepare(
+    "INSERT INTO collections (id, slug, title, description, created_at) VALUES (?, ?, ?, ?, ?)",
+  );
+  for (const c of collections) {
+    stmt.run(randomUUID(), c.slug, c.title, c.description, now);
+  }
+}
+
+/** Seed the default shared themes if none exist yet. Idempotent. */
+function seedSharedThemes(db: DatabaseSync): void {
+  const count = db.prepare("SELECT COUNT(*) as c FROM shared_themes").get() as { c: number };
+  if (count.c > 0) return;
+  const now = new Date().toISOString();
+  const seeds = [
+    { name: "Y2K Chrome", description: "Glossy panels, cool blues, reflective accents.", tags: ["y2k", "glossy"], template: "chrome-angel", accent: "#0284c7", background: "#dbeafe", fontStyle: "sans" },
+    { name: "Scene Neon", description: "Hot pink and electric purple nightlife energy.", tags: ["scene", "neon"], template: "chrome-angel", accent: "#ff4db8", background: "#160a23", fontStyle: "sans" },
+    { name: "Pixel RPG Tavern", description: "Retro dungeon menu vibes.", tags: ["pixel", "rpg"], template: "pixel-tavern", accent: "#c7314b", background: "#241b2e", fontStyle: "mono" },
+    { name: "Soft Angelcore", description: "Dreamy pastels and gentle serif type.", tags: ["soft", "angelcore"], template: "soft-web", accent: "#e0526b", background: "#f6ecec", fontStyle: "serif" },
+    { name: "CRT Terminal", description: "Green phosphor on near-black.", tags: ["crt", "terminal"], template: "dark-zine", accent: "#7fbe95", background: "#0e0e0e", fontStyle: "mono" },
+    { name: "Indie Devlog", description: "Clean, readable, maker-focused.", tags: ["devlog", "minimal"], template: "clean-portfolio", accent: "#2563eb", background: "#ffffff", fontStyle: "sans" },
+    { name: "Zine Punk", description: "High contrast cut-and-paste energy.", tags: ["zine", "punk"], template: "dark-zine", accent: "#f1eaee", background: "#0e0e0e", fontStyle: "serif" },
+    { name: "Minimal Reader", description: "Maximum readability, minimum noise.", tags: ["minimal", "reader"], template: "start-simple", accent: "#241b2e", background: "#f1ede9", fontStyle: "sans" },
+  ];
+  const stmt = db.prepare(
+    `INSERT INTO shared_themes (id, creator_user_id, name, description, tags_json, version, theme_json, created_at, updated_at)
+     VALUES (?, NULL, ?, ?, ?, 1, ?, ?, ?)`,
+  );
+  for (const seed of seeds) {
+    const themeData = {
+      template: seed.template,
+      accent: seed.accent,
+      background: seed.background,
+      density: "comfortable",
+      fontStyle: seed.fontStyle,
+      reduceMotion: false,
+      customCss: "",
+      customCssEnabled: false,
+      attribution: undefined,
+    };
+    stmt.run(randomUUID(), seed.name, seed.description, JSON.stringify(seed.tags), JSON.stringify(themeData), now, now);
   }
 }
 

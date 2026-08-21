@@ -1,10 +1,9 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
 import { getCurrentUser } from "@/lib/session";
-import { ensureSeedRings, getUserOwnedRings, listUserWebRings, listWebRings } from "@/lib/webRings";
+import { getUserOwnedRings, listUserWebRings, listWebRings } from "@/lib/webRings";
 
 export default async function RingsPage() {
-  ensureSeedRings();
   const viewer = await getCurrentUser();
   if (!viewer) redirect("/login?next=/rings");
 

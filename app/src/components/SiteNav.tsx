@@ -1,21 +1,16 @@
 import Link from "next/link";
 import { getCurrentUser } from "@/lib/session";
 import { isModerator } from "@/lib/moderation";
-import { countIncomingRequests } from "@/lib/friends";
-import { countPendingGuestbookEntries } from "@/lib/guestbook";
-import { countUnreadMessages } from "@/lib/messages";
-import { countUnread } from "@/lib/notifications";
+import { getNavCounts } from "@/lib/navCounts";
 import { NavDrawer } from "./NavDrawer";
 
 /** Server component that renders the site navigation bar with pending-activity badges for the signed-in user. */
 export async function SiteNav() {
   const viewer = await getCurrentUser();
   const moderator = viewer ? isModerator(viewer.id) : false;
-  const pendingCount = viewer
-    ? countIncomingRequests(viewer.id) + countPendingGuestbookEntries(viewer.id)
-    : 0;
-  const unreadMessages = viewer ? countUnreadMessages(viewer.id) : 0;
-  const unreadNotifications = viewer ? countUnread(viewer.id) : 0;
+  const { pendingCount, unreadMessages, unreadNotifications } = viewer
+    ? getNavCounts(viewer.id)
+    : { pendingCount: 0, unreadMessages: 0, unreadNotifications: 0 };
 
   const rightLinks = (
     <>

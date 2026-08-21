@@ -1,7 +1,7 @@
 import "../../explore.css";
 import Link from "next/link";
 import { ExplorePageList } from "@/components/explore/ExplorePageList";
-import { ensureSeedCollections, listCollections } from "@/lib/collections";
+import { listCollections } from "@/lib/collections";
 import {
   countDecoratedToday,
   listByTemplate,
@@ -9,7 +9,7 @@ import {
   listRecentlyPublished,
   searchPages,
 } from "@/lib/discovery";
-import { ensureSeedRings, listWebRings } from "@/lib/webRings";
+import { listWebRings } from "@/lib/webRings";
 import { TEMPLATE_OPTIONS } from "@/lib/templates";
 
 interface Props {
@@ -18,9 +18,6 @@ interface Props {
 
 /** Server page for the public Explore/discovery feed, with tag and text search. */
 export default async function ExplorePage({ searchParams }: Props) {
-  ensureSeedRings();
-  ensureSeedCollections();
-
   const { q } = await searchParams;
   const query = q?.trim() ?? "";
   const searchResults = query ? searchPages(query) : [];

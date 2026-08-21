@@ -2,7 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
-import { getDb } from "@/lib/db";
+import { findUserByHandle } from "@/lib/auth";
 import { createNotification } from "@/lib/notifications";
 import { getCurrentUser } from "@/lib/session";
 import {
@@ -67,8 +67,8 @@ export async function removeMemberAction(slug: string, memberHandle: string): Pr
   const ring = getWebRingBySlug(slug);
   if (!ring || ring.creatorUserId !== viewer!.id) return;
 
-  const userRow = getDb().prepare("SELECT id FROM users WHERE handle = ?").get(memberHandle) as { id: string } | undefined;
-  if (userRow) leaveWebRing(ring.id, userRow.id);
+  const user = findUserByHandle(memberHandle);
+  if (user) leaveWebRing(ring.id, user.id);
   revalidatePath(`/rings/${slug}/manage`);
 }
 

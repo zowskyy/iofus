@@ -53,7 +53,6 @@ export function ensureSeedSharedThemes(): void {
 }
 
 export function listSharedThemes(limit = 50): SharedTheme[] {
-  ensureSeedSharedThemes();
   const db = getDb();
   const rows = db
     .prepare(

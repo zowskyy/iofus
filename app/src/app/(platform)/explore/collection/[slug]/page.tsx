@@ -1,14 +1,12 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { ensureSeedCollections, getCollectionBySlug, listCollectionPages } from "@/lib/collections";
+import { getCollectionBySlug, listCollectionPages } from "@/lib/collections";
 
 interface Props {
   params: Promise<{ slug: string }>;
 }
 
 export default async function ExploreCollectionPage({ params }: Props) {
-  ensureSeedCollections();
-
   const { slug } = await params;
   const collection = getCollectionBySlug(slug);
   if (!collection) notFound();

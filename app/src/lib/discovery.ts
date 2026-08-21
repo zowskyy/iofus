@@ -76,8 +76,23 @@ export function listByTag(tag: string, limit = 24): DiscoverablePage[] {
 }
 
 export function listByTemplate(template: string, limit = 24): DiscoverablePage[] {
-  const pages = listRecentlyPublished(200);
-  return pages.filter((p) => p.template === template).slice(0, limit);
+  const db = getDb();
+  const rows = db
+    .prepare(
+      `SELECT u.handle, pd.document_json, pd.updated_at
+       FROM page_documents pd
+       JOIN users u ON u.id = pd.user_id
+       WHERE ${DISCOVERABLE_WHERE}
+         AND json_extract(pd.document_json, '$.theme.template') = ?
+       ORDER BY pd.updated_at DESC
+       LIMIT ?`,
+    )
+    .all(template, limit) as { handle: string; document_json: string; updated_at: string }[];
+
+  return rows.map((r) => {
+    const meta = parseDocMeta(r.document_json);
+    return { handle: r.handle, displayName: meta.displayName || r.handle, updatedAt: r.updated_at, tags: meta.tags, template: meta.template };
+  });
 }
 
 export function getRandomPage(): DiscoverablePage | null {
