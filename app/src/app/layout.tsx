@@ -1,6 +1,7 @@
 import type { Metadata, Viewport } from "next";
 import "./globals.css";
 import { PwaRegistrar } from "@/components/PwaRegistrar";
+import { KeyboardShortcuts } from "@/components/KeyboardShortcuts";
 
 export const metadata: Metadata = {
   title: "iofus",
@@ -36,6 +37,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
       <body>
         {children}
         <PwaRegistrar />
+        <KeyboardShortcuts />
       </body>
     </html>
   );

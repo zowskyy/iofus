@@ -2,6 +2,7 @@ import Link from "next/link";
 import { ExplorePageList } from "@/components/explore/ExplorePageList";
 import { ensureSeedCollections, listCollections } from "@/lib/collections";
 import {
+  countDecoratedToday,
   listByTemplate,
   listPopularTags,
   listRecentlyPublished,
@@ -27,6 +28,7 @@ export default async function ExplorePage({ searchParams }: Props) {
   const popularTags = listPopularTags(24);
   const collections = listCollections();
   const rings = listWebRings();
+  const decoratedToday = countDecoratedToday();
 
   const templateSections = TEMPLATE_OPTIONS.map((t) => ({
     ...t,
@@ -43,6 +45,13 @@ export default async function ExplorePage({ searchParams }: Props) {
         </p>
       </header>
 
+      {decoratedToday > 0 && (
+        <div className="explore-ambient" aria-live="polite">
+          <span className="explore-ambient-dot" aria-hidden="true" />
+          {decoratedToday} {decoratedToday === 1 ? "page" : "pages"} redecorated in the last 24h
+        </div>
+      )}
+
       <section className="explore-toolbar" aria-label="Search and surprise">
         <form className="explore-search" action="/explore" method="get">
           <label className="explore-search-label" htmlFor="explore-q">Search pages</label>
@@ -58,9 +67,14 @@ export default async function ExplorePage({ searchParams }: Props) {
             <button type="submit" className="btn">Search</button>
           </div>
         </form>
-        <Link href="/explore/random" className="btn secondary explore-random-btn">
-          Surprise me
-        </Link>
+        <div style={{ display: "flex", gap: "0.5rem", flexWrap: "wrap" }}>
+          <Link href="/explore/random" className="btn secondary explore-random-btn">
+            Surprise me
+          </Link>
+          <Link href="/wander" className="btn secondary explore-random-btn">
+            Wander mode
+          </Link>
+        </div>
       </section>
 
       {query && (

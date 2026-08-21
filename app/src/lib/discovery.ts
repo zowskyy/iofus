@@ -97,6 +97,38 @@ export function getRandomPage(): DiscoverablePage | null {
   return { handle: row.handle, displayName: meta.displayName || row.handle, updatedAt: row.updated_at, tags: meta.tags, template: meta.template };
 }
 
+/** Returns *limit* random discoverable pages — used for Wander mode. */
+export function listRandomPages(limit = 20): DiscoverablePage[] {
+  const db = getDb();
+  const rows = db
+    .prepare(
+      `SELECT u.handle, pd.document_json, pd.updated_at
+       FROM page_documents pd
+       JOIN users u ON u.id = pd.user_id
+       WHERE ${DISCOVERABLE_WHERE}
+       ORDER BY RANDOM()
+       LIMIT ?`,
+    )
+    .all(limit) as { handle: string; document_json: string; updated_at: string }[];
+  return rows.map((r) => {
+    const meta = parseDocMeta(r.document_json);
+    return { handle: r.handle, displayName: meta.displayName || r.handle, updatedAt: r.updated_at, tags: meta.tags, template: meta.template };
+  });
+}
+
+/** Count of pages updated in the last 24 hours — ambient social signal. */
+export function countDecoratedToday(): number {
+  const since = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString();
+  const row = getDb()
+    .prepare(
+      `SELECT COUNT(*) as n FROM page_documents pd
+       JOIN users u ON u.id = pd.user_id
+       WHERE ${DISCOVERABLE_WHERE} AND pd.updated_at >= ?`,
+    )
+    .get(since) as { n: number };
+  return row.n;
+}
+
 export function listPopularTags(limit = 20): { tag: string; count: number }[] {
   const db = getDb();
   const rows = db
