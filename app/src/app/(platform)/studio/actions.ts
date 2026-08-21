@@ -3,6 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { getCurrentUser } from "@/lib/session";
+import { checkRateLimit, rateLimitActorKey } from "@/lib/rateLimit";
 import { validateProfileCustomCss } from "@/lib/cssScope";
 import {
   discardDraft,
@@ -50,6 +51,8 @@ export async function saveDraftAction(documentJson: string): Promise<StudioActio
   const viewer = await getCurrentUser();
   if (!viewer) redirect("/login?next=/studio");
 
+  checkRateLimit(await rateLimitActorKey("studio:save", viewer.id), 30);
+
   try {
     const parsed = JSON.parse(documentJson) as unknown;
     const document = parsePageDocument(parsed);
@@ -73,6 +76,8 @@ export async function saveDraftAction(documentJson: string): Promise<StudioActio
 export async function saveAndPublishAction(documentJson: string): Promise<StudioActionResult> {
   const viewer = await getCurrentUser();
   if (!viewer) redirect("/login?next=/studio");
+
+  checkRateLimit(await rateLimitActorKey("studio:save", viewer.id), 30);
 
   try {
     const parsed = JSON.parse(documentJson) as unknown;
@@ -210,6 +215,8 @@ export async function exportPageAction(): Promise<StudioActionResult> {
 export async function importPageAction(json: string): Promise<StudioActionResult> {
   const viewer = await getCurrentUser();
   if (!viewer) redirect("/login?next=/studio");
+
+  checkRateLimit(await rateLimitActorKey("studio:save", viewer.id), 30);
 
   try {
     let parsed: unknown;
