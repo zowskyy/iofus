@@ -32,12 +32,14 @@ export async function SiteNav() {
 
   return (
     <div className="top-bar">
-      <Link href="/" className="mono" style={{ color: "var(--ink)", textDecoration: "none", fontWeight: 700 }}>
-        ✦ IOFUS
-      </Link>
-      <nav className="controls">
+      <nav className="controls controls-left">
         <Link href="/explore">Explore</Link>
         <Link href="/make">Make</Link>
+      </nav>
+      <Link href="/" className="top-bar-logo" aria-label="iofus home">
+        <img src="/logo.png" alt="iofus" className="site-logo" />
+      </Link>
+      <nav className="controls controls-right">
         <Link href="/policy">Policy</Link>
         {viewer ? (
           <>
