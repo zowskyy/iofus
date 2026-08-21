@@ -1953,6 +1953,14 @@ function PublishTab({
             />
           </label>
         </div>
+        <div className="studio-publish-row" style={{ marginTop: "0.5rem" }}>
+          <a href="/api/export" className="btn secondary" download="my-page.html">
+            Download as HTML
+          </a>
+        </div>
+        <p className="studio-hint" style={{ marginTop: "0.25rem" }}>
+          Self-contained static page you can host anywhere.
+        </p>
       </fieldset>
     </>
   );
