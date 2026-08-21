@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { getCurrentUser } from "@/lib/session";
+import { getFriendActivityFeed, type FeedItem } from "@/lib/activityFeed";
 
 const FEATURES = [
   {
@@ -46,6 +47,7 @@ export default async function HomePage() {
   const viewer = await getCurrentUser();
 
   if (viewer) {
+    const feedItems = getFriendActivityFeed(viewer.id, 5);
     return (
       <main className="container">
         <p className="mono" style={{ color: "var(--accent)", fontSize: "0.75rem", letterSpacing: "0.1em", textTransform: "uppercase" }}>
@@ -66,6 +68,32 @@ export default async function HomePage() {
             Ask the crew
           </Link>
         </div>
+
+        {feedItems.length > 0 && (
+          <section style={{ marginTop: "2rem" }}>
+            <h2 style={{ fontSize: "1rem", marginBottom: "0.75rem" }}>
+              Recent from friends{" "}
+              <Link href="/feed" style={{ fontSize: "0.8rem", fontWeight: 400, color: "var(--ink-soft)" }}>
+                See all
+              </Link>
+            </h2>
+            <ol style={{ listStyle: "none", padding: 0, margin: 0 }}>
+              {feedItems.map((item: FeedItem, i: number) => (
+                <li key={i} style={{ padding: "0.4rem 0", borderBottom: "1px solid var(--rule)", fontSize: "0.9rem" }}>
+                  <Link href={`/@${item.actorHandle}`} style={{ fontWeight: 600 }}>
+                    @{item.actorHandle}
+                  </Link>{" "}
+                  <Link href={item.href} style={{ color: "var(--ink-soft)" }}>
+                    {item.kind === "page_decorated" && "redecorated their page"}
+                    {item.kind === "blog_post" && `posted: ${item.title ?? ""}`}
+                    {item.kind === "devlog_entry" && "added a devlog entry"}
+                    {item.kind === "guestbook_signed" && `signed @${item.targetHandle}'s guestbook`}
+                  </Link>
+                </li>
+              ))}
+            </ol>
+          </section>
+        )}
       </main>
     );
   }
