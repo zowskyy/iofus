@@ -43,7 +43,7 @@ export function getFriendActivityFeed(viewerId: string, limit = 40): FeedItem[] 
        JOIN users u ON u.id = pd.user_id
        WHERE pd.user_id IN (${placeholders}) AND pd.is_published = 1`,
     )
-    .all(...friendIds) as PageDocRow[];
+    .all(...friendIds) as unknown as PageDocRow[];
 
   // Load guestbook entries authored by friends (approved only)
   const guestbookRows = db
@@ -55,7 +55,7 @@ export function getFriendActivityFeed(viewerId: string, limit = 40): FeedItem[] 
        ORDER BY ge.created_at DESC
        LIMIT 200`,
     )
-    .all(...friendIds) as GuestbookRow[];
+    .all(...friendIds) as unknown as GuestbookRow[];
 
   const items: FeedItem[] = [];
 

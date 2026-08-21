@@ -46,12 +46,12 @@ export async function GET(
   );
 
   const lastBuildDate =
-    entries.length > 0 ? toRfc822(entries[0].date) : toRfc822(new Date().toISOString());
+    entries.length > 0 ? toRfc822(entries[0]!.date) : toRfc822(new Date().toISOString());
 
   const items = entries
     .map((entry, i) => {
       const guid = `${base}/@${handle}/devlog#${escapeXml(entry.id)}`;
-      const title = escapeXml(entry.body.split("\n")[0].slice(0, 80));
+      const title = escapeXml((entry.body.split("\n")[0] ?? "").slice(0, 80));
       return `    <item>
       <title>${title || `Devlog entry ${i + 1}`}</title>
       <link>${channelLink}</link>

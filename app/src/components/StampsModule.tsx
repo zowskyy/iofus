@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { ALLOWED_STAMPS, type StampEntry } from "@/lib/stamps";
+import { ALLOWED_STAMPS, type StampEntry } from "@/lib/stampsShared";
 
 interface Props {
   pageOwnerId: string;

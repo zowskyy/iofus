@@ -1,16 +1,7 @@
 import { randomUUID } from "node:crypto";
 import { getDb } from "./db";
-
-export const ALLOWED_STAMPS: string[] = [
-  "⭐", "🔥", "💜", "🌙", "🌸", "🎸", "🦋", "🌊", "✨", "🎨", "🍄", "👾",
-];
-
-export interface StampEntry {
-  id: string;
-  stamperHandle: string | null;
-  stampEmoji: string;
-  createdAt: string;
-}
+import { ALLOWED_STAMPS, type StampEntry } from "./stampsShared";
+export { ALLOWED_STAMPS, type StampEntry } from "./stampsShared";
 
 export class StampError extends Error {}
 

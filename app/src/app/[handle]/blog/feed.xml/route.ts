@@ -46,7 +46,7 @@ export async function GET(
   );
 
   const lastBuildDate =
-    posts.length > 0 ? toRfc822(posts[0].publishedAt) : toRfc822(new Date().toISOString());
+    posts.length > 0 ? toRfc822(posts[0]!.publishedAt) : toRfc822(new Date().toISOString());
 
   const items = posts
     .map((post) => {
