@@ -146,7 +146,9 @@ export function StudioClient({
   const [pending, startTransition] = useTransition();
 
   const previewDocument = safePreview ? document : publishedDoc;
+  /** Contrast ratio warnings for the current document's color palette. */
   const contrastWarnings = useMemo(() => getContrastWarnings(document), [document]);
+  /** Top-eight links rendered from the preview document for the live preview pane. */
   const previewTopEight = useMemo(
     () => buildTopEightPreview(previewDocument.topEight, friends),
     [previewDocument.topEight, friends],
@@ -1642,6 +1644,7 @@ function AccessTab({
   warnings: string[];
   handle: string;
 }) {
+  /** Scoped CSS string derived from the custom CSS field, namespaced to the profile's scope class. */
   const cssScope = useMemo(
     () => scopeProfileCss(doc.theme.customCss, profileScopeClass(handle)),
     [doc.theme.customCss, handle],
