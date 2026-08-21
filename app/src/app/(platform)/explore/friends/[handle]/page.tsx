@@ -9,6 +9,7 @@ interface Props {
   params: Promise<{ handle: string }>;
 }
 
+/** Server page listing the full friend graph for *handle*, enforcing visibility and block rules. */
 export default async function ExploreFriendsPage({ params }: Props) {
   const { handle: rawHandle } = await params;
   const handle = rawHandle.trim().toLowerCase();

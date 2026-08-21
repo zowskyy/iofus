@@ -22,12 +22,14 @@ beforeEach(() => {
   resetDbForTests();
 });
 
+/** Creates a default asker and answerer pair for use in tests. */
 function twoUsers() {
   const asker = createUser("jamal", "correct-horse-battery");
   const answerer = createUser("priya", "correct-horse-battery");
   return { asker, answerer };
 }
 
+/** Sends and immediately accepts a friend request from *aId* to *bId*. */
 function befriend(aId: string, bId: string) {
   sendFriendRequest(aId, bId);
   const [req] = listIncomingRequests(bId);

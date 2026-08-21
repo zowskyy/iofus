@@ -19,6 +19,7 @@ beforeEach(() => {
   resetDbForTests();
 });
 
+/** Creates two default users for use in tests. */
 function twoUsers() {
   const a = createUser("neonorchard", "correct-horse-battery");
   const b = createUser("voidarcade", "correct-horse-battery");

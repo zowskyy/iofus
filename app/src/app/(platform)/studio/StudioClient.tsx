@@ -152,6 +152,7 @@ export function StudioClient({
     [previewDocument.topEight, friends],
   );
 
+  /** Pushes *next* onto the undo stack and updates the working document. */
   const commitEdit = useCallback(
     (next: PageDocument) => {
       setUndoStack((prev) => {
@@ -166,6 +167,7 @@ export function StudioClient({
     [document],
   );
 
+  /** Reverts the document to the previous undo stack entry. */
   const undo = useCallback(() => {
     if (undoStack.length === 0) return;
     const prev = undoStack[undoStack.length - 1]!;
@@ -175,6 +177,7 @@ export function StudioClient({
     setError(null);
   }, [undoStack]);
 
+  /** Runs *fn* inside a transition, displaying *label* as a success message and surfacing any returned error. */
   const runAction = useCallback(
     (label: string, fn: () => Promise<{ ok?: boolean; error?: string; document?: PageDocument; exportJson?: string }>) => {
       startTransition(async () => {
@@ -482,10 +485,12 @@ function LookTab({
   const [themeDescription, setThemeDescription] = useState("");
   const [themeTags, setThemeTags] = useState("");
 
+  /** Applies *template* mood preset to the document. */
   const setTemplate = (template: TemplateId) => {
     onChange(applyTemplateMood(doc, template));
   };
 
+  /** Applies a random color surprise spark to the document. */
   const surpriseColors = () => {
     onChange(applyCreativeSpark("surprise-colors", doc));
   };
@@ -684,6 +689,7 @@ function LayoutTab({
   document: PageDocument;
   onChange: (d: PageDocument) => void;
 }) {
+  /** Moves the page part at *index* one step in *direction* (+1 down, -1 up). */
   const movePart = (index: number, direction: -1 | 1) => {
     const next = [...doc.pageParts];
     const target = index + direction;
@@ -693,6 +699,7 @@ function LayoutTab({
     onChange({ ...doc, pageParts: next });
   };
 
+  /** Adds or removes *part* from the active page parts list. */
   const togglePart = (part: PagePartId) => {
     const has = doc.pageParts.includes(part);
     if (has) {
@@ -786,6 +793,7 @@ function ContentTab({
 }) {
   const [tagInput, setTagInput] = useState("");
 
+  /** Normalises the tag input and appends it to the document's tag list if valid and not a duplicate. */
   const addTag = () => {
     const slug = tagInput.trim().toLowerCase().replace(/\s+/g, "-");
     if (!slug || doc.tags.includes(slug) || doc.tags.length >= 10) return;
