@@ -5,6 +5,7 @@ import { createAskAction, type AskActionState } from "./actions";
 
 const initialState: AskActionState = {};
 
+/** Form that lets a viewer submit a new ask to the current page owner. */
 export function AskForm() {
   const [state, formAction, pending] = useActionState(createAskAction, initialState);
 

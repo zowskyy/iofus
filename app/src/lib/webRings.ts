@@ -14,6 +14,7 @@ export interface WebRingMember {
   position: number;
 }
 
+/** Returns all web rings ordered alphabetically by name. */
 export function listWebRings(): WebRing[] {
   const db = getDb();
   const rows = db
@@ -22,6 +23,7 @@ export function listWebRings(): WebRing[] {
   return rows;
 }
 
+/** Looks up a web ring by its URL slug. Returns null when no ring matches. */
 export function getWebRingBySlug(slug: string): WebRing | null {
   const db = getDb();
   const row = db
@@ -30,6 +32,7 @@ export function getWebRingBySlug(slug: string): WebRing | null {
   return row ?? null;
 }
 
+/** Returns public, discovery-visible members of *ringId* ordered by position then join date. */
 export function listRingMembers(ringId: string): WebRingMember[] {
   const db = getDb();
   const rows = db
@@ -54,6 +57,7 @@ export function listRingMembers(ringId: string): WebRingMember[] {
   });
 }
 
+/** Returns the previous and next ring members relative to *currentUserId* for ring navigation links. */
 export function getRingNavigation(ringId: string, currentUserId: string): { prev: WebRingMember | null; next: WebRingMember | null } {
   const members = listRingMembers(ringId);
   const idx = members.findIndex((m) => {
@@ -82,6 +86,7 @@ export function listUserWebRings(userId: string): WebRing[] {
   return rows;
 }
 
+/** Seeds the database with the three default web rings if none exist yet. Idempotent. */
 export function ensureSeedRings(): void {
   const db = getDb();
   const count = db.prepare("SELECT COUNT(*) as c FROM web_rings").get() as { c: number };

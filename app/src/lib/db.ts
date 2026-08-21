@@ -7,11 +7,13 @@ const __dirname = dirname(fileURLToPath(import.meta.url));
 
 let dbInstance: DatabaseSync | undefined;
 
+/** Returns true when *column* already exists in *table*, used to guard incremental ALTER TABLE migrations. */
 function columnExists(db: DatabaseSync, table: string, column: string): boolean {
   const rows = db.prepare(`PRAGMA table_info(${table})`).all() as { name: string }[];
   return rows.some((r) => r.name === column);
 }
 
+/** Returns true when a SQLite index named *name* exists, used to guard CREATE INDEX migrations. */
 function indexExists(db: DatabaseSync, name: string): boolean {
   const row = db.prepare("SELECT name FROM sqlite_master WHERE type = 'index' AND name = ?").get(name) as
     | { name: string }
@@ -19,6 +21,7 @@ function indexExists(db: DatabaseSync, name: string): boolean {
   return !!row;
 }
 
+/** Applies the base schema and any incremental column/index migrations to *db*. Safe to call on an already-migrated database. */
 function migrate(db: DatabaseSync): void {
   const schemaPath = join(__dirname, "schema.sql");
   const schema = readFileSync(schemaPath, "utf-8");
@@ -54,6 +57,7 @@ function migrate(db: DatabaseSync): void {
   }
 }
 
+/** Returns the singleton database connection, opening and migrating it on first call. */
 export function getDb(): DatabaseSync {
   if (dbInstance) return dbInstance;
   const path = process.env.IOFUS_DB_PATH ?? join(__dirname, "..", "..", "iofus.db");
@@ -64,6 +68,7 @@ export function getDb(): DatabaseSync {
   return dbInstance;
 }
 
+/** Closes and clears the singleton so the next `getDb()` call opens a fresh connection. Only for use in tests. */
 export function resetDbForTests(): void {
   if (dbInstance) {
     dbInstance.close();

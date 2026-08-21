@@ -1,8 +1,8 @@
 import Link from "next/link";
 import { getCurrentUser } from "@/lib/session";
 import { isModerator } from "@/lib/moderation";
-import { listIncomingRequests } from "@/lib/friends";
-import { listPendingGuestbookEntries } from "@/lib/guestbook";
+import { countIncomingRequests } from "@/lib/friends";
+import { countPendingGuestbookEntries } from "@/lib/guestbook";
 import { countUnreadMessages } from "@/lib/messages";
 
 // Six screens, per the plan: Explore, Make, Ask Us, Messages, Studio,
@@ -21,22 +21,25 @@ import { countUnreadMessages } from "@/lib/messages";
 // until you happen to click in — confirmed as a real dead end during
 // live testing, not a hypothetical. These are count badges on existing
 // links, not a notification center.
+/** Server component that renders the site navigation bar with pending-activity badges for the signed-in user. */
 export async function SiteNav() {
   const viewer = await getCurrentUser();
   const moderator = viewer ? isModerator(viewer.id) : false;
   const pendingCount = viewer
-    ? listIncomingRequests(viewer.id).length + listPendingGuestbookEntries(viewer.id).length
+    ? countIncomingRequests(viewer.id) + countPendingGuestbookEntries(viewer.id)
     : 0;
   const unreadMessages = viewer ? countUnreadMessages(viewer.id) : 0;
 
   return (
     <div className="top-bar">
-      <Link href="/" className="mono" style={{ color: "var(--ink)", textDecoration: "none", fontWeight: 700 }}>
-        ✦ IOFUS
-      </Link>
-      <nav className="controls">
+      <nav className="controls controls-left">
         <Link href="/explore">Explore</Link>
         <Link href="/make">Make</Link>
+      </nav>
+      <Link href="/" className="top-bar-logo" aria-label="iofus home">
+        <img src="/logo.png" alt="iofus" className="site-logo" />
+      </Link>
+      <nav className="controls controls-right">
         <Link href="/policy">Policy</Link>
         {viewer ? (
           <>

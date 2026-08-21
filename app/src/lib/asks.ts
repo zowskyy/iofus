@@ -21,11 +21,12 @@ export class AskError extends Error {}
 
 const MAX_ASKS_PER_DAY = 5;
 const MAX_BODY_LENGTH = 2000;
+const MAX_DOMAIN_LENGTH = 100;
 const POOL_SIZE = 8;
 
 export interface Ask {
   id: string;
-  askerId: string;
+  askerId: string | null; // null for anonymous asks when viewer is not the owner
   askerHandle: string | null; // null when anonymous — never leaked to non-owners
   body: string;
   domain: string | null;
@@ -49,12 +50,13 @@ interface AskRow {
   answer_count: number;
 }
 
+/** Converts a raw SQLite ask row into a public Ask object, masking the asker identity when anonymous and the viewer is not the asker. */
 function rowToAsk(row: AskRow, viewerId: string | null): Ask {
   const isOwner = viewerId !== null && viewerId === row.asker_id;
   const anonymous = row.is_anonymous === 1;
   return {
     id: row.id,
-    askerId: row.asker_id,
+    askerId: anonymous && !isOwner ? null : row.asker_id,
     askerHandle: anonymous && !isOwner ? null : row.asker_handle,
     body: row.body,
     domain: row.domain,
@@ -73,11 +75,20 @@ const SELECT_ASK = `
   FROM asks a JOIN users u ON u.id = a.asker_id
 `;
 
-/** Opt in or out of being reachable by strangers' asks. Off by default. */
+/** Opt in or out of being reachable by strangers' asks. Off by default.
+ *  When disabling, also closes the user's existing open non-sensitive asks
+ *  so they stop appearing in other members' pools immediately. */
 export function setReachableForAsks(userId: string, reachable: boolean): void {
-  getDb().prepare("UPDATE users SET reachable_for_asks = ? WHERE id = ?").run(reachable ? 1 : 0, userId);
+  const db = getDb();
+  db.prepare("UPDATE users SET reachable_for_asks = ? WHERE id = ?").run(reachable ? 1 : 0, userId);
+  if (!reachable) {
+    db.prepare(
+      "UPDATE asks SET status = 'closed', closed_at = ? WHERE asker_id = ? AND status = 'open' AND is_sensitive = 0",
+    ).run(new Date().toISOString(), userId);
+  }
 }
 
+/** Returns true if *userId* has opted in to receiving strangers' asks. */
 export function isReachableForAsks(userId: string): boolean {
   const row = getDb().prepare("SELECT reachable_for_asks FROM users WHERE id = ?").get(userId) as
     | { reachable_for_asks: number }
@@ -93,11 +104,15 @@ export interface CreateAskInput {
   isSensitive?: boolean;
 }
 
+/** Validate and persist a new ask. Throws AskError on validation failure, RateLimitError when the daily cap is reached. */
 export function createAsk(input: CreateAskInput): Ask {
   const body = input.body.trim();
   if (!body) throw new AskError("Your ask can't be empty.");
   if (body.length > MAX_BODY_LENGTH) {
     throw new AskError(`Your ask is too long (max ${MAX_BODY_LENGTH} characters).`);
+  }
+  if (!input.isSensitive && !isReachableForAsks(input.askerId)) {
+    throw new AskError("Turn on reachability to post an open ask.");
   }
 
   checkRateLimit(`ask:create:${input.askerId}`, MAX_ASKS_PER_DAY, DAY_MS);
@@ -105,6 +120,9 @@ export function createAsk(input: CreateAskInput): Ask {
   const db = getDb();
   const id = randomUUID();
   const domain = input.domain?.trim() || null;
+  if (domain && domain.length > MAX_DOMAIN_LENGTH) {
+    throw new AskError(`Your topic is too long (max ${MAX_DOMAIN_LENGTH} characters).`);
+  }
   db.prepare(
     `INSERT INTO asks (id, asker_id, body, domain, is_anonymous, is_sensitive, status, created_at)
      VALUES (?, ?, ?, ?, ?, ?, 'open', ?)`,
@@ -154,7 +172,7 @@ export function listAsksForViewer(viewerId: string, domain?: string): Ask[] {
     .map((row) => rowToAsk(row, viewerId));
 }
 
-/** All asks a member has posted, for their own "My asks" view. */
+/** All asks *askerId* has posted, for their own "My asks" view, newest first. */
 export function listAsksByUser(askerId: string): Ask[] {
   const db = getDb();
   const rows = db
@@ -163,6 +181,7 @@ export function listAsksByUser(askerId: string): Ask[] {
   return rows.map((row) => rowToAsk(row, askerId));
 }
 
+/** Fetch a single ask by id, applying the same anonymity rules as listAsksForViewer. Returns null when not found. */
 export function getAsk(askId: string, viewerId: string | null): Ask | null {
   const row = getDb().prepare(`${SELECT_ASK} WHERE a.id = ?`).get(askId) as unknown as AskRow | undefined;
   return row ? rowToAsk(row, viewerId) : null;
@@ -177,6 +196,7 @@ export interface Answer {
   createdAt: string;
 }
 
+/** All answers for *askId*, oldest first. */
 export function listAnswers(askId: string): Answer[] {
   const rows = getDb()
     .prepare(
@@ -196,6 +216,7 @@ export function listAnswers(askId: string): Answer[] {
   }));
 }
 
+/** Submit *answererId*'s answer to *askId*. Re-validates eligibility at write time. Throws AskError on auth/validation failure. */
 export function answerAsk(askId: string, answererId: string, body: string): Answer {
   const trimmed = body.trim();
   if (!trimmed) throw new AskError("Your answer can't be empty.");
@@ -204,14 +225,35 @@ export function answerAsk(askId: string, answererId: string, body: string): Answ
   }
 
   const db = getDb();
-  const ask = db.prepare("SELECT asker_id, status FROM asks WHERE id = ?").get(askId) as
-    | { asker_id: string; status: string }
+  const ask = db.prepare("SELECT asker_id, status, is_sensitive FROM asks WHERE id = ?").get(askId) as
+    | { asker_id: string; status: string; is_sensitive: number }
     | undefined;
   if (!ask) throw new AskError("This ask no longer exists.");
   if (ask.status !== "open") throw new AskError("This ask is closed.");
   if (ask.asker_id === answererId) throw new AskError("You can't answer your own ask.");
   if (hasBlockRelationship(ask.asker_id, answererId)) {
     throw new AskError("You can't answer this ask.");
+  }
+
+  // Re-check the same eligibility rules as listAsksForViewer on this write path.
+  // A user can submit a previously rendered form after their eligibility changes.
+  if (ask.is_sensitive === 0) {
+    const reachable = db.prepare("SELECT reachable_for_asks FROM users WHERE id = ?").get(answererId) as
+      | { reachable_for_asks: number }
+      | undefined;
+    if (!reachable || reachable.reachable_for_asks !== 1) {
+      throw new AskError("You can't answer this ask.");
+    }
+  } else {
+    const friendship = db
+      .prepare(
+        `SELECT 1 FROM friend_links WHERE status = 'accepted'
+         AND ((requester_id = ? AND addressee_id = ?) OR (addressee_id = ? AND requester_id = ?))`,
+      )
+      .get(ask.asker_id, answererId, ask.asker_id, answererId);
+    if (!friendship) {
+      throw new AskError("You can't answer this ask.");
+    }
   }
 
   const existing = db
@@ -235,6 +277,7 @@ export function answerAsk(askId: string, answererId: string, body: string): Answ
   };
 }
 
+/** Close *askId* so it no longer appears in the pool. Only the original asker may do this. Idempotent. */
 export function closeAsk(askId: string, askerId: string): void {
   const db = getDb();
   const row = db.prepare("SELECT asker_id, status FROM asks WHERE id = ?").get(askId) as

@@ -11,6 +11,7 @@ export interface SendMessageState {
   error?: string;
 }
 
+/** Server action: send a message to *recipientHandle* from the signed-in viewer. */
 export async function sendMessageAction(
   recipientHandle: string,
   _prevState: SendMessageState,
@@ -38,6 +39,7 @@ export async function sendMessageAction(
   return {};
 }
 
+/** Server action: mark all unread messages in *conversationId* as read for the viewer. */
 export async function markConversationReadAction(conversationId: string): Promise<void> {
   const viewer = await getCurrentUser();
   if (!viewer) redirect("/login?next=/messages");

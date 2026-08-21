@@ -54,6 +54,7 @@ const TABS: { id: TabId; label: string }[] = [
   { id: "publish", label: "Publish" },
 ];
 
+/** Builds the live Top Eight preview list from the current handle selections and the user's friend list. */
 function buildTopEightPreview(handles: string[], friends: FriendSummary[]): TopEightLink[] {
   return handles.map((handle) => ({
     handle,
@@ -75,10 +76,12 @@ export interface StudioClientProps {
   guestbookEntries: GuestbookEntry[];
 }
 
+/** Generates a new random UUID for client-side module identifiers. */
 function newId(): string {
   return crypto.randomUUID();
 }
 
+/** Resizes a flat pixel array to new dimensions, preserving existing pixels and filling added cells with transparent. */
 function resizePixelGrid(
   width: number,
   height: number,
@@ -99,6 +102,7 @@ function resizePixelGrid(
   return next;
 }
 
+/** Returns a blank 8×8 pixel art piece with a generated id and all pixels set to transparent. */
 function defaultPixelArtPiece(): PixelArtPiece {
   const width = 8;
   const height = 8;
@@ -111,6 +115,7 @@ function defaultPixelArtPiece(): PixelArtPiece {
   };
 }
 
+/** Interactive client component for the page editor Studio, managing draft state, live preview, and all module editors. */
 export function StudioClient({
   initialDocument,
   publishedDocument,
@@ -141,12 +146,15 @@ export function StudioClient({
   const [pending, startTransition] = useTransition();
 
   const previewDocument = safePreview ? document : publishedDoc;
+  /** Contrast ratio warnings for the current document's color palette. */
   const contrastWarnings = useMemo(() => getContrastWarnings(document), [document]);
+  /** Top-eight links rendered from the preview document for the live preview pane. */
   const previewTopEight = useMemo(
     () => buildTopEightPreview(previewDocument.topEight, friends),
     [previewDocument.topEight, friends],
   );
 
+  /** Saves the current document on the undo stack and updates the working document to *next*. */
   const commitEdit = useCallback(
     (next: PageDocument) => {
       setUndoStack((prev) => {
@@ -161,6 +169,7 @@ export function StudioClient({
     [document],
   );
 
+  /** Reverts the document to the previous undo stack entry. */
   const undo = useCallback(() => {
     if (undoStack.length === 0) return;
     const prev = undoStack[undoStack.length - 1]!;
@@ -170,6 +179,7 @@ export function StudioClient({
     setError(null);
   }, [undoStack]);
 
+  /** Runs *fn* inside a transition, displaying *label* as a success message and surfacing any returned error. */
   const runAction = useCallback(
     (label: string, fn: () => Promise<{ ok?: boolean; error?: string; document?: PageDocument; exportJson?: string }>) => {
       startTransition(async () => {
@@ -191,6 +201,7 @@ export function StudioClient({
     [],
   );
 
+  /** Saves the current editor state as a draft without publishing it. */
   const saveDraft = () => {
     runAction("Draft saved — safe to preview without publishing.", () =>
       saveDraftAction(JSON.stringify(document)).then((r) => {
@@ -200,6 +211,7 @@ export function StudioClient({
     );
   };
 
+  /** Saves and immediately publishes the current editor state, discarding any pending draft. */
   const saveAndPublish = () => {
     runAction("Published live.", () =>
       saveAndPublishAction(JSON.stringify(document)).then((r) => {
@@ -209,6 +221,7 @@ export function StudioClient({
     );
   };
 
+  /** Publishes the saved draft and updates the editor state to the newly published document. */
   const publishExistingDraft = () => {
     runAction("Draft published live.", () =>
       publishDraftAction().then((r) => {
@@ -222,6 +235,7 @@ export function StudioClient({
     );
   };
 
+  /** Exports the current page document as a JSON file download. */
   const handleExport = () => {
     startTransition(async () => {
       setMessage(null);
@@ -243,6 +257,7 @@ export function StudioClient({
     });
   };
 
+  /** Reads *file*, imports it as the current page document, and publishes it immediately. */
   const handleImport = (file: File) => {
     startTransition(async () => {
       setMessage(null);
@@ -263,6 +278,7 @@ export function StudioClient({
     });
   };
 
+  /** Restores a previously saved version by *versionId* and reloads the editor state. */
   const restoreVersion = (versionId: string) => {
     runAction("Version restored.", () =>
       restoreVersionAction(versionId).then((r) => {
@@ -453,6 +469,7 @@ export function StudioClient({
   );
 }
 
+/** Studio tab for colors, fonts, background, and theme publishing. */
 function LookTab({
   document: doc,
   onChange,
@@ -470,10 +487,12 @@ function LookTab({
   const [themeDescription, setThemeDescription] = useState("");
   const [themeTags, setThemeTags] = useState("");
 
+  /** Applies *template* mood preset to the document. */
   const setTemplate = (template: TemplateId) => {
     onChange(applyTemplateMood(doc, template));
   };
 
+  /** Applies a random color surprise spark to the document. */
   const surpriseColors = () => {
     onChange(applyCreativeSpark("surprise-colors", doc));
   };
@@ -664,6 +683,7 @@ function LookTab({
   );
 }
 
+/** Studio tab for reordering and toggling the visible page sections. */
 function LayoutTab({
   document: doc,
   onChange,
@@ -671,6 +691,7 @@ function LayoutTab({
   document: PageDocument;
   onChange: (d: PageDocument) => void;
 }) {
+  /** Moves the page part at *index* one step in *direction* (+1 down, -1 up). */
   const movePart = (index: number, direction: -1 | 1) => {
     const next = [...doc.pageParts];
     const target = index + direction;
@@ -680,6 +701,7 @@ function LayoutTab({
     onChange({ ...doc, pageParts: next });
   };
 
+  /** Adds or removes *part* from the active page parts list. */
   const togglePart = (part: PagePartId) => {
     const has = doc.pageParts.includes(part);
     if (has) {
@@ -761,6 +783,7 @@ function LayoutTab({
   );
 }
 
+/** Studio tab for editing all page content: identity, links, modules, Top 8, and more. */
 function ContentTab({
   document: doc,
   onChange,
@@ -772,6 +795,7 @@ function ContentTab({
 }) {
   const [tagInput, setTagInput] = useState("");
 
+  /** Normalises the tag input and appends it to the document's tag list if valid and not a duplicate. */
   const addTag = () => {
     const slug = tagInput.trim().toLowerCase().replace(/\s+/g, "-");
     if (!slug || doc.tags.includes(slug) || doc.tags.length >= 10) return;
@@ -1608,6 +1632,7 @@ function ContentTab({
   );
 }
 
+/** Studio tab for custom CSS, contrast warnings, and scoped CSS preview. */
 function AccessTab({
   document: doc,
   onChange,
@@ -1619,6 +1644,7 @@ function AccessTab({
   warnings: string[];
   handle: string;
 }) {
+  /** Scoped CSS string derived from the custom CSS field, namespaced to the profile's scope class. */
   const cssScope = useMemo(
     () => scopeProfileCss(doc.theme.customCss, profileScopeClass(handle)),
     [doc.theme.customCss, handle],
@@ -1725,6 +1751,7 @@ function AccessTab({
   );
 }
 
+/** Studio tab for publish state, visibility, discovery, guestbook, and page management actions. */
 function PublishTab({
   document: doc,
   onChange,

@@ -4,6 +4,7 @@ import { listAnswers, listAsksByUser } from "@/lib/asks";
 import { getCurrentUser } from "@/lib/session";
 import { closeAskAction } from "../actions";
 
+/** Server page showing the signed-in user's own asks and their statuses. */
 export default async function MyAsksPage() {
   const viewer = await getCurrentUser();
   if (!viewer) redirect("/login?next=/asks/mine");

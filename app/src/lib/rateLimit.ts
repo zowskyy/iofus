@@ -4,7 +4,11 @@ import { getDb } from "./db";
 const DEFAULT_WINDOW_MS = 60_000;
 export const DAY_MS = 24 * 60 * 60 * 1000;
 
-/** Builds a rate-limit key from a logged-in user id or the request IP. */
+/**
+ * Builds a stable rate-limit key scoped to *prefix*.
+ * Uses *userId* when the caller is authenticated; falls back to the
+ * request IP (from X-Forwarded-For or X-Real-IP) for anonymous callers.
+ */
 export async function rateLimitActorKey(prefix: string, userId: string | null): Promise<string> {
   if (userId) return `${prefix}:${userId}`;
   const h = await headers();
@@ -41,7 +45,7 @@ export function checkRateLimit(key: string, maxCount: number, windowMs: number =
       db.prepare("INSERT INTO rate_limits (key, count, window_start) VALUES (?, 1, ?)").run(key, new Date(now).toISOString());
     } else {
       const windowStart = new Date(row.window_start).getTime();
-      if (now - windowStart > windowMs) {
+      if (now - windowStart >= windowMs) {
         db.prepare("UPDATE rate_limits SET count = 1, window_start = ? WHERE key = ?").run(new Date(now).toISOString(), key);
       } else if (row.count >= maxCount) {
         limitError = new RateLimitError(Math.ceil((windowMs - (now - windowStart)) / 1000));

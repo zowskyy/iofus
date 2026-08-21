@@ -32,17 +32,20 @@ export interface StudioActionResult {
   themeId?: string;
 }
 
+/** Clears Next.js cache for the studio and the owner's public profile page. */
 function revalidateOwnerPaths(handle: string) {
   revalidatePath("/studio");
   revalidatePath(`/@${handle}`);
 }
 
+/** Validates custom CSS in *document* against the profile scope rules. Returns an error string, or null when CSS is absent or valid. */
 function validateDocumentCss(document: PageDocument, handle: string): string | null {
   if (!document.theme.customCssEnabled || !document.theme.customCss.trim()) return null;
   const result = validateProfileCustomCss(document.theme.customCss, handle);
   return result.ok ? null : `Custom CSS blocked: ${result.error}`;
 }
 
+/** Parses, validates, and saves *documentJson* as the owner's draft without publishing. */
 export async function saveDraftAction(documentJson: string): Promise<StudioActionResult> {
   const viewer = await getCurrentUser();
   if (!viewer) redirect("/login?next=/studio");
@@ -66,6 +69,7 @@ export async function saveDraftAction(documentJson: string): Promise<StudioActio
   }
 }
 
+/** Parses, validates, saves, and immediately publishes *documentJson*, discarding any outstanding draft. */
 export async function saveAndPublishAction(documentJson: string): Promise<StudioActionResult> {
   const viewer = await getCurrentUser();
   if (!viewer) redirect("/login?next=/studio");
@@ -90,6 +94,7 @@ export async function saveAndPublishAction(documentJson: string): Promise<Studio
   }
 }
 
+/** Publishes the owner's saved draft, making it the live page document. */
 export async function publishDraftAction(): Promise<StudioActionResult> {
   const viewer = await getCurrentUser();
   if (!viewer) redirect("/login?next=/studio");
@@ -112,6 +117,7 @@ export async function publishDraftAction(): Promise<StudioActionResult> {
   }
 }
 
+/** Sets the page's published state to *published*, controlling whether visitors can see it. */
 export async function setPublishedAction(published: boolean): Promise<StudioActionResult> {
   const viewer = await getCurrentUser();
   if (!viewer) redirect("/login?next=/studio");
@@ -128,6 +134,7 @@ export async function setPublishedAction(published: boolean): Promise<StudioActi
   }
 }
 
+/** Sets the page's visibility to private, unlisted, or public. */
 export async function setVisibilityAction(
   visibility: StoredPage["visibility"],
 ): Promise<StudioActionResult> {
@@ -143,6 +150,7 @@ export async function setVisibilityAction(
   return { ok: true };
 }
 
+/** Controls whether the page appears in Explore/discovery listings. */
 export async function setHiddenFromDiscoveryAction(hidden: boolean): Promise<StudioActionResult> {
   const viewer = await getCurrentUser();
   if (!viewer) redirect("/login?next=/studio");
@@ -152,6 +160,7 @@ export async function setHiddenFromDiscoveryAction(hidden: boolean): Promise<Stu
   return { ok: true };
 }
 
+/** Enables or disables the guestbook sign form on the owner's profile page. */
 export async function setGuestbookDisabledAction(disabled: boolean): Promise<StudioActionResult> {
   const viewer = await getCurrentUser();
   if (!viewer) redirect("/login?next=/studio");
@@ -161,6 +170,7 @@ export async function setGuestbookDisabledAction(disabled: boolean): Promise<Stu
   return { ok: true };
 }
 
+/** Restores a previously saved version by *versionId*, making it the current live document. */
 export async function restoreVersionAction(versionId: string): Promise<StudioActionResult> {
   const viewer = await getCurrentUser();
   if (!viewer) redirect("/login?next=/studio");
@@ -180,6 +190,7 @@ export async function restoreVersionAction(versionId: string): Promise<StudioAct
   }
 }
 
+/** Exports the owner's current page document as a JSON string for download. */
 export async function exportPageAction(): Promise<StudioActionResult> {
   const viewer = await getCurrentUser();
   if (!viewer) redirect("/login?next=/studio");
@@ -195,6 +206,7 @@ export async function exportPageAction(): Promise<StudioActionResult> {
   }
 }
 
+/** Parses and imports a previously exported page document from *json*, replacing the current live document. */
 export async function importPageAction(json: string): Promise<StudioActionResult> {
   const viewer = await getCurrentUser();
   if (!viewer) redirect("/login?next=/studio");
@@ -225,6 +237,7 @@ export async function importPageAction(json: string): Promise<StudioActionResult
   }
 }
 
+/** Validates and publishes the owner's current theme to the shared theme gallery under *name*. */
 export async function publishThemeAction(
   name: string,
   description: string,
@@ -275,6 +288,7 @@ export async function publishThemeAction(
   }
 }
 
+/** Installs a shared theme identified by *themeId* onto the owner's current draft document. */
 export async function installThemeAction(themeId: string): Promise<StudioActionResult> {
   const viewer = await getCurrentUser();
   if (!viewer) redirect("/login?next=/studio");

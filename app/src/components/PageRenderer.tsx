@@ -17,6 +17,7 @@ interface Props {
   topEightLinks: TopEightLink[];
 }
 
+/** Renders all enabled page modules for a user's profile page, applying the stored theme as inline CSS variables. */
 export function PageRenderer({
   document,
   friends,
@@ -35,13 +36,24 @@ export function PageRenderer({
         "--page-bg": document.theme.background,
         "--page-ink": ink,
         "--page-ink-soft": inkSoft,
-        ...(document.theme.backgroundImageUrl
-          ? {
-              "--page-bg-image": `url("${document.theme.backgroundImageUrl}")`,
-              "--page-bg-repeat": document.theme.backgroundTile ? "repeat" : "no-repeat",
-              "--page-bg-size": document.theme.backgroundTile ? "auto" : "cover",
-            }
-          : {}),
+        ...(() => {
+          const raw = document.theme.backgroundImageUrl;
+          if (!raw) return {};
+          let href: string;
+          try {
+            // Normalize through URL to strip any funny business, then
+            // encode backslashes so CSS hex-escape sequences in the href
+            // (e.g. \000022 → ") can't break out of the quoted url().
+            href = new URL(raw).href.replace(/\\/g, "%5C");
+          } catch {
+            return {};
+          }
+          return {
+            "--page-bg-image": `url("${href}")`,
+            "--page-bg-repeat": document.theme.backgroundTile ? "repeat" : "no-repeat",
+            "--page-bg-size": document.theme.backgroundTile ? "auto" : "cover",
+          };
+        })(),
       } as React.CSSProperties);
 
   const bodyClasses = [

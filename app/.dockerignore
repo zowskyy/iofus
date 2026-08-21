@@ -5,7 +5,6 @@ out
 *.db-journal
 *.db-wal
 *.db-shm
-.env
-.env.local
+.env*
 coverage
 .git

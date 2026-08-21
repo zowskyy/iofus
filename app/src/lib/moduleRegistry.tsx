@@ -25,14 +25,14 @@ export interface PageModuleDefinition {
   render: (ctx: PageRenderContext) => ReactNode | null;
 }
 
+/** Formats an ISO date string for display in page modules. Returns the raw string on parse failure. */
 function formatDate(iso: string): string {
-  try {
-    return new Date(iso).toLocaleDateString(undefined, { year: "numeric", month: "short", day: "numeric" });
-  } catch {
-    return iso;
-  }
+  const date = new Date(iso);
+  if (isNaN(date.getTime())) return iso;
+  return date.toLocaleDateString(undefined, { year: "numeric", month: "short", day: "numeric" });
 }
 
+/** Fallback rendered when a page contains a module *type* that this version of the registry does not recognize. */
 function UnsupportedModule({ type }: { type: string }) {
   return (
     <section className="page-part page-unsupported" aria-label="Unsupported module">
@@ -352,6 +352,7 @@ export const PAGE_MODULE_REGISTRY: Record<string, PageModuleDefinition> = {
   },
 };
 
+/** Render the page module for *partId*, returning a fallback element when the module is unknown or throws. */
 export function renderPagePart(partId: string, ctx: PageRenderContext): ReactNode | null {
   const mod = PAGE_MODULE_REGISTRY[partId];
   if (!mod) return <UnsupportedModule type={partId} />;
@@ -362,6 +363,7 @@ export function renderPagePart(partId: string, ctx: PageRenderContext): ReactNod
   }
 }
 
+/** Returns all registered page module definitions, for use in the Studio module picker. */
 export function listPageModules(): PageModuleDefinition[] {
   return Object.values(PAGE_MODULE_REGISTRY);
 }

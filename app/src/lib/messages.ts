@@ -39,10 +39,12 @@ export interface Message {
   readAt: string | null;
 }
 
+/** Returns [a, b] sorted lexicographically so the pair is canonical regardless of argument order. */
 function orderedPair(a: string, b: string): [string, string] {
   return a < b ? [a, b] : [b, a];
 }
 
+/** Looks up the canonical conversation row for the two users (order-independent). Returns undefined when none exists yet. */
 function findConversationRow(db: ReturnType<typeof getDb>, userAId: string, userBId: string) {
   return db
     .prepare("SELECT id, last_message_at FROM conversations WHERE user_a_id = ? AND user_b_id = ?")
@@ -140,20 +142,30 @@ export function listConversations(userId: string): Conversation[] {
     }));
 }
 
-/** Total unread messages across every conversation *userId* is part of — for the nav badge. */
+/**
+ * Total unread messages across all conversations *userId* participates in.
+ * Excludes conversations where either participant has blocked the other.
+ * Used for the nav badge — call `listConversations` for per-thread counts.
+ */
 export function countUnreadMessages(userId: string): number {
   const row = getDb()
     .prepare(
       `SELECT COUNT(*) as n FROM messages m
        JOIN conversations c ON c.id = m.conversation_id
-       WHERE (c.user_a_id = ? OR c.user_b_id = ?) AND m.sender_id != ? AND m.read_at IS NULL`,
+       WHERE (c.user_a_id = ? OR c.user_b_id = ?) AND m.sender_id != ? AND m.read_at IS NULL
+         AND NOT EXISTS (
+           SELECT 1 FROM blocks b
+           WHERE (b.blocker_id = ? AND b.blocked_id = m.sender_id)
+              OR (b.blocker_id = m.sender_id AND b.blocked_id = ?)
+         )`,
     )
-    .get(userId, userId, userId) as { n: number };
+    .get(userId, userId, userId, userId, userId) as { n: number };
   return row.n;
 }
 
 export class ConversationAccessError extends Error {}
 
+/** Throws ConversationAccessError when *viewerId* is not a participant in *conversationId*. */
 function requireParticipant(db: ReturnType<typeof getDb>, conversationId: string, viewerId: string) {
   const row = db
     .prepare("SELECT user_a_id, user_b_id FROM conversations WHERE id = ?")
