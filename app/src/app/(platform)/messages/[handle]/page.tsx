@@ -14,11 +14,13 @@ interface Props {
 /** Server page rendering the direct-message thread between the signed-in user and the profile at *handle*. */
 export default async function MessageThreadPage({ params }: Props) {
   const { handle: rawParam } = await params;
-  const viewer = await getCurrentUser();
-  if (!viewer) redirect(`/login?next=${encodeURIComponent(`/messages/${rawParam}`)}`);
-
+  // Parse and validate before using in redirect to prevent open redirect via raw param.
   const handle = parseHandleParam(rawParam);
   if (!handle) notFound();
+
+  const viewer = await getCurrentUser();
+  if (!viewer) redirect(`/login?next=${encodeURIComponent(`/messages/${handle}`)}`);
+
 
   const other = findUserByHandle(handle);
   if (!other) notFound();

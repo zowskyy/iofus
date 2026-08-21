@@ -60,19 +60,24 @@ export function listPendingGuestbookEntries(pageOwnerId: string): GuestbookEntry
   }));
 }
 
-/** Add a guestbook entry. Sets status to "pending" when *requireApproval* is true, otherwise "approved". Throws on blank/overlength message or blocked relationship. */
+/** Add a guestbook entry. Sets status to "pending" when *requireApproval* is true, otherwise "approved". Throws on blank/overlength message or blocked relationship.
+ *
+ * *blockCheckId* is the signed-in user's ID to use for the block relationship
+ * check — pass it separately from *authorId* so that a blocked user cannot
+ * bypass the check by signing anonymously (authorId=null, blockCheckId=userId). */
 export function signGuestbook(
   pageOwnerId: string,
   authorId: string | null,
   authorHandle: string | null,
   message: string,
   requireApproval: boolean,
+  blockCheckId: string | null = authorId,
 ): void {
   const trimmed = message.trim();
   if (!trimmed) throw new GuestbookError("Write something before signing.");
   if (trimmed.length > 500) throw new GuestbookError("Guestbook messages can be at most 500 characters.");
 
-  if (authorId && hasBlockRelationship(authorId, pageOwnerId)) {
+  if (blockCheckId && hasBlockRelationship(blockCheckId, pageOwnerId)) {
     throw new GuestbookError("You can't sign this guestbook.");
   }
 

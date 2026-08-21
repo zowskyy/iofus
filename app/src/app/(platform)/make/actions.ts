@@ -13,6 +13,7 @@ import {
 } from "@/lib/pageDocument";
 import { defaultPageDocumentFieldsV3 } from "@/lib/pageDocumentTypes";
 import { TEMPLATE_PRESETS } from "@/lib/pageDocumentTheme";
+import { checkRateLimit, rateLimitActorKey } from "@/lib/rateLimit";
 
 export interface MakeState {
   error?: string;
@@ -22,6 +23,8 @@ export interface MakeState {
 export async function makeFlowAction(_prevState: MakeState, formData: FormData): Promise<MakeState> {
   const viewer = await getCurrentUser();
   if (!viewer) redirect("/login?next=/make");
+
+  checkRateLimit(await rateLimitActorKey("make", viewer.id), 20);
 
   const template = String(formData.get("template") ?? "start-simple") as TemplateId;
   const displayName = String(formData.get("displayName") ?? "").trim();

@@ -38,12 +38,16 @@ export async function signGuestbookAction(
   try {
     const key = await rateLimitActorKey("guestbook", viewer?.id ?? null);
     checkRateLimit(key, 10);
+    // Always pass the signed-in user's ID for the block check, even when
+    // the post will display as anonymous — a blocked user must not be
+    // able to reach the page owner through an anonymous entry.
     signGuestbook(
       owner.id,
       viewer?.id ?? null,
-      viewer?.handle ?? null,
+      viewer ? viewer.handle : null,
       message,
       stored.document.guestbook.requireApproval,
+      viewer?.id ?? null,
     );
   } catch (e) {
     if (e instanceof GuestbookError) return { error: e.message };

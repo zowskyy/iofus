@@ -22,11 +22,12 @@ import { listOpenAppeals } from "@/lib/appeals";
 import { listOpenThemeReports } from "@/lib/sharedThemes";
 
 export default async function ModerationPage() {
-  ensureModeratorSeed();
-
   const viewer = await getCurrentUser();
   if (!viewer) redirect("/login?next=/moderation");
-  if (!isModerator(viewer.id)) redirect("/");
+  if (!isModerator(viewer.id)) {
+    ensureModeratorSeed();
+    redirect("/");
+  }
 
   const reports = listOpenReports();
   const themeReports = listOpenThemeReports();

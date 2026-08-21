@@ -7,13 +7,23 @@ export const DAY_MS = 24 * 60 * 60 * 1000;
 /**
  * Builds a stable rate-limit key scoped to *prefix*.
  * Uses *userId* when the caller is authenticated; falls back to the
- * request IP (from X-Forwarded-For or X-Real-IP) for anonymous callers.
+ * request IP for anonymous callers.
+ *
+ * IP resolution: prefer X-Real-IP (set by our own reverse proxy and
+ * therefore not forgeable by the client), then the *rightmost* entry in
+ * X-Forwarded-For (also added by our proxy), then "anonymous". The
+ * leftmost X-Forwarded-For value is client-supplied and must not be
+ * trusted — using it allows an attacker to supply an arbitrary string
+ * and bypass IP-based rate limits entirely.
  */
 export async function rateLimitActorKey(prefix: string, userId: string | null): Promise<string> {
   if (userId) return `${prefix}:${userId}`;
   const h = await headers();
+  const realIp = h.get("x-real-ip")?.trim();
   const forwarded = h.get("x-forwarded-for");
-  const ip = forwarded?.split(",")[0]?.trim() || h.get("x-real-ip") || "anonymous";
+  // Rightmost entry is the one appended by our own proxy — not forgeable.
+  const forwardedIp = forwarded?.split(",").at(-1)?.trim();
+  const ip = realIp || forwardedIp || "anonymous";
   return `${prefix}:${ip}`;
 }
 
