@@ -28,7 +28,7 @@ export async function POST(req: NextRequest) {
   recordVisit(pageOwnerId, visitorToken);
   const count = countVisits(pageOwnerId);
 
-  const res = NextResponse.json({ count, visitorToken: isNew ? visitorToken : undefined });
+  const res = NextResponse.json({ count });
   if (isNew) {
     res.cookies.set(VISITOR_COOKIE, visitorToken, {
       httpOnly: true,

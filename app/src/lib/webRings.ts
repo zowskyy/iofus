@@ -22,6 +22,7 @@ export interface WebRingMember {
   handle: string;
   displayName: string;
   position: number;
+  userId?: string;
 }
 
 type RingRow = { id: string; slug: string; name: string; description: string; creator_user_id: string | null; is_open: number };
@@ -53,7 +54,7 @@ export function listRingMembers(ringId: string): WebRingMember[] {
   const db = getDb();
   const rows = db
     .prepare(
-      `SELECT u.handle, pd.document_json, wrm.position
+      `SELECT u.handle, u.id AS userId, pd.document_json, wrm.position
        FROM web_ring_members wrm
        JOIN users u ON u.id = wrm.user_id
        JOIN page_documents pd ON pd.user_id = wrm.user_id
@@ -61,7 +62,7 @@ export function listRingMembers(ringId: string): WebRingMember[] {
          AND pd.is_published = 1 AND pd.visibility = 'public' AND pd.hidden_from_discovery = 0
        ORDER BY wrm.position ASC, wrm.joined_at ASC`,
     )
-    .all(ringId) as { handle: string; document_json: string; position: number }[];
+    .all(ringId) as { handle: string; userId: string; document_json: string; position: number }[];
 
   return rows.map((r) => {
     let displayName = r.handle;
@@ -69,17 +70,14 @@ export function listRingMembers(ringId: string): WebRingMember[] {
       const doc = JSON.parse(r.document_json) as { identity?: { displayName?: string } };
       if (doc.identity?.displayName) displayName = doc.identity.displayName;
     } catch { /* fall back */ }
-    return { handle: r.handle, displayName, position: r.position };
+    return { handle: r.handle, displayName, position: r.position, userId: r.userId };
   });
 }
 
 /** Returns the previous and next ring members relative to *currentUserId* for ring navigation links. */
 export function getRingNavigation(ringId: string, currentUserId: string): { prev: WebRingMember | null; next: WebRingMember | null } {
   const members = listRingMembers(ringId);
-  const idx = members.findIndex((m) => {
-    const user = getDb().prepare("SELECT id FROM users WHERE handle = ?").get(m.handle) as { id: string } | undefined;
-    return user?.id === currentUserId;
-  });
+  const idx = members.findIndex((m) => m.userId === currentUserId);
   if (idx === -1) return { prev: null, next: null };
   return {
     prev: idx > 0 ? members[idx - 1]! : null,
