@@ -1,3 +1,4 @@
+import "../../explore.css";
 import { redirect } from "next/navigation";
 import { getCurrentUser } from "@/lib/session";
 import { getPageDocument } from "@/lib/pageDocument";

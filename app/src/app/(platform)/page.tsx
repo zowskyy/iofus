@@ -1,3 +1,4 @@
+import "../explore.css";
 import Link from "next/link";
 import { getCurrentUser } from "@/lib/session";
 

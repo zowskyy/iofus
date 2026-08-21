@@ -551,3 +551,36 @@
     padding: 0 0.75rem;
   }
 }
+
+/* Ambient social signal (shared between explore and wander routes) */
+.explore-ambient {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  font-family: "Space Mono", monospace;
+  font-size: 0.78rem;
+  color: var(--ink-soft);
+  margin-top: 0.5rem;
+  border: 1px solid var(--line);
+  padding: 0.3rem 0.65rem;
+}
+
+.explore-ambient-dot {
+  width: 6px;
+  height: 6px;
+  background: var(--ink);
+  display: inline-block;
+  flex-shrink: 0;
+  animation: pulse-dot 2s ease-in-out infinite;
+}
+
+@keyframes pulse-dot {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.3; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .explore-ambient-dot {
+    animation: none;
+  }
+}

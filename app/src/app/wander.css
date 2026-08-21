@@ -56,6 +56,12 @@
 .wander-btn:hover { background: var(--ink); color: var(--paper); }
 .wander-btn.primary { background: var(--ink); color: var(--paper); }
 .wander-btn.primary:hover { opacity: 0.8; }
+.wander-btn:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+  background: var(--paper);
+  color: var(--ink);
+}
 
 .wander-frame {
   flex: 1;
@@ -106,32 +112,7 @@
   gap: 0.5rem;
 }
 
-/* Ambient social signal (used on explore + wander) */
-.explore-ambient {
-  display: inline-flex;
-  align-items: center;
-  gap: 0.4rem;
-  font-family: "Space Mono", monospace;
-  font-size: 0.78rem;
-  color: var(--ink-soft);
-  margin-top: 0.5rem;
-  border: 1px solid var(--line);
-  padding: 0.3rem 0.65rem;
-}
-
-.explore-ambient-dot {
-  width: 6px;
-  height: 6px;
-  background: var(--ink);
-  display: inline-block;
-  flex-shrink: 0;
-  animation: pulse-dot 2s ease-in-out infinite;
-}
-
-@keyframes pulse-dot {
-  0%, 100% { opacity: 1; }
-  50% { opacity: 0.3; }
-}
+/* Ambient dot on wander chrome (shared styles live in explore.css) */
 
 /* Keyboard shortcut hints */
 .kbd-hint {

@@ -1,5 +1,6 @@
 import type { Metadata, Viewport } from "next";
 import "./globals.css";
+import "./nav.css";
 import { PwaRegistrar } from "@/components/PwaRegistrar";
 import { KeyboardShortcuts } from "@/components/KeyboardShortcuts";
 

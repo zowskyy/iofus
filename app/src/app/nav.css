@@ -1,3 +1,7 @@
+:root {
+  --nav-height: 74px;
+}
+
 .top-bar {
   display: grid;
   grid-template-columns: 1fr auto 1fr;
@@ -186,16 +190,6 @@
   display: block;
 }
 
-/* Nav breakpoint: swap desktop/mobile nav */
-@media (max-width: 640px) {
-  .nav-desktop-right {
-    display: none !important;
-  }
-  .nav-mobile-right {
-    display: flex;
-  }
-}
-
 /* Tablet (≤ 768px) */
 @media (max-width: 768px) {
   .top-bar {
@@ -218,8 +212,14 @@
   }
 }
 
-/* Mobile (≤ 640px) */
+/* Mobile (≤ 640px): swap desktop/mobile nav + compact layout */
 @media (max-width: 640px) {
+  .nav-desktop-right {
+    display: none !important;
+  }
+  .nav-mobile-right {
+    display: flex;
+  }
   .top-bar {
     grid-template-columns: auto 1fr auto;
     padding: 0.4rem 0.75rem;

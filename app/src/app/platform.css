@@ -689,14 +689,14 @@
   .wonder-spark {
     border-radius: var(--radius);
   }
-  .wonder-strip {
+  .wonder-spark-row {
     overflow-x: auto;
     flex-wrap: nowrap;
     -webkit-overflow-scrolling: touch;
     scrollbar-width: none;
     padding-bottom: 0.25rem;
   }
-  .wonder-strip::-webkit-scrollbar {
+  .wonder-spark-row::-webkit-scrollbar {
     display: none;
   }
   .theme-gallery-card,

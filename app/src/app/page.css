@@ -11,7 +11,7 @@
   background-size: var(--page-bg-size, cover);
   background-position: center;
   color: var(--page-ink);
-  min-height: calc(100vh - 45px);
+  min-height: calc(100dvh - var(--nav-height, 74px));
   padding: 2rem 1.25rem 4rem;
   max-width: 640px;
   margin: 0 auto;
@@ -47,6 +47,13 @@
   padding-left: 100%;
   animation: page-status-marquee 14s linear infinite;
   will-change: transform;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .page-status.marquee span {
+    animation: none;
+    padding-left: 0;
+  }
 }
 
 .page-bio {
