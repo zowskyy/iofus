@@ -216,7 +216,7 @@ select {
 }
 
 .btn:hover {
-  opacity: 0.85;
+  filter: brightness(1.15);
 }
 
 .btn.secondary {
