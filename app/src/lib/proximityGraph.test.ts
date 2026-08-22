@@ -109,4 +109,62 @@ describe("getWanderBatch", () => {
     const result = getWanderBatch(null, 5);
     for (const h of result) expect(typeof h).toBe("string");
   });
+
+  it("fills partial proximity results with random pages", () => {
+    // Create a center user with proximity to 2 others
+    const center = createUser("center-wander");
+    const proximity1 = createUser("proximity1");
+    const proximity2 = createUser("proximity2");
+    const random1 = createUser("random1");
+    const random2 = createUser("random2");
+
+    // Publish all pages
+    publishPage(center);
+    publishPage(proximity1);
+    publishPage(proximity2);
+    publishPage(random1);
+    publishPage(random2);
+
+    // Create edges from center to proximity users
+    recordEdge(center, proximity1, "guestbook");
+    recordEdge(center, proximity2, "guestbook");
+
+    // Request 4 results (more than the 2 proximity edges)
+    const result = getWanderBatch(center, 4);
+
+    // Should contain both proximity results plus 2 random results
+    expect(result.length).toBe(4);
+    expect(result).toContain("proximity1");
+    expect(result).toContain("proximity2");
+    // Verify the proximity results come before random results (both have weight 1, so order may vary)
+    const proximityIndices = [result.indexOf("proximity1"), result.indexOf("proximity2")];
+    expect(Math.max(...proximityIndices)).toBeLessThan(2);
+  });
+
+  it("returns partial proximity when some pages are not discoverable", () => {
+    // Create center with proximity to users, but one is not discoverable
+    const center = createUser("center-partial");
+    const visible = createUser("visible-user");
+    const hidden = createUser("hidden-user");
+    const random1 = createUser("random-partial1");
+
+    // Publish visible and random pages, but not hidden
+    publishPage(center);
+    publishPage(visible);
+    publishPage(random1);
+    // Don't publish hidden page - it won't be discoverable
+
+    // Create edges from center to both users
+    recordEdge(center, visible, "ring");
+    recordEdge(center, hidden, "ring");
+
+    // Request 3 results
+    const result = getWanderBatch(center, 3);
+
+    // Should contain the visible proximity result plus random fills
+    expect(result.length).toBe(3);
+    expect(result).toContain("visible-user");
+    // Hidden user should NOT be in results since page is not published
+    expect(result).not.toContain("hidden-user");
+  });
 });

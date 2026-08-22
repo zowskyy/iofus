@@ -105,7 +105,7 @@ export function getWanderBatch(startUserId: string | null, limit = 30): string[]
   if (startUserId) {
     const proximityIds = getProximityOrdered(startUserId, limit);
 
-    if (proximityIds.length >= limit) {
+    if (proximityIds.length > 0) {
       // Validate that the proximity IDs have discoverable pages
       const placeholders = proximityIds.map(() => "?").join(", ");
       const rows = db
@@ -119,7 +119,25 @@ export function getWanderBatch(startUserId: string | null, limit = 30): string[]
       // Preserve proximity order from the graph
       const idToHandle = new Map(rows.map((r) => [r.user_id, r.handle]));
       const ordered = proximityIds.map((id) => idToHandle.get(id)).filter((h): h is string => h !== undefined);
+
       if (ordered.length >= limit) return ordered;
+
+      // Partial proximity results: fill gap with random pages, excluding already selected
+      if (ordered.length > 0) {
+        const selectedUserIds = proximityIds.slice(0, rows.length);
+        const excludePlaceholders = selectedUserIds.map(() => "?").join(", ");
+        const remaining = limit - ordered.length;
+        const random = db
+          .prepare(
+            `SELECT u.handle FROM page_documents pd
+             JOIN users u ON u.id = pd.user_id
+             WHERE ${discoverableWhere} AND pd.user_id NOT IN (${excludePlaceholders})
+             ORDER BY RANDOM()
+             LIMIT ?`,
+          )
+          .all(...selectedUserIds, remaining) as { handle: string }[];
+        return ordered.concat(random.map((r) => r.handle));
+      }
     }
   }
 
