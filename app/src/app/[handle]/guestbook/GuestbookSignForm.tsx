@@ -15,6 +15,7 @@ export function GuestbookSignForm({ handle }: { handle: string }) {
   const [state, formAction, pending] = useActionState(boundAction, initialState);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const [draft, setDraft] = useState("");
+  const [draftSaved, setDraftSaved] = useState(false);
 
   // Restore draft from localStorage on mount or handle change
   useEffect(() => {
@@ -38,6 +39,7 @@ export function GuestbookSignForm({ handle }: { handle: string }) {
   useEffect(() => {
     if (state.success) {
       setDraft("");
+      setDraftSaved(false);
       try {
         localStorage.removeItem(draftKey(handle));
       } catch {
@@ -53,11 +55,14 @@ export function GuestbookSignForm({ handle }: { handle: string }) {
     try {
       if (val) {
         localStorage.setItem(draftKey(handle), val);
+        setDraftSaved(true);
       } else {
         localStorage.removeItem(draftKey(handle));
+        setDraftSaved(false);
       }
     } catch {
       // localStorage unavailable
+      setDraftSaved(false);
     }
   }
 
@@ -84,7 +89,7 @@ export function GuestbookSignForm({ handle }: { handle: string }) {
             defaultValue={draft}
             onChange={handleChange}
           />
-          <span className="hint">Up to 500 characters.{draft && " Draft saved."}</span>
+          <span className="hint">Up to 500 characters.{draftSaved && " Draft saved."}</span>
         </div>
         <button type="submit" className="btn" disabled={pending}>
           {pending ? "Signing…" : "Sign guestbook"}

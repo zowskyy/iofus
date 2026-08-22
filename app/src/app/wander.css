@@ -103,6 +103,16 @@
   to { transform: rotate(360deg); }
 }
 
+@media (prefers-reduced-motion: reduce) {
+  .wander-frame {
+    transition: none;
+  }
+  .wander-loading-ring {
+    animation: none;
+    border-top-color: var(--ink);
+  }
+}
+
 .wander-exit {
   font-family: "Space Mono", monospace;
   font-size: 0.75rem;

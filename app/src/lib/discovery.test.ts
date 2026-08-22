@@ -116,8 +116,9 @@ describe("listRandomPages", () => {
     publishPublicPage("rp2", "RP Two");
     publishPublicPage("rp3", "RP Three");
     const pages = listRandomPages(2);
-    expect(pages.length).toBe(2);
-    expect(pages.every((p) => ["rp1", "rp2", "rp3"].includes(p.handle))).toBe(true);
+    expect(pages).toHaveLength(2);
+    const handles = pages.map((p) => p.handle);
+    expect(handles.every((h) => ["rp1", "rp2", "rp3"].includes(h))).toBe(true);
   });
 
   it("returns empty array when no discoverable pages exist", () => {

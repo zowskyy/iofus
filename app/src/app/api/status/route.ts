@@ -17,16 +17,24 @@ export async function POST(req: NextRequest) {
   const user = await getCurrentUser();
   if (!user) return NextResponse.json({ error: "Not signed in" }, { status: 401 });
 
-  let body: { text?: string };
+  let body: unknown;
   try {
     body = await req.json();
   } catch {
     return NextResponse.json({ error: "Bad request" }, { status: 400 });
   }
 
-  const text = typeof body.text === "string" ? body.text : "";
+  if (typeof body !== "object" || body === null || !("text" in body)) {
+    return NextResponse.json({ error: "Bad request" }, { status: 400 });
+  }
+
+  const { text } = body as Record<string, unknown>;
+  if (typeof text !== "string" && text !== undefined) {
+    return NextResponse.json({ error: "Bad request" }, { status: 400 });
+  }
+
   try {
-    setAmbientStatus(user.id, text);
+    setAmbientStatus(user.id, text ?? "");
   } catch (e) {
     if (e instanceof AmbientStatusError) {
       return NextResponse.json({ error: e.message }, { status: 400 });
