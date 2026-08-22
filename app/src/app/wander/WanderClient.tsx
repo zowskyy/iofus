@@ -7,6 +7,7 @@ interface Props {
   handles: string[];
 }
 
+/** Client-side Wander UI: full-screen iframe navigation between profile pages with next/previous buttons and cross-fade loading animation. */
 export function WanderClient({ handles }: Props) {
   const [index, setIndex] = useState(0);
   const [started, setStarted] = useState(false);

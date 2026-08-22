@@ -9,6 +9,7 @@ function draftKey(handle: string) {
   return `iofus-guestbook-draft-${handle}`;
 }
 
+/** Guestbook form with localStorage draft auto-save/restore. Saves on every change; clears on submit. */
 export function GuestbookSignForm({ handle }: { handle: string }) {
   const boundAction = signGuestbookAction.bind(null, handle);
   const [state, formAction, pending] = useActionState(boundAction, initialState);

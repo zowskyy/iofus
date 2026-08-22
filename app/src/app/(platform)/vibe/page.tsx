@@ -5,6 +5,7 @@ import { getProximityOrdered } from "@/lib/proximityGraph";
 import { getAmbientStatuses } from "@/lib/ambientStatus";
 import { VibeGraph } from "./VibeGraph";
 
+/** Authenticated page showing the current user's proximity-based Vibe Graph. Displays center node + neighbors in radial layout with ambient statuses. */
 export default async function VibeGraphPage() {
   const user = await getCurrentUser();
   if (!user) redirect("/login?next=/vibe");
