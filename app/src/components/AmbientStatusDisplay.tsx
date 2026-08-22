@@ -17,39 +17,42 @@ export function AmbientStatusDisplay({ pageOwnerId, initialStatus }: Props) {
 
   useEffect(() => {
     let timeoutId: ReturnType<typeof setTimeout>;
-    let abortController = new AbortController();
+    let cancelled = false;
+    const controller = new AbortController();
 
-    const poll = () => {
-      fetch(`/api/status?userId=${encodeURIComponent(pageOwnerId)}`, {
-        signal: abortController.signal,
-      })
-        .then((r) => {
-          if (r.ok) {
-            setBackoff(POLL_INTERVAL_MS); // reset on success
-            return r.json() as Promise<{ status: string | null }>;
-          }
-          // Back-off on 503/429 (cold start or rate limit)
-          setBackoff((b) => Math.min(b * 2, 120_000));
-          return null;
-        })
-        .then((data) => {
-          if (data) setStatus(data.status);
-        })
-        .catch((error) => {
-          // Ignore abort errors (component unmounted or dependency changed)
-          if (error.name !== "AbortError") {
-            setBackoff((b) => Math.min(b * 2, 120_000));
-          }
-        })
-        .finally(() => {
-          timeoutId = setTimeout(poll, backoff);
+    const poll = async () => {
+      try {
+        const r = await fetch(`/api/status?userId=${encodeURIComponent(pageOwnerId)}`, {
+          signal: controller.signal,
         });
+
+        if (cancelled) return;
+
+        if (r.ok) {
+          setBackoff(POLL_INTERVAL_MS);
+          const data = (await r.json()) as { status: string | null };
+          if (!cancelled) setStatus(data.status);
+        } else {
+          setBackoff((b) => Math.min(b * 2, 120_000));
+        }
+      } catch (error) {
+        if (cancelled) return;
+        // Ignore abort errors (component unmounted or dependency changed)
+        if (error instanceof Error && error.name !== "AbortError") {
+          setBackoff((b) => Math.min(b * 2, 120_000));
+        }
+      } finally {
+        if (!cancelled) {
+          timeoutId = setTimeout(poll, backoff);
+        }
+      }
     };
 
     timeoutId = setTimeout(poll, POLL_INTERVAL_MS);
     return () => {
+      cancelled = true;
+      controller.abort();
       clearTimeout(timeoutId);
-      abortController.abort();
     };
   }, [pageOwnerId, backoff]);
 

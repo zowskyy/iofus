@@ -48,7 +48,9 @@ export function listCollectionPages(collectionId: string): CollectionPage[] {
     try {
       const doc = JSON.parse(r.document_json) as { identity?: { displayName?: string } };
       if (doc.identity?.displayName) displayName = doc.identity.displayName;
-    } catch { /* fall back */ }
+    } catch (error) {
+      console.warn(`Failed to parse document_json for user ${r.handle}:`, error);
+    }
     return { handle: r.handle, displayName, position: r.position };
   });
 }

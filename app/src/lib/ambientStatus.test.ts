@@ -60,7 +60,7 @@ describe("getAmbientStatus", () => {
   it("returns null for expired status", () => {
     const u = createUser("bob2");
     const db = getDb();
-    const expired = new Date(Date.now() - 1000).toISOString();
+    const expired = Date.now() - 1000; // Unix milliseconds, already in the past
     db.prepare("INSERT INTO ambient_statuses (user_id, text, expires_at) VALUES (?, ?, ?)").run(u, "old status", expired);
     expect(getAmbientStatus(u)).toBeNull();
   });

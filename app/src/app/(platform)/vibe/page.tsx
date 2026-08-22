@@ -25,7 +25,9 @@ export default async function VibeGraphPage() {
       const doc = JSON.parse(ownerRow.document_json) as { identity?: { displayName?: string } };
       ownerDisplayName = doc.identity?.displayName || user.handle;
     }
-  } catch { /* use handle as fallback */ }
+  } catch (error) {
+    console.warn(`Failed to parse document_json for user ${user.handle}:`, error);
+  }
 
   // Get proximity-ordered neighbor IDs (up to 20)
   const neighborIds = getProximityOrdered(user.id, 20);
@@ -55,7 +57,9 @@ export default async function VibeGraphPage() {
       try {
         const doc = JSON.parse(r.document_json) as { identity?: { displayName?: string } };
         displayName = doc.identity?.displayName || r.handle;
-      } catch { /* use handle */ }
+      } catch (error) {
+        console.warn(`Failed to parse document_json for user ${r.handle}:`, error);
+      }
       neighbors.push({ id, handle: r.handle, displayName });
     }
   }

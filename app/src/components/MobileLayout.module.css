@@ -1,0 +1,166 @@
+.container {
+  display: flex;
+  flex-direction: column;
+  height: 100vh;
+  background-color: var(--bg);
+  color: var(--ink);
+}
+
+.header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 1rem;
+  border-bottom: 1px solid var(--border);
+  background-color: var(--bg);
+  gap: 0.5rem;
+  flex-shrink: 0;
+}
+
+.backButton {
+  flex-shrink: 0;
+  padding: 0.5rem;
+  color: var(--ink);
+  text-decoration: none;
+  font-size: 1rem;
+  line-height: 1;
+  min-width: 44px;
+  min-height: 44px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 4px;
+  transition: background-color 0.2s;
+}
+
+.backButton:active {
+  background-color: var(--border);
+}
+
+.title {
+  flex: 1;
+  margin: 0;
+  padding: 0;
+  font-size: 1.25rem;
+  font-weight: 600;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  line-height: 1.2;
+}
+
+.content {
+  flex: 1;
+  overflow-y: auto;
+  overflow-x: hidden;
+  padding: 0.75rem;
+  -webkit-overflow-scrolling: touch;
+}
+
+.nav {
+  display: flex;
+  justify-content: space-around;
+  align-items: flex-end;
+  padding: 0.5rem 0;
+  border-top: 1px solid var(--border);
+  background-color: var(--bg);
+  gap: 0.25rem;
+  flex-shrink: 0;
+  margin-bottom: max(0.5rem, env(safe-area-inset-bottom));
+}
+
+.navItem {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 0.5rem;
+  color: var(--ink-soft);
+  text-decoration: none;
+  font-size: 0.75rem;
+  line-height: 1.2;
+  border-radius: 4px;
+  transition: background-color 0.2s, color 0.2s;
+  min-height: 60px;
+  gap: 0.25rem;
+}
+
+.navItem:active {
+  background-color: var(--border);
+  color: var(--ink);
+}
+
+.icon {
+  font-size: 1.5rem;
+  line-height: 1;
+  display: block;
+}
+
+.label {
+  display: block;
+  text-align: center;
+  word-break: break-word;
+  max-width: 3rem;
+  font-size: 0.65rem;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  display: -webkit-box;
+  -webkit-line-clamp: 1;
+  -webkit-box-orient: vertical;
+}
+
+/* Support for notch/safe areas on devices like iPhone */
+@supports (padding: max(0px)) {
+  .nav {
+    padding-bottom: max(0.5rem, env(safe-area-inset-bottom));
+  }
+}
+
+/* Tablet and larger screens */
+@media (min-width: 768px) {
+  .container {
+    max-width: 600px;
+    margin: 0 auto;
+    border-left: 1px solid var(--border);
+    border-right: 1px solid var(--border);
+  }
+
+  .header {
+    padding: 1.5rem;
+  }
+
+  .title {
+    font-size: 1.5rem;
+  }
+
+  .content {
+    padding: 1.5rem;
+  }
+
+  .nav {
+    padding: 1rem 0;
+    margin-bottom: max(1rem, env(safe-area-inset-bottom));
+  }
+
+  .navItem {
+    min-height: 70px;
+    font-size: 0.85rem;
+  }
+
+  .label {
+    font-size: 0.75rem;
+    max-width: 4rem;
+  }
+}
+
+/* Dark mode support */
+@media (prefers-color-scheme: dark) {
+  .backButton:active {
+    background-color: rgba(255, 255, 255, 0.1);
+  }
+
+  .navItem:active {
+    background-color: rgba(255, 255, 255, 0.1);
+  }
+}
