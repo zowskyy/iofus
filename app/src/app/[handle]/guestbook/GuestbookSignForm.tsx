@@ -23,14 +23,17 @@ export function GuestbookSignForm({ handle }: { handle: string }) {
       const saved = localStorage.getItem(draftKey(handle));
       if (saved) {
         setDraft(saved);
+        setDraftSaved(true);
         if (textareaRef.current) textareaRef.current.value = saved;
       } else {
         setDraft("");
+        setDraftSaved(false);
         if (textareaRef.current) textareaRef.current.value = "";
       }
     } catch {
       // localStorage unavailable (private browsing, etc.)
       setDraft("");
+      setDraftSaved(false);
       if (textareaRef.current) textareaRef.current.value = "";
     }
   }, [handle]);
