@@ -8,12 +8,14 @@ import { createSession, destroySession, resolveSession, type User } from "./auth
 const COOKIE_NAME = "iofus_session";
 const COOKIE_MAX_AGE_SECONDS = 30 * 24 * 60 * 60; // 30 days, matches SESSION_TTL_MS in auth.ts
 
+/** Retrieve the authenticated user from the session cookie, or null if not signed in. */
 export async function getCurrentUser(): Promise<User | null> {
   const jar = await cookies();
   const token = jar.get(COOKIE_NAME)?.value;
   return resolveSession(token);
 }
 
+/** Create a session and set an httpOnly cookie for *userId*. */
 export async function logIn(userId: string): Promise<void> {
   const token = createSession(userId);
   const jar = await cookies();
@@ -26,6 +28,7 @@ export async function logIn(userId: string): Promise<void> {
   });
 }
 
+/** Clear the session cookie and invalidate the session token. */
 export async function logOut(): Promise<void> {
   const jar = await cookies();
   const token = jar.get(COOKIE_NAME)?.value;
