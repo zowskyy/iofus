@@ -110,8 +110,10 @@ function slugify(name: string): string {
     .slice(0, 60);
 }
 
+/** Error class for web ring operations. */
 export class WebRingError extends Error {}
 
+/** Create a new web ring and return it. Throws WebRingError on invalid name. */
 export function createWebRing(
   userId: string,
   opts: { name: string; description: string; isOpen: boolean },
@@ -135,6 +137,7 @@ export function createWebRing(
   return { id, slug, name, description: opts.description.trim(), creatorUserId: userId, isOpen: opts.isOpen };
 }
 
+/** Retrieve all rings created by *userId*. */
 export function getUserOwnedRings(userId: string): WebRing[] {
   const db = getDb();
   const rows = db
@@ -145,6 +148,7 @@ export function getUserOwnedRings(userId: string): WebRing[] {
   return rows.map(rowToRing);
 }
 
+/** Delete a web ring. Only the owner may delete it. Throws WebRingError if not authorized or ring doesn't exist. */
 export function deleteWebRing(ringId: string, userId: string): void {
   const db = getDb();
   const ring = db.prepare("SELECT creator_user_id FROM web_rings WHERE id = ?").get(ringId) as { creator_user_id: string | null } | undefined;
@@ -153,6 +157,7 @@ export function deleteWebRing(ringId: string, userId: string): void {
   db.prepare("DELETE FROM web_rings WHERE id = ?").run(ringId);
 }
 
+/** Update a web ring's name and/or description. Only the owner may update it. Throws WebRingError if not authorized. */
 export function updateWebRing(
   ringId: string,
   userId: string,
