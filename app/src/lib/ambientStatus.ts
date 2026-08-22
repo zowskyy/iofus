@@ -8,7 +8,7 @@ export class AmbientStatusError extends Error {}
 export interface AmbientStatus {
   userId: string;
   text: string;
-  expiresAt: string;
+  expiresAt: number; // Unix milliseconds for robust timestamp handling
 }
 
 /** Set (or clear) the ambient status for *userId*. Empty string clears it. Plain text only — callers must render via React or textContent, never dangerouslySetInnerHTML. */
@@ -22,7 +22,7 @@ export function setAmbientStatus(userId: string, text: string): void {
     db.prepare("DELETE FROM ambient_statuses WHERE user_id = ?").run(userId);
     return;
   }
-  const expiresAt = new Date(Date.now() + TTL_MS).toISOString();
+  const expiresAt = Date.now() + TTL_MS; // Unix milliseconds for robust comparison
   db.prepare(
     `INSERT INTO ambient_statuses (user_id, text, expires_at)
      VALUES (?, ?, ?)
@@ -33,12 +33,12 @@ export function setAmbientStatus(userId: string, text: string): void {
 /** Get the current non-expired ambient status for *userId*, or null if none. Prunes expired row as a side effect. */
 export function getAmbientStatus(userId: string): AmbientStatus | null {
   const db = getDb();
-  const now = new Date().toISOString();
+  const now = Date.now(); // Unix milliseconds for numeric comparison
   // Prune expired entry for this user while reading
   db.prepare("DELETE FROM ambient_statuses WHERE user_id = ? AND expires_at < ?").run(userId, now);
   const row = db
     .prepare("SELECT user_id, text, expires_at FROM ambient_statuses WHERE user_id = ?")
-    .get(userId) as { user_id: string; text: string; expires_at: string } | undefined;
+    .get(userId) as { user_id: string; text: string; expires_at: number } | undefined;
   if (!row) return null;
   return { userId: row.user_id, text: row.text, expiresAt: row.expires_at };
 }
@@ -47,7 +47,7 @@ export function getAmbientStatus(userId: string): AmbientStatus | null {
 export function getAmbientStatuses(userIds: string[]): Map<string, string> {
   if (!userIds.length) return new Map();
   const db = getDb();
-  const now = new Date().toISOString();
+  const now = Date.now(); // Unix milliseconds for numeric comparison
   const placeholders = userIds.map(() => "?").join(", ");
   const rows = db
     .prepare(
