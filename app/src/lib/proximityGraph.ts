@@ -124,7 +124,7 @@ export function getWanderBatch(startUserId: string | null, limit = 30): string[]
 
       // Partial proximity results: fill gap with random pages, excluding already selected
       if (ordered.length > 0) {
-        const selectedUserIds = proximityIds.slice(0, rows.length);
+        const selectedUserIds = [...idToHandle.keys()];
         const excludePlaceholders = selectedUserIds.map(() => "?").join(", ");
         const remaining = limit - ordered.length;
         const random = db
