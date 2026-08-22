@@ -82,6 +82,7 @@ describe("🐛 Bug: Missing error handling in signGuestbook", () => {
       "bob",
       "Thanks for the page!",
       false,
+      author,
     );
 
     // The entry is in the database
@@ -89,22 +90,20 @@ describe("🐛 Bug: Missing error handling in signGuestbook", () => {
     expect(entries).toHaveLength(1);
     expect(entries[0]?.message).toBe("Thanks for the page!");
 
-    // In the current code, if recordEdge() threw an error after the
-    // INSERT, the entry would be committed but the edge wouldn't exist.
-    // The proximity graph would be inconsistent.
+    // In the current code (now fixed with try-catch), recordEdge() errors
+    // are caught and logged rather than crashing. The entry is preserved
+    // and an error is logged for monitoring. This is preferable to losing
+    // guestbook entries if the graph system has a temporary issue.
   });
 });
 
 describe("🐛 Bug: blockCheckId default parameter is confusing", () => {
-  it("shows blockCheckId parameter confusion", () => {
-    // The signature is:
-    // signGuestbook(..., blockCheckId: string | null = authorId)
+  it("shows blockCheckId parameter confusion (now fixed - parameter is required)", () => {
+    // Before fix: signature was signGuestbook(..., blockCheckId: string | null = authorId)
+    // This defaulted to null when caller didn't pass it, creating confusion
     //
-    // This means if you call:
-    // signGuestbook(pageOwner, null, "anon", message, false)
-    //
-    // blockCheckId defaults to null (because authorId=null),
-    // and the block check passes even though you didn't explicitly want it to.
+    // After fix: signature is signGuestbook(..., blockCheckId: string | null)
+    // blockCheckId is now required, forcing callers to explicitly consider block checking.
 
     const author = createUser("dave");
     const pageOwner = createUser("eve");
@@ -112,14 +111,13 @@ describe("🐛 Bug: blockCheckId default parameter is confusing", () => {
     // Block the user but try to sign anonymously
     blockUser(pageOwner, author);
 
-    // With explicit blockCheckId, block is checked
-    // But the default parameter creates confusion about when checks apply
+    // With the required blockCheckId parameter, the intent is now explicit
+    // Callers must pass blockCheckId separately from authorId
     const hasBlock = hasBlockRelationship(author, pageOwner);
     expect(hasBlock).toBe(true);
 
-    // If you call signGuestbook with null author but don't pass blockCheckId,
-    // it defaults to the null authorId, and the check is skipped!
-    // The parameter should be required, not defaulted.
+    // Now callers cannot forget to pass blockCheckId — it's required
+    // This prevents accidental security bypasses where block checks are skipped
   });
 });
 

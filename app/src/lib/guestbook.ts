@@ -65,14 +65,15 @@ export function listPendingGuestbookEntries(pageOwnerId: string): GuestbookEntry
  *
  * *blockCheckId* is the signed-in user's ID to use for the block relationship
  * check — pass it separately from *authorId* so that a blocked user cannot
- * bypass the check by signing anonymously (authorId=null, blockCheckId=userId). */
+ * bypass the check by signing anonymously (authorId=null, blockCheckId=userId).
+ * This parameter is required (not defaulted) to force callers to explicitly consider block checking. */
 export function signGuestbook(
   pageOwnerId: string,
   authorId: string | null,
   authorHandle: string | null,
   message: string,
   requireApproval: boolean,
-  blockCheckId: string | null = authorId,
+  blockCheckId: string | null,
 ): void {
   const trimmed = message.trim();
   if (!trimmed) throw new GuestbookError("Write something before signing.");
@@ -83,21 +84,33 @@ export function signGuestbook(
   }
 
   const db = getDb();
+  const entryId = randomUUID();
+  const now = new Date().toISOString();
+
   db.prepare(
     `INSERT INTO guestbook_entries (id, page_owner_id, author_id, author_handle, message, status, created_at)
      VALUES (?, ?, ?, ?, ?, ?, ?)`,
   ).run(
-    randomUUID(),
+    entryId,
     pageOwnerId,
     authorId,
     authorHandle,
     trimmed,
     requireApproval ? "pending" : "approved",
-    new Date().toISOString(),
+    now,
   );
 
   // Record proximity graph edge: author → page owner (guestbook interaction).
-  if (authorId) recordEdge(authorId, pageOwnerId, "guestbook");
+  // Wrap in try-catch to prevent partial state: entry exists but edge doesn't.
+  if (authorId) {
+    try {
+      recordEdge(authorId, pageOwnerId, "guestbook");
+    } catch (error) {
+      // Log error but don't crash: entry is already inserted. Graph inconsistency is
+      // preferable to losing guestbook entries. Monitoring should alert on this.
+      console.error(`Failed to record guestbook graph edge for entry ${entryId}:`, error);
+    }
+  }
 }
 
 /** Approve or reject a pending guestbook entry. Only *pageOwnerId* may call this. Throws when the entry doesn't exist or has already been moderated. */

@@ -34,7 +34,7 @@ describe("signGuestbook", () => {
   it("inserts a pending entry when requireApproval is true", () => {
     const owner = createUser("owner");
     const author = createUser("author");
-    signGuestbook(owner, author, "author", "Hello!", true);
+    signGuestbook(owner, author, "author", "Hello!", true, author);
     const entries = listPendingGuestbookEntries(owner);
     expect(entries).toHaveLength(1);
     expect(entries[0].status).toBe("pending");
@@ -43,7 +43,7 @@ describe("signGuestbook", () => {
 
   it("inserts an approved entry when requireApproval is false", () => {
     const owner = createUser("owner2");
-    signGuestbook(owner, null, "anon", "Hi", false);
+    signGuestbook(owner, null, "anon", "Hi", false, null);
     const entries = listApprovedGuestbookEntries(owner);
     expect(entries).toHaveLength(1);
     expect(entries[0].status).toBe("approved");
@@ -51,26 +51,26 @@ describe("signGuestbook", () => {
 
   it("rejects a blank message", () => {
     const owner = createUser("owner3");
-    expect(() => signGuestbook(owner, null, null, "   ", false)).toThrow(GuestbookError);
+    expect(() => signGuestbook(owner, null, null, "   ", false, null)).toThrow(GuestbookError);
   });
 
   it("rejects a message over 500 chars", () => {
     const owner = createUser("owner4");
-    expect(() => signGuestbook(owner, null, null, "x".repeat(501), false)).toThrow(GuestbookError);
+    expect(() => signGuestbook(owner, null, null, "x".repeat(501), false, null)).toThrow(GuestbookError);
   });
 
   it("rejects signing when the author has a block relationship with the owner", () => {
     const owner = createUser("owner5");
     const author = createUser("blocked");
     createBlock(owner, author);
-    expect(() => signGuestbook(owner, author, "blocked", "Hi", false)).toThrow(GuestbookError);
+    expect(() => signGuestbook(owner, author, "blocked", "Hi", false, author)).toThrow(GuestbookError);
   });
 
   it("rejects signing when the author blocked the owner", () => {
     const owner = createUser("owner6");
     const author = createUser("blocker");
     createBlock(author, owner);
-    expect(() => signGuestbook(owner, author, "blocker", "Hi", false)).toThrow(GuestbookError);
+    expect(() => signGuestbook(owner, author, "blocker", "Hi", false, author)).toThrow(GuestbookError);
   });
 
   it("blockCheckId prevents blocked user from signing anonymously", () => {
@@ -85,7 +85,7 @@ describe("signGuestbook", () => {
 describe("moderateGuestbookEntry", () => {
   it("approves a pending entry", () => {
     const owner = createUser("mod-owner");
-    signGuestbook(owner, null, "a", "hi", true);
+    signGuestbook(owner, null, "a", "hi", true, null);
     const [entry] = listPendingGuestbookEntries(owner);
     moderateGuestbookEntry(owner, entry.id, true);
     expect(listApprovedGuestbookEntries(owner)).toHaveLength(1);
@@ -94,7 +94,7 @@ describe("moderateGuestbookEntry", () => {
 
   it("rejects a pending entry", () => {
     const owner = createUser("mod-owner2");
-    signGuestbook(owner, null, "a", "hi", true);
+    signGuestbook(owner, null, "a", "hi", true, null);
     const [entry] = listPendingGuestbookEntries(owner);
     moderateGuestbookEntry(owner, entry.id, false);
     expect(listApprovedGuestbookEntries(owner)).toHaveLength(0);
@@ -104,14 +104,14 @@ describe("moderateGuestbookEntry", () => {
   it("throws when entry does not belong to pageOwner", () => {
     const owner = createUser("mod-owner3");
     const other = createUser("other-mod");
-    signGuestbook(owner, null, "a", "hi", true);
+    signGuestbook(owner, null, "a", "hi", true, null);
     const [entry] = listPendingGuestbookEntries(owner);
     expect(() => moderateGuestbookEntry(other, entry.id, true)).toThrow(GuestbookError);
   });
 
   it("throws when entry has already been moderated", () => {
     const owner = createUser("mod-owner4");
-    signGuestbook(owner, null, "a", "hi", true);
+    signGuestbook(owner, null, "a", "hi", true, null);
     const [entry] = listPendingGuestbookEntries(owner);
     moderateGuestbookEntry(owner, entry.id, true);
     expect(() => moderateGuestbookEntry(owner, entry.id, false)).toThrow(GuestbookError);
@@ -121,7 +121,7 @@ describe("moderateGuestbookEntry", () => {
 describe("deleteGuestbookEntry", () => {
   it("deletes an entry owned by the page owner", () => {
     const owner = createUser("del-owner");
-    signGuestbook(owner, null, "a", "bye", false);
+    signGuestbook(owner, null, "a", "bye", false, null);
     const [entry] = listApprovedGuestbookEntries(owner);
     deleteGuestbookEntry(owner, entry.id);
     expect(listApprovedGuestbookEntries(owner)).toHaveLength(0);
@@ -130,7 +130,7 @@ describe("deleteGuestbookEntry", () => {
   it("is a no-op for an entry that belongs to another owner", () => {
     const owner = createUser("del-owner2");
     const other = createUser("del-other");
-    signGuestbook(owner, null, "a", "hi", false);
+    signGuestbook(owner, null, "a", "hi", false, null);
     const [entry] = listApprovedGuestbookEntries(owner);
     deleteGuestbookEntry(other, entry.id);
     expect(listApprovedGuestbookEntries(owner)).toHaveLength(1);
@@ -140,9 +140,9 @@ describe("deleteGuestbookEntry", () => {
 describe("countPendingGuestbookEntries", () => {
   it("returns the correct pending count", () => {
     const owner = createUser("count-owner");
-    signGuestbook(owner, null, "a", "one", true);
-    signGuestbook(owner, null, "b", "two", true);
-    signGuestbook(owner, null, "c", "three", false);
+    signGuestbook(owner, null, "a", "one", true, null);
+    signGuestbook(owner, null, "b", "two", true, null);
+    signGuestbook(owner, null, "c", "three", false, null);
     expect(countPendingGuestbookEntries(owner)).toBe(2);
   });
 });
