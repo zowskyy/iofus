@@ -60,8 +60,10 @@ export async function SiteNav() {
     <div className="top-bar">
       <nav className="controls controls-left">
         <Link href="/explore">Explore</Link>
+        <Link href="/wander">Wander</Link>
         <Link href="/make">Make</Link>
         {viewer && <Link href="/feed">Feed</Link>}
+        {viewer && <Link href="/vibe">Vibe</Link>}
       </nav>
       <Link href="/" className="top-bar-logo" aria-label="iofus home">
         <img src="/logo.png" alt="iofus" className="site-logo" width={384} height={192} />

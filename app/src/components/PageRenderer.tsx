@@ -8,6 +8,7 @@ import { profileScopeClass, validateProfileCustomCss } from "@/lib/cssScope";
 import { renderPagePart, type TopEightLink } from "@/lib/moduleRegistry";
 import { VisitorCounter } from "./VisitorCounter";
 import { PresenceIndicator } from "./PresenceIndicator";
+import { AmbientStatusDisplay } from "./AmbientStatusDisplay";
 
 export type { TopEightLink };
 
@@ -19,6 +20,8 @@ interface Props {
   pageOwnerId?: string;
   /** The user ID of the current viewer, or null for anonymous visitors. */
   viewerId?: string | null;
+  /** Ambient status fetched server-side to avoid flash; polled every 30s client-side. */
+  initialAmbientStatus?: string | null;
   readerMode: boolean;
   guestbookEntries: GuestbookEntry[];
   topEightLinks: TopEightLink[];
@@ -34,6 +37,7 @@ export function PageRenderer({
   readerMode,
   guestbookEntries,
   topEightLinks,
+  initialAmbientStatus = null,
 }: Props) {
   const { ink, inkSoft } = readableTextFor(document.theme.background);
   const scopeClass = profileScopeClass(handle);
@@ -104,6 +108,9 @@ export function PageRenderer({
         <p className="theme-attribution mono">{document.theme.attribution.credit}</p>
       )}
       {showInteractive && <PresenceIndicator pageOwnerId={pageOwnerId!} />}
+      {showInteractive && (
+        <AmbientStatusDisplay pageOwnerId={pageOwnerId!} initialStatus={initialAmbientStatus} />
+      )}
       {scopedCss && <style>{scopedCss}</style>}
       {document.pageParts.map((partId) => (
         <Fragment key={partId}>{renderPagePart(partId, ctx)}</Fragment>

@@ -6,6 +6,7 @@ import {
   listByTag,
   listByTemplate,
   listPopularTags,
+  listRandomPages,
   listRecentlyPublished,
   searchPages,
 } from "./discovery";
@@ -106,6 +107,27 @@ describe("searchPages", () => {
     publishPublicPage("useralpha", "User Alpha");
     expect(searchPages("")).toEqual([]);
     expect(searchPages("   ")).toEqual([]);
+  });
+});
+
+describe("listRandomPages", () => {
+  it("returns discoverable pages up to the given limit", () => {
+    publishPublicPage("rp1", "RP One");
+    publishPublicPage("rp2", "RP Two");
+    publishPublicPage("rp3", "RP Three");
+    const pages = listRandomPages(2);
+    expect(pages.length).toBe(2);
+    expect(pages.every((p) => ["rp1", "rp2", "rp3"].includes(p.handle))).toBe(true);
+  });
+
+  it("returns empty array when no discoverable pages exist", () => {
+    expect(listRandomPages()).toEqual([]);
+  });
+
+  it("excludes non-discoverable pages", () => {
+    const hidden = publishPublicPage("hiddenrp", "Hidden RP");
+    setHiddenFromDiscovery(hidden.id, true);
+    expect(listRandomPages()).toEqual([]);
   });
 });
 

@@ -68,6 +68,39 @@
   border: none;
   width: 100%;
   height: 100%;
+  transition: filter 0.25s ease, opacity 0.25s ease;
+}
+
+.wander-frame--loading {
+  filter: blur(3px);
+  opacity: 0.55;
+}
+
+/* Loading overlay: centered animated ring over the blurred frame */
+.wander-loading {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  pointer-events: none;
+  z-index: 10;
+}
+
+.wander-loading-ring {
+  width: 48px;
+  height: 48px;
+  border: 3px solid var(--line);
+  border-top-color: var(--ink);
+  border-radius: 50%;
+  animation: wander-spin 0.7s linear infinite;
+}
+
+@keyframes wander-spin {
+  to { transform: rotate(360deg); }
 }
 
 .wander-exit {

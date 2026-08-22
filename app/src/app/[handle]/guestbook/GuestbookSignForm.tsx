@@ -1,13 +1,59 @@
 "use client";
 
-import { useActionState } from "react";
+import { useActionState, useEffect, useRef, useState } from "react";
 import { signGuestbookAction, type GuestbookActionState } from "./actions";
 
 const initialState: GuestbookActionState = {};
 
+function draftKey(handle: string) {
+  return `iofus-guestbook-draft-${handle}`;
+}
+
 export function GuestbookSignForm({ handle }: { handle: string }) {
   const boundAction = signGuestbookAction.bind(null, handle);
   const [state, formAction, pending] = useActionState(boundAction, initialState);
+  const textareaRef = useRef<HTMLTextAreaElement>(null);
+  const [draft, setDraft] = useState("");
+
+  // Restore draft from localStorage on mount
+  useEffect(() => {
+    try {
+      const saved = localStorage.getItem(draftKey(handle));
+      if (saved) {
+        setDraft(saved);
+        if (textareaRef.current) textareaRef.current.value = saved;
+      }
+    } catch {
+      // localStorage unavailable (private browsing, etc.)
+    }
+  }, [handle]);
+
+  // Clear draft on successful submit
+  useEffect(() => {
+    if (state.success) {
+      setDraft("");
+      try {
+        localStorage.removeItem(draftKey(handle));
+      } catch {
+        // localStorage unavailable
+      }
+      if (textareaRef.current) textareaRef.current.value = "";
+    }
+  }, [state.success, handle]);
+
+  function handleChange(e: React.ChangeEvent<HTMLTextAreaElement>) {
+    const val = e.target.value;
+    setDraft(val);
+    try {
+      if (val) {
+        localStorage.setItem(draftKey(handle), val);
+      } else {
+        localStorage.removeItem(draftKey(handle));
+      }
+    } catch {
+      // localStorage unavailable
+    }
+  }
 
   return (
     <section className="guestbook-sign container-narrow" aria-label="Sign guestbook">
@@ -22,14 +68,17 @@ export function GuestbookSignForm({ handle }: { handle: string }) {
         <div className="field">
           <label htmlFor="guestbook-message">Your message</label>
           <textarea
+            ref={textareaRef}
             id="guestbook-message"
             name="message"
             rows={3}
             maxLength={500}
             required
             placeholder="Say something nice…"
+            defaultValue={draft}
+            onChange={handleChange}
           />
-          <span className="hint">Up to 500 characters.</span>
+          <span className="hint">Up to 500 characters.{draft && " Draft saved."}</span>
         </div>
         <button type="submit" className="btn" disabled={pending}>
           {pending ? "Signing…" : "Sign guestbook"}

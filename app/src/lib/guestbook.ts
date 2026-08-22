@@ -1,6 +1,7 @@
 import { randomUUID } from "node:crypto";
 import { getDb } from "./db";
 import { hasBlockRelationship } from "./friends";
+import { recordEdge } from "./proximityGraph";
 
 export class GuestbookError extends Error {}
 
@@ -94,6 +95,9 @@ export function signGuestbook(
     requireApproval ? "pending" : "approved",
     new Date().toISOString(),
   );
+
+  // Record proximity graph edge: author → page owner (guestbook interaction).
+  if (authorId) recordEdge(authorId, pageOwnerId, "guestbook");
 }
 
 /** Approve or reject a pending guestbook entry. Only *pageOwnerId* may call this. Throws when the entry doesn't exist or has already been moderated. */

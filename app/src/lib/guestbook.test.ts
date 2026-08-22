@@ -72,6 +72,14 @@ describe("signGuestbook", () => {
     createBlock(author, owner);
     expect(() => signGuestbook(owner, author, "blocker", "Hi", false)).toThrow(GuestbookError);
   });
+
+  it("blockCheckId prevents blocked user from signing anonymously", () => {
+    const owner = createUser("owner7");
+    const blocked = createUser("sneaky");
+    createBlock(owner, blocked);
+    // authorId=null (anonymous display) but blockCheckId=blocked — should still throw
+    expect(() => signGuestbook(owner, null, "anon", "Hi", false, blocked)).toThrow(GuestbookError);
+  });
 });
 
 describe("moderateGuestbookEntry", () => {

@@ -1,5 +1,6 @@
 import { randomUUID } from "node:crypto";
 import { getDb } from "./db";
+import { recordEdge, removeEdge } from "./proximityGraph";
 
 export interface WebRing {
   id: string;
@@ -184,6 +185,7 @@ export function joinWebRing(ringId: string, userId: string): "joined" | "request
     db.prepare(
       "INSERT INTO web_ring_members (ring_id, user_id, position, joined_at) VALUES (?, ?, ?, ?)",
     ).run(ringId, userId, maxPos.m + 1, new Date().toISOString());
+    _recordRingEdges(db, ringId, userId);
     return "joined";
   } else {
     db.prepare(
@@ -193,8 +195,27 @@ export function joinWebRing(ringId: string, userId: string): "joined" | "request
   }
 }
 
+/** Record bidirectional proximity graph edges between *newUserId* and all existing ring members. */
+function _recordRingEdges(db: ReturnType<typeof getDb>, ringId: string, newUserId: string): void {
+  const members = db
+    .prepare("SELECT user_id FROM web_ring_members WHERE ring_id = ? AND user_id != ?")
+    .all(ringId, newUserId) as { user_id: string }[];
+  for (const m of members) {
+    recordEdge(newUserId, m.user_id, "ring");
+    recordEdge(m.user_id, newUserId, "ring");
+  }
+}
+
 export function leaveWebRing(ringId: string, userId: string): void {
   const db = getDb();
+  // Remove graph edges to/from ring members before leaving
+  const members = db
+    .prepare("SELECT user_id FROM web_ring_members WHERE ring_id = ? AND user_id != ?")
+    .all(ringId, userId) as { user_id: string }[];
+  for (const m of members) {
+    removeEdge(userId, m.user_id, "ring");
+    removeEdge(m.user_id, userId, "ring");
+  }
   db.prepare("DELETE FROM web_ring_members WHERE ring_id = ? AND user_id = ?").run(ringId, userId);
   db.prepare("DELETE FROM web_ring_join_requests WHERE ring_id = ? AND user_id = ?").run(ringId, userId);
 }
@@ -245,6 +266,7 @@ export function reviewJoinRequest(
     db.prepare(
       "INSERT OR IGNORE INTO web_ring_members (ring_id, user_id, position, joined_at) VALUES (?, ?, ?, ?)",
     ).run(ringId, requestUserId, maxPos.m + 1, new Date().toISOString());
+    _recordRingEdges(db, ringId, requestUserId);
   }
 }
 
