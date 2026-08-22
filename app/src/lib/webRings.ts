@@ -172,6 +172,7 @@ export function updateWebRing(
   }
 }
 
+/** Join an open ring or request access to a closed ring. Records bidirectional proximity edges for open rings. */
 export function joinWebRing(ringId: string, userId: string): "joined" | "requested" {
   const db = getDb();
   const ring = db.prepare("SELECT is_open FROM web_rings WHERE id = ?").get(ringId) as { is_open: number } | undefined;
@@ -206,9 +207,9 @@ function _recordRingEdges(db: ReturnType<typeof getDb>, ringId: string, newUserI
   }
 }
 
+/** Leave a ring and remove proximity graph edges to all ring members. */
 export function leaveWebRing(ringId: string, userId: string): void {
   const db = getDb();
-  // Remove graph edges to/from ring members before leaving
   const members = db
     .prepare("SELECT user_id FROM web_ring_members WHERE ring_id = ? AND user_id != ?")
     .all(ringId, userId) as { user_id: string }[];
@@ -220,6 +221,7 @@ export function leaveWebRing(ringId: string, userId: string): void {
   db.prepare("DELETE FROM web_ring_join_requests WHERE ring_id = ? AND user_id = ?").run(ringId, userId);
 }
 
+/** List pending join requests for a ring. Only the ring owner may call this. */
 export function listJoinRequests(ringId: string, userId: string): WebRingJoinRequest[] {
   const db = getDb();
   const ring = db.prepare("SELECT creator_user_id FROM web_rings WHERE id = ?").get(ringId) as { creator_user_id: string | null } | undefined;
@@ -241,6 +243,7 @@ export function listJoinRequests(ringId: string, userId: string): WebRingJoinReq
   }));
 }
 
+/** Accept or reject a join request. Records edges on acceptance. Only the ring owner may call this. */
 export function reviewJoinRequest(
   ringId: string,
   requestUserId: string,
@@ -270,6 +273,7 @@ export function reviewJoinRequest(
   }
 }
 
+/** Count members in a ring. */
 export function countRingMembers(ringId: string): number {
   const row = getDb()
     .prepare("SELECT COUNT(*) as n FROM web_ring_members WHERE ring_id = ?")
@@ -277,10 +281,12 @@ export function countRingMembers(ringId: string): number {
   return row.n;
 }
 
+/** Check if a user is a member of a ring. */
 export function isRingMember(ringId: string, userId: string): boolean {
   return !!getDb().prepare("SELECT 1 FROM web_ring_members WHERE ring_id = ? AND user_id = ?").get(ringId, userId);
 }
 
+/** Check if a user has a pending join request to a ring. */
 export function hasPendingJoinRequest(ringId: string, userId: string): boolean {
   return !!getDb()
     .prepare("SELECT 1 FROM web_ring_join_requests WHERE ring_id = ? AND user_id = ? AND status = 'pending'")

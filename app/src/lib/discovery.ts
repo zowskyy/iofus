@@ -30,6 +30,7 @@ const DISCOVERABLE_WHERE = `
   AND u.is_blocked_platform = 0
 `;
 
+/** Recently published public pages, newest first. */
 export function listRecentlyPublished(limit = 24): DiscoverablePage[] {
   const db = getDb();
   const rows = db
@@ -55,6 +56,7 @@ export function listRecentlyPublished(limit = 24): DiscoverablePage[] {
   });
 }
 
+/** Public pages tagged with *tag* (case-insensitive), newest first. */
 export function listByTag(tag: string, limit = 24): DiscoverablePage[] {
   const db = getDb();
   const rows = db
@@ -75,6 +77,7 @@ export function listByTag(tag: string, limit = 24): DiscoverablePage[] {
   });
 }
 
+/** Public pages using a specific template, newest first. */
 export function listByTemplate(template: string, limit = 24): DiscoverablePage[] {
   const db = getDb();
   const rows = db
@@ -95,6 +98,7 @@ export function listByTemplate(template: string, limit = 24): DiscoverablePage[]
   });
 }
 
+/** A random discoverable page, or null if none exist. */
 export function getRandomPage(): DiscoverablePage | null {
   const db = getDb();
   const row = db
@@ -153,6 +157,7 @@ export function countTotalVisitsToday(): number {
   return row.n;
 }
 
+/** Most-used tags on public pages, ordered by frequency. */
 export function listPopularTags(limit = 20): { tag: string; count: number }[] {
   const db = getDb();
   const rows = db
@@ -170,6 +175,7 @@ export function listPopularTags(limit = 20): { tag: string; count: number }[] {
   return rows;
 }
 
+/** Search public pages by handle and page content (case-insensitive). Empty query returns empty array. */
 export function searchPages(query: string, limit = 24): DiscoverablePage[] {
   const q = query.trim().toLowerCase();
   if (!q) return [];
