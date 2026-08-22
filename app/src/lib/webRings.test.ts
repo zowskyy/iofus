@@ -209,4 +209,40 @@ describe("leaveWebRing", () => {
     const edge = db.prepare("SELECT * FROM graph_edges WHERE from_user_id = ? AND edge_type = 'ring'").get(a);
     expect(edge).toBeUndefined();
   });
+
+  it("preserves edge when user leaves one of multiple shared rings (weight-tracking regression test)", () => {
+    // CRITICAL Bug #3 regression test: Ring edge provenance loss
+    // When two users are in multiple rings together, leaving one ring should not delete the edge
+    // because the weight system tracks aggregate relationships across rings.
+    const alice = createUser("alice-multi");
+    const bob = createUser("bob-multi");
+
+    // Create two rings
+    const ring1 = createWebRing(alice, { name: "Ring 1", description: "", isOpen: true });
+    const ring2 = createWebRing(alice, { name: "Ring 2", description: "", isOpen: true });
+
+    // Alice joins both rings (empty, so no edges yet)
+    joinWebRing(ring1.id, alice);
+    joinWebRing(ring2.id, alice);
+
+    // Bob joins Ring1: creates edge to Alice (weight 1)
+    joinWebRing(ring1.id, bob);
+    const db = getDb();
+    let edge = db.prepare("SELECT weight FROM graph_edges WHERE from_user_id = ? AND to_user_id = ? AND edge_type = 'ring'").get(bob, alice) as { weight: number } | undefined;
+    expect(edge?.weight).toBe(1);
+
+    // Bob joins Ring2: increments weight to 2 (ON CONFLICT)
+    joinWebRing(ring2.id, bob);
+    edge = db.prepare("SELECT weight FROM graph_edges WHERE from_user_id = ? AND to_user_id = ? AND edge_type = 'ring'").get(bob, alice) as { weight: number } | undefined;
+    expect(edge?.weight).toBe(2);
+
+    // Bob leaves Ring1: weight decrements to 1, edge should still exist
+    leaveWebRing(ring1.id, bob);
+    edge = db.prepare("SELECT weight FROM graph_edges WHERE from_user_id = ? AND to_user_id = ? AND edge_type = 'ring'").get(bob, alice) as { weight: number } | undefined;
+    expect(edge).toBeDefined();
+    expect(edge?.weight).toBe(1);
+
+    // Bob is still a member of Ring2
+    expect(isRingMember(ring2.id, bob)).toBe(true);
+  });
 });
