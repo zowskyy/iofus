@@ -4,6 +4,8 @@ import { listBlockedUsers, listIncomingRequests } from "@/lib/friends";
 import { listPendingGuestbookEntries } from "@/lib/guestbook";
 import { getPageDocument } from "@/lib/pageDocument";
 import { getCurrentUser } from "@/lib/session";
+import { getAmbientStatus } from "@/lib/ambientStatus";
+import { AmbientStatusEditor } from "@/components/AmbientStatusEditor";
 import {
   acceptIncomingAction,
   approveGuestbookAction,
@@ -22,6 +24,7 @@ export default async function SettingsPage() {
   const pendingGuestbook = listPendingGuestbookEntries(viewer.id);
   const stored = getPageDocument(viewer.id);
   const panicActive = stored?.hiddenFromDiscovery && stored.visibility === "unlisted";
+  const currentStatus = getAmbientStatus(viewer.id);
 
   return (
     <main className="container">
@@ -32,6 +35,14 @@ export default async function SettingsPage() {
       <p style={{ color: "var(--ink-soft)" }}>
         Friend requests, blocks, guestbook moderation, and safety controls for @{viewer.handle}.
       </p>
+
+      <section className="settings-section">
+        <h2>Ambient status</h2>
+        <p className="settings-empty" style={{ marginBottom: "0.75rem" }}>
+          Show visitors what you&apos;re currently up to. Disappears automatically after 24 hours.
+        </p>
+        <AmbientStatusEditor initialStatus={currentStatus?.text ?? null} />
+      </section>
 
       <section className="settings-section">
         <h2>Panic mode</h2>

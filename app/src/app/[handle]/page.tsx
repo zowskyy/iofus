@@ -12,6 +12,7 @@ import {
 import { listApprovedGuestbookEntries } from "@/lib/guestbook";
 import { getCurrentUser } from "@/lib/session";
 import { listUserWebRings } from "@/lib/webRings";
+import { getAmbientStatus } from "@/lib/ambientStatus";
 import { PageRenderer, type TopEightLink } from "@/components/PageRenderer";
 import { parseHandleParam } from "@/lib/handleParam";
 import { FriendActions } from "./friends/FriendActions";
@@ -104,6 +105,7 @@ export default async function ProfilePage({ params, searchParams }: Props) {
   const friends = listPublicFriends(user.id, viewerId);
   const guestbookEntries = listApprovedGuestbookEntries(user.id);
   const topEightLinks = resolveTopEight(document.topEight);
+  const ambientStatus = getAmbientStatus(user.id);
   const rings = listUserWebRings(user.id);
 
   const relationship = viewer && !isOwner ? getFriendRelationship(viewer.id, user.id) : null;
@@ -177,6 +179,7 @@ export default async function ProfilePage({ params, searchParams }: Props) {
         readerMode={readerMode}
         guestbookEntries={guestbookEntries}
         topEightLinks={topEightLinks}
+        initialAmbientStatus={ambientStatus?.text ?? null}
       />
 
       {showGuestbookForm && <GuestbookSignForm handle={user.handle} />}

@@ -1,24 +1,35 @@
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import Link from "next/link";
 
 interface Props {
   handles: string[];
 }
 
+/** Client-side Wander UI: full-screen iframe navigation between profile pages with next/previous buttons and cross-fade loading animation. */
 export function WanderClient({ handles }: Props) {
   const [index, setIndex] = useState(0);
   const [started, setStarted] = useState(false);
+  const [loading, setLoading] = useState(false);
+  const iframeRef = useRef<HTMLIFrameElement>(null);
 
   const handle = handles[index] ?? null;
 
   const goNext = useCallback(() => {
-    setIndex((i) => Math.min(i + 1, handles.length - 1));
+    setIndex((i) => {
+      const next = Math.min(i + 1, handles.length - 1);
+      if (next !== i) setLoading(true);
+      return next;
+    });
   }, [handles.length]);
 
   const goPrev = useCallback(() => {
-    setIndex((i) => Math.max(i - 1, 0));
+    setIndex((i) => {
+      const prev = Math.max(i - 1, 0);
+      if (prev !== i) setLoading(true);
+      return prev;
+    });
   }, []);
 
   // Keyboard navigation
@@ -34,6 +45,11 @@ export function WanderClient({ handles }: Props) {
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
   }, [goNext, goPrev]);
+
+  // Clear loading state once iframe finishes loading
+  const onIframeLoad = useCallback(() => {
+    setLoading(false);
+  }, []);
 
   if (!handle) {
     return (
@@ -107,12 +123,20 @@ export function WanderClient({ handles }: Props) {
           </Link>
         </div>
       </div>
+      {/* Loading overlay: dims + blurs the frame with an animated ring while next page loads */}
+      {loading && (
+        <div className="wander-loading" aria-hidden="true">
+          <div className="wander-loading-ring" />
+        </div>
+      )}
       <iframe
+        ref={iframeRef}
         key={handle}
-        className="wander-frame"
+        className={`wander-frame${loading ? " wander-frame--loading" : ""}`}
         src={`/@${handle}`}
         title={`@${handle}'s page`}
         sandbox="allow-scripts allow-same-origin allow-forms"
+        onLoad={onIframeLoad}
       />
     </div>
   );

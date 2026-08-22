@@ -115,6 +115,33 @@ function migrate(db: DatabaseSync): void {
     db.exec("CREATE INDEX IF NOT EXISTS idx_stamps_owner ON page_stamps(page_owner_id, created_at)");
   }
 
+  // Proximity graph: shared infra for Wander and Vibe Graph.
+  // Edges are written when guestbook entries are submitted or ring members join.
+  // Page visits are intentionally excluded (passive surveillance).
+  db.exec(`
+    CREATE TABLE IF NOT EXISTS graph_edges (
+      from_user_id TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+      to_user_id TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+      edge_type TEXT NOT NULL CHECK (edge_type IN ('guestbook', 'ring')),
+      weight INTEGER NOT NULL DEFAULT 1,
+      created_at TEXT NOT NULL,
+      PRIMARY KEY (from_user_id, to_user_id, edge_type)
+    )
+  `);
+  if (!indexExists(db, "idx_graph_edges_to")) {
+    db.exec("CREATE INDEX IF NOT EXISTS idx_graph_edges_to ON graph_edges(to_user_id)");
+  }
+
+  // Ambient status: ephemeral user-set status strings ("currently listening/making/feeling").
+  // Plain text only. Max 100 chars enforced at lib layer. 24h TTL.
+  db.exec(`
+    CREATE TABLE IF NOT EXISTS ambient_statuses (
+      user_id TEXT PRIMARY KEY REFERENCES users(id) ON DELETE CASCADE,
+      text TEXT NOT NULL,
+      expires_at TEXT NOT NULL
+    )
+  `);
+
   seedWebRings(db);
   seedCollections(db);
   seedSharedThemes(db);

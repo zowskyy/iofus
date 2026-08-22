@@ -1,5 +1,6 @@
 import { randomUUID } from "node:crypto";
 import { getDb } from "./db";
+import { recordEdge, removeEdge } from "./proximityGraph";
 
 export interface WebRing {
   id: string;
@@ -109,8 +110,10 @@ function slugify(name: string): string {
     .slice(0, 60);
 }
 
+/** Error class for web ring operations. */
 export class WebRingError extends Error {}
 
+/** Create a new web ring and return it. Throws WebRingError on invalid name. */
 export function createWebRing(
   userId: string,
   opts: { name: string; description: string; isOpen: boolean },
@@ -134,6 +137,7 @@ export function createWebRing(
   return { id, slug, name, description: opts.description.trim(), creatorUserId: userId, isOpen: opts.isOpen };
 }
 
+/** Retrieve all rings created by *userId*. */
 export function getUserOwnedRings(userId: string): WebRing[] {
   const db = getDb();
   const rows = db
@@ -144,6 +148,7 @@ export function getUserOwnedRings(userId: string): WebRing[] {
   return rows.map(rowToRing);
 }
 
+/** Delete a web ring. Only the owner may delete it. Throws WebRingError if not authorized or ring doesn't exist. */
 export function deleteWebRing(ringId: string, userId: string): void {
   const db = getDb();
   const ring = db.prepare("SELECT creator_user_id FROM web_rings WHERE id = ?").get(ringId) as { creator_user_id: string | null } | undefined;
@@ -152,6 +157,7 @@ export function deleteWebRing(ringId: string, userId: string): void {
   db.prepare("DELETE FROM web_rings WHERE id = ?").run(ringId);
 }
 
+/** Update a web ring's name and/or description. Only the owner may update it. Throws WebRingError if not authorized. */
 export function updateWebRing(
   ringId: string,
   userId: string,
@@ -171,6 +177,7 @@ export function updateWebRing(
   }
 }
 
+/** Join an open ring or request access to a closed ring. Records bidirectional proximity edges for open rings. */
 export function joinWebRing(ringId: string, userId: string): "joined" | "requested" {
   const db = getDb();
   const ring = db.prepare("SELECT is_open FROM web_rings WHERE id = ?").get(ringId) as { is_open: number } | undefined;
@@ -184,6 +191,7 @@ export function joinWebRing(ringId: string, userId: string): "joined" | "request
     db.prepare(
       "INSERT INTO web_ring_members (ring_id, user_id, position, joined_at) VALUES (?, ?, ?, ?)",
     ).run(ringId, userId, maxPos.m + 1, new Date().toISOString());
+    _recordRingEdges(db, ringId, userId);
     return "joined";
   } else {
     db.prepare(
@@ -193,12 +201,32 @@ export function joinWebRing(ringId: string, userId: string): "joined" | "request
   }
 }
 
+/** Record bidirectional proximity graph edges between *newUserId* and all existing ring members. */
+function _recordRingEdges(db: ReturnType<typeof getDb>, ringId: string, newUserId: string): void {
+  const members = db
+    .prepare("SELECT user_id FROM web_ring_members WHERE ring_id = ? AND user_id != ?")
+    .all(ringId, newUserId) as { user_id: string }[];
+  for (const m of members) {
+    recordEdge(newUserId, m.user_id, "ring");
+    recordEdge(m.user_id, newUserId, "ring");
+  }
+}
+
+/** Leave a ring and remove proximity graph edges to all ring members. */
 export function leaveWebRing(ringId: string, userId: string): void {
   const db = getDb();
+  const members = db
+    .prepare("SELECT user_id FROM web_ring_members WHERE ring_id = ? AND user_id != ?")
+    .all(ringId, userId) as { user_id: string }[];
+  for (const m of members) {
+    removeEdge(userId, m.user_id, "ring");
+    removeEdge(m.user_id, userId, "ring");
+  }
   db.prepare("DELETE FROM web_ring_members WHERE ring_id = ? AND user_id = ?").run(ringId, userId);
   db.prepare("DELETE FROM web_ring_join_requests WHERE ring_id = ? AND user_id = ?").run(ringId, userId);
 }
 
+/** List pending join requests for a ring. Only the ring owner may call this. */
 export function listJoinRequests(ringId: string, userId: string): WebRingJoinRequest[] {
   const db = getDb();
   const ring = db.prepare("SELECT creator_user_id FROM web_rings WHERE id = ?").get(ringId) as { creator_user_id: string | null } | undefined;
@@ -220,6 +248,7 @@ export function listJoinRequests(ringId: string, userId: string): WebRingJoinReq
   }));
 }
 
+/** Accept or reject a join request. Records edges on acceptance. Only the ring owner may call this. */
 export function reviewJoinRequest(
   ringId: string,
   requestUserId: string,
@@ -245,9 +274,11 @@ export function reviewJoinRequest(
     db.prepare(
       "INSERT OR IGNORE INTO web_ring_members (ring_id, user_id, position, joined_at) VALUES (?, ?, ?, ?)",
     ).run(ringId, requestUserId, maxPos.m + 1, new Date().toISOString());
+    _recordRingEdges(db, ringId, requestUserId);
   }
 }
 
+/** Count members in a ring. */
 export function countRingMembers(ringId: string): number {
   const row = getDb()
     .prepare("SELECT COUNT(*) as n FROM web_ring_members WHERE ring_id = ?")
@@ -255,10 +286,12 @@ export function countRingMembers(ringId: string): number {
   return row.n;
 }
 
+/** Check if a user is a member of a ring. */
 export function isRingMember(ringId: string, userId: string): boolean {
   return !!getDb().prepare("SELECT 1 FROM web_ring_members WHERE ring_id = ? AND user_id = ?").get(ringId, userId);
 }
 
+/** Check if a user has a pending join request to a ring. */
 export function hasPendingJoinRequest(ringId: string, userId: string): boolean {
   return !!getDb()
     .prepare("SELECT 1 FROM web_ring_join_requests WHERE ring_id = ? AND user_id = ? AND status = 'pending'")

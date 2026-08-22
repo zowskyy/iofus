@@ -190,6 +190,7 @@ export function getAskerIdByAskId(askId: string): string | null {
   return row?.asker_id ?? null;
 }
 
+/** Fetch a single ask by id, applying the same anonymity rules as listAsksForViewer. Returns null when not found. */
 export function getAsk(askId: string, viewerId: string | null): Ask | null {
   const row = getDb().prepare(`${SELECT_ASK} WHERE a.id = ?`).get(askId) as unknown as AskRow | undefined;
   return row ? rowToAsk(row, viewerId) : null;

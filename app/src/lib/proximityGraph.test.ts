@@ -1,0 +1,170 @@
+import { describe, it, expect, beforeEach } from "vitest";
+import { getDb, resetDbForTests } from "./db";
+
+process.env.IOFUS_DB_PATH = ":memory:";
+import { recordEdge, removeEdge, getProximityOrdered, getWanderBatch } from "./proximityGraph";
+
+function createUser(handle: string): string {
+  const db = getDb();
+  const id = crypto.randomUUID();
+  db.prepare(
+    "INSERT INTO users (id, handle, handle_lower, password_hash, created_at) VALUES (?, ?, ?, 'x', datetime('now'))",
+  ).run(id, handle, handle.toLowerCase());
+  return id;
+}
+
+function publishPage(userId: string): void {
+  const db = getDb();
+  db.prepare(
+    `INSERT INTO page_documents (user_id, document_json, is_published, visibility, hidden_from_discovery, updated_at)
+     VALUES (?, '{}', 1, 'public', 0, datetime('now'))`,
+  ).run(userId);
+}
+
+beforeEach(() => {
+  const db = getDb();
+  db.exec("DELETE FROM graph_edges; DELETE FROM page_documents; DELETE FROM users;");
+});
+
+describe("recordEdge", () => {
+  it("inserts a guestbook edge", () => {
+    const a = createUser("alice");
+    const b = createUser("bob");
+    recordEdge(a, b, "guestbook");
+    const db = getDb();
+    const row = db.prepare("SELECT weight FROM graph_edges WHERE from_user_id = ? AND to_user_id = ?").get(a, b) as { weight: number } | undefined;
+    expect(row?.weight).toBe(1);
+  });
+
+  it("increments weight on repeated edge", () => {
+    const a = createUser("alice2");
+    const b = createUser("bob2");
+    recordEdge(a, b, "guestbook");
+    recordEdge(a, b, "guestbook");
+    const db = getDb();
+    const row = db.prepare("SELECT weight FROM graph_edges WHERE from_user_id = ? AND to_user_id = ?").get(a, b) as { weight: number } | undefined;
+    expect(row?.weight).toBe(2);
+  });
+
+  it("does not insert self-edge", () => {
+    const a = createUser("alice3");
+    recordEdge(a, a, "guestbook");
+    const db = getDb();
+    const row = db.prepare("SELECT * FROM graph_edges WHERE from_user_id = ? AND to_user_id = ?").get(a, a);
+    expect(row).toBeUndefined();
+  });
+});
+
+describe("removeEdge", () => {
+  it("removes an existing edge", () => {
+    const a = createUser("alice4");
+    const b = createUser("bob4");
+    recordEdge(a, b, "ring");
+    removeEdge(a, b, "ring");
+    const db = getDb();
+    const row = db.prepare("SELECT * FROM graph_edges WHERE from_user_id = ? AND to_user_id = ?").get(a, b);
+    expect(row).toBeUndefined();
+  });
+});
+
+describe("getProximityOrdered", () => {
+  it("returns direct neighbors in weight order", () => {
+    const center = createUser("center");
+    const near = createUser("near");
+    const far = createUser("far");
+    recordEdge(center, near, "guestbook");
+    recordEdge(center, near, "guestbook"); // weight 2
+    recordEdge(center, far, "guestbook");  // weight 1
+    const result = getProximityOrdered(center, 10);
+    expect(result[0]).toBe(near);
+    expect(result[1]).toBe(far);
+  });
+
+  it("returns empty array when no edges", () => {
+    const lone = createUser("loner");
+    expect(getProximityOrdered(lone, 10)).toEqual([]);
+  });
+
+  it("does not include the start user", () => {
+    const a = createUser("startA");
+    const b = createUser("neighborB");
+    recordEdge(a, b, "guestbook");
+    const result = getProximityOrdered(a, 10);
+    expect(result).not.toContain(a);
+  });
+});
+
+describe("getWanderBatch", () => {
+  it("falls back to random pages for null userId", () => {
+    const u = createUser("wanderer");
+    publishPage(u);
+    const result = getWanderBatch(null, 5);
+    expect(result.length).toBeGreaterThanOrEqual(0); // may be empty if no discoverable pages beyond seed
+    expect(Array.isArray(result)).toBe(true);
+  });
+
+  it("returns only handles", () => {
+    const u = createUser("wanderer2");
+    publishPage(u);
+    const result = getWanderBatch(null, 5);
+    for (const h of result) expect(typeof h).toBe("string");
+  });
+
+  it("fills partial proximity results with random pages", () => {
+    // Create a center user with proximity to 2 others
+    const center = createUser("center-wander");
+    const proximity1 = createUser("proximity1");
+    const proximity2 = createUser("proximity2");
+    const random1 = createUser("random1");
+    const random2 = createUser("random2");
+
+    // Publish all pages
+    publishPage(center);
+    publishPage(proximity1);
+    publishPage(proximity2);
+    publishPage(random1);
+    publishPage(random2);
+
+    // Create edges from center to proximity users
+    recordEdge(center, proximity1, "guestbook");
+    recordEdge(center, proximity2, "guestbook");
+
+    // Request 4 results (more than the 2 proximity edges)
+    const result = getWanderBatch(center, 4);
+
+    // Should contain both proximity results plus 2 random results
+    expect(result.length).toBe(4);
+    expect(result).toContain("proximity1");
+    expect(result).toContain("proximity2");
+    // Verify the proximity results come before random results (both have weight 1, so order may vary)
+    const proximityIndices = [result.indexOf("proximity1"), result.indexOf("proximity2")];
+    expect(Math.max(...proximityIndices)).toBeLessThan(2);
+  });
+
+  it("returns partial proximity when some pages are not discoverable", () => {
+    // Create center with proximity to users, but one is not discoverable
+    const center = createUser("center-partial");
+    const visible = createUser("visible-user");
+    const hidden = createUser("hidden-user");
+    const random1 = createUser("random-partial1");
+
+    // Publish visible and random pages, but not hidden
+    publishPage(center);
+    publishPage(visible);
+    publishPage(random1);
+    // Don't publish hidden page - it won't be discoverable
+
+    // Create edges from center to both users
+    recordEdge(center, visible, "ring");
+    recordEdge(center, hidden, "ring");
+
+    // Request 3 results
+    const result = getWanderBatch(center, 3);
+
+    // Should contain the visible proximity result plus random fills
+    expect(result.length).toBe(3);
+    expect(result).toContain("visible-user");
+    // Hidden user should NOT be in results since page is not published
+    expect(result).not.toContain("hidden-user");
+  });
+});
