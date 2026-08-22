@@ -36,7 +36,7 @@ describe("🐛 Bug: Race condition in getAmbientStatus", () => {
 
     // Set status to expire in the past
     const db = getDb();
-    const pastTime = new Date(Date.now() - 1000).toISOString();
+    const pastTime = Date.now() - 1000; // Unix milliseconds, already in the past
     db.prepare(
       "INSERT INTO ambient_statuses (user_id, text, expires_at) VALUES (?, ?, ?)",
     ).run(user, "old status", pastTime);
