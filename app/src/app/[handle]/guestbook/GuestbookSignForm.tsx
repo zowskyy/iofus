@@ -16,16 +16,21 @@ export function GuestbookSignForm({ handle }: { handle: string }) {
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const [draft, setDraft] = useState("");
 
-  // Restore draft from localStorage on mount
+  // Restore draft from localStorage on mount or handle change
   useEffect(() => {
     try {
       const saved = localStorage.getItem(draftKey(handle));
       if (saved) {
         setDraft(saved);
         if (textareaRef.current) textareaRef.current.value = saved;
+      } else {
+        setDraft("");
+        if (textareaRef.current) textareaRef.current.value = "";
       }
     } catch {
       // localStorage unavailable (private browsing, etc.)
+      setDraft("");
+      if (textareaRef.current) textareaRef.current.value = "";
     }
   }, [handle]);
 

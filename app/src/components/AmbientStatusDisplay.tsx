@@ -17,9 +17,12 @@ export function AmbientStatusDisplay({ pageOwnerId, initialStatus }: Props) {
 
   useEffect(() => {
     let timeoutId: ReturnType<typeof setTimeout>;
+    let abortController = new AbortController();
 
     const poll = () => {
-      fetch(`/api/status?userId=${encodeURIComponent(pageOwnerId)}`)
+      fetch(`/api/status?userId=${encodeURIComponent(pageOwnerId)}`, {
+        signal: abortController.signal,
+      })
         .then((r) => {
           if (r.ok) {
             setBackoff(POLL_INTERVAL_MS); // reset on success
@@ -32,8 +35,11 @@ export function AmbientStatusDisplay({ pageOwnerId, initialStatus }: Props) {
         .then((data) => {
           if (data) setStatus(data.status);
         })
-        .catch(() => {
-          setBackoff((b) => Math.min(b * 2, 120_000));
+        .catch((error) => {
+          // Ignore abort errors (component unmounted or dependency changed)
+          if (error.name !== "AbortError") {
+            setBackoff((b) => Math.min(b * 2, 120_000));
+          }
         })
         .finally(() => {
           timeoutId = setTimeout(poll, backoff);
@@ -41,7 +47,10 @@ export function AmbientStatusDisplay({ pageOwnerId, initialStatus }: Props) {
     };
 
     timeoutId = setTimeout(poll, POLL_INTERVAL_MS);
-    return () => clearTimeout(timeoutId);
+    return () => {
+      clearTimeout(timeoutId);
+      abortController.abort();
+    };
   }, [pageOwnerId, backoff]);
 
   if (!status) return null;

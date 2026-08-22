@@ -32,12 +32,21 @@ export function recordEdge(fromUserId: string, toUserId: string, edgeType: EdgeT
 
 /**
  * Remove edges from *fromUserId* to *toUserId* for *edgeType*.
- * Called when a ring member leaves.
+ * Decrements weight; deletes edge only when weight reaches 0.
+ * Called when a ring member leaves or a guestbook entry is deleted.
  */
 export function removeEdge(fromUserId: string, toUserId: string, edgeType: EdgeType): void {
-  getDb()
-    .prepare("DELETE FROM graph_edges WHERE from_user_id = ? AND to_user_id = ? AND edge_type = ?")
-    .run(fromUserId, toUserId, edgeType);
+  const db = getDb();
+  db.prepare("UPDATE graph_edges SET weight = weight - 1 WHERE from_user_id = ? AND to_user_id = ? AND edge_type = ?").run(
+    fromUserId,
+    toUserId,
+    edgeType,
+  );
+  db.prepare("DELETE FROM graph_edges WHERE from_user_id = ? AND to_user_id = ? AND edge_type = ? AND weight <= 0").run(
+    fromUserId,
+    toUserId,
+    edgeType,
+  );
 }
 
 /**
@@ -101,12 +110,16 @@ export function getWanderBatch(startUserId: string | null, limit = 30): string[]
       const placeholders = proximityIds.map(() => "?").join(", ");
       const rows = db
         .prepare(
-          `SELECT u.handle FROM page_documents pd
+          `SELECT pd.user_id, u.handle FROM page_documents pd
            JOIN users u ON u.id = pd.user_id
            WHERE pd.user_id IN (${placeholders}) AND ${discoverableWhere}`,
         )
-        .all(...proximityIds) as { handle: string }[];
-      if (rows.length >= limit) return rows.map((r) => r.handle);
+        .all(...proximityIds) as { user_id: string; handle: string }[];
+
+      // Preserve proximity order from the graph
+      const idToHandle = new Map(rows.map((r) => [r.user_id, r.handle]));
+      const ordered = proximityIds.map((id) => idToHandle.get(id)).filter((h): h is string => h !== undefined);
+      if (ordered.length >= limit) return ordered;
     }
   }
 
