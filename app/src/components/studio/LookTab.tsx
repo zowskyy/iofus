@@ -123,7 +123,7 @@ export function LookTab({ document: doc, onChange, handle, pending, onPublishThe
       <fieldset className="studio-fieldset">
         <legend>Y2K flourishes</legend>
         <p className="studio-hint">
-          Tiled backgrounds and a scrolling status line — straight out of 2003. Turning on "Reduce motion"
+          Tiled backgrounds and a scrolling status line — straight out of 2003. Turning on &quot;Reduce motion&quot;
           (Access tab) always wins over the marquee.
         </p>
         <label className="field">

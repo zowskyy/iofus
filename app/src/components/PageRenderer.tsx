@@ -45,6 +45,7 @@ export function PageRenderer({
   const themeStyle: React.CSSProperties = readerMode
     ? {}
     : ({
+        ...({
         "--page-accent": document.theme.accent,
         "--page-bg": document.theme.background,
         "--page-ink": ink,
@@ -67,6 +68,7 @@ export function PageRenderer({
             "--page-bg-size": document.theme.backgroundTile ? "auto" : "cover",
           };
         })(),
+        } as unknown as React.CSSProperties),
       } as React.CSSProperties);
 
   const bodyClasses = [
