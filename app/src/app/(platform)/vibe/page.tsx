@@ -1,3 +1,4 @@
+import Link from "next/link";
 import { redirect } from "next/navigation";
 import { getCurrentUser } from "@/lib/session";
 import { getDb } from "@/lib/db";
@@ -44,7 +45,7 @@ export default async function VibeGraphPage() {
            AND pd.is_published = 1 AND pd.visibility = 'public' AND pd.hidden_from_discovery = 0
            AND u.is_blocked_platform = 0`,
       )
-      .all(...neighborIds) as NodeRow[];
+      .all(...neighborIds) as unknown as NodeRow[];
 
     // Preserve proximity order
     const rowMap = new Map(rows.map((r) => [r.user_id, r]));
@@ -77,7 +78,7 @@ export default async function VibeGraphPage() {
           <p style={{ color: "var(--ink-soft)", maxWidth: 480 }}>
             Your page is the seed of a new web. Sign someone&apos;s guestbook or join a ring to start connecting.
           </p>
-          <a href="/explore" className="btn" style={{ marginTop: "1rem" }}>Browse Explore →</a>
+          <Link href="/explore" className="btn" style={{ marginTop: "1rem" }}>Browse Explore →</Link>
         </div>
       ) : (
         <p className="mono" style={{ color: "var(--ink-soft)", fontSize: "0.8rem", marginBottom: "1.5rem" }}>

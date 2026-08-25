@@ -37,8 +37,8 @@ describe("signGuestbook", () => {
     signGuestbook(owner, author, "author", "Hello!", true);
     const entries = listPendingGuestbookEntries(owner);
     expect(entries).toHaveLength(1);
-    expect(entries[0].status).toBe("pending");
-    expect(entries[0].message).toBe("Hello!");
+    expect(entries[0]!.status).toBe("pending");
+    expect(entries[0]!.message).toBe("Hello!");
   });
 
   it("inserts an approved entry when requireApproval is false", () => {
@@ -46,7 +46,7 @@ describe("signGuestbook", () => {
     signGuestbook(owner, null, "anon", "Hi", false);
     const entries = listApprovedGuestbookEntries(owner);
     expect(entries).toHaveLength(1);
-    expect(entries[0].status).toBe("approved");
+    expect(entries[0]!.status).toBe("approved");
   });
 
   it("rejects a blank message", () => {
@@ -86,7 +86,7 @@ describe("moderateGuestbookEntry", () => {
   it("approves a pending entry", () => {
     const owner = createUser("mod-owner");
     signGuestbook(owner, null, "a", "hi", true);
-    const [entry] = listPendingGuestbookEntries(owner);
+    const entry = listPendingGuestbookEntries(owner)[0]!;
     moderateGuestbookEntry(owner, entry.id, true);
     expect(listApprovedGuestbookEntries(owner)).toHaveLength(1);
     expect(listPendingGuestbookEntries(owner)).toHaveLength(0);
@@ -95,7 +95,7 @@ describe("moderateGuestbookEntry", () => {
   it("rejects a pending entry", () => {
     const owner = createUser("mod-owner2");
     signGuestbook(owner, null, "a", "hi", true);
-    const [entry] = listPendingGuestbookEntries(owner);
+    const entry = listPendingGuestbookEntries(owner)[0]!;
     moderateGuestbookEntry(owner, entry.id, false);
     expect(listApprovedGuestbookEntries(owner)).toHaveLength(0);
     expect(listPendingGuestbookEntries(owner)).toHaveLength(0);
@@ -105,14 +105,14 @@ describe("moderateGuestbookEntry", () => {
     const owner = createUser("mod-owner3");
     const other = createUser("other-mod");
     signGuestbook(owner, null, "a", "hi", true);
-    const [entry] = listPendingGuestbookEntries(owner);
+    const entry = listPendingGuestbookEntries(owner)[0]!;
     expect(() => moderateGuestbookEntry(other, entry.id, true)).toThrow(GuestbookError);
   });
 
   it("throws when entry has already been moderated", () => {
     const owner = createUser("mod-owner4");
     signGuestbook(owner, null, "a", "hi", true);
-    const [entry] = listPendingGuestbookEntries(owner);
+    const entry = listPendingGuestbookEntries(owner)[0]!;
     moderateGuestbookEntry(owner, entry.id, true);
     expect(() => moderateGuestbookEntry(owner, entry.id, false)).toThrow(GuestbookError);
   });
@@ -122,7 +122,7 @@ describe("deleteGuestbookEntry", () => {
   it("deletes an entry owned by the page owner", () => {
     const owner = createUser("del-owner");
     signGuestbook(owner, null, "a", "bye", false);
-    const [entry] = listApprovedGuestbookEntries(owner);
+    const entry = listApprovedGuestbookEntries(owner)[0]!;
     deleteGuestbookEntry(owner, entry.id);
     expect(listApprovedGuestbookEntries(owner)).toHaveLength(0);
   });
@@ -131,7 +131,7 @@ describe("deleteGuestbookEntry", () => {
     const owner = createUser("del-owner2");
     const other = createUser("del-other");
     signGuestbook(owner, null, "a", "hi", false);
-    const [entry] = listApprovedGuestbookEntries(owner);
+    const entry = listApprovedGuestbookEntries(owner)[0]!;
     deleteGuestbookEntry(other, entry.id);
     expect(listApprovedGuestbookEntries(owner)).toHaveLength(1);
   });

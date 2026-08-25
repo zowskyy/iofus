@@ -1,6 +1,6 @@
 "use client";
 
-import { useActionState, useEffect, useRef, useState } from "react";
+import { useActionState, useState } from "react";
 import { signGuestbookAction, type GuestbookActionState } from "./actions";
 
 const initialState: GuestbookActionState = {};
@@ -9,48 +9,44 @@ function draftKey(handle: string) {
   return `iofus-guestbook-draft-${handle}`;
 }
 
+/** Reads the saved draft for *handle* from localStorage, or "" when unavailable. */
+function readSavedDraft(handle: string): string {
+  try {
+    return localStorage.getItem(draftKey(handle)) ?? "";
+  } catch {
+    // localStorage unavailable (private browsing, etc.)
+    return "";
+  }
+}
+
 /** Guestbook form with localStorage draft auto-save/restore. Saves on every change; clears on submit. */
 export function GuestbookSignForm({ handle }: { handle: string }) {
   const boundAction = signGuestbookAction.bind(null, handle);
   const [state, formAction, pending] = useActionState(boundAction, initialState);
-  const textareaRef = useRef<HTMLTextAreaElement>(null);
-  const [draft, setDraft] = useState("");
-  const [draftSaved, setDraftSaved] = useState(false);
+  const [draft, setDraft] = useState(() => readSavedDraft(handle));
+  const [draftSaved, setDraftSaved] = useState(() => readSavedDraft(handle) !== "");
 
-  // Restore draft from localStorage on mount or handle change
-  useEffect(() => {
+  // Restore draft when the handle changes, and clear it after a successful
+  // sign. React's endorsed pattern of adjusting state during render when a
+  // prop/value changes — this avoids cascading renders from setting state
+  // inside an effect.
+  const [prevHandle, setPrevHandle] = useState(handle);
+  const [prevSuccess, setPrevSuccess] = useState<string | undefined>(undefined);
+  if (prevHandle !== handle) {
+    setPrevHandle(handle);
+    const restored = readSavedDraft(handle);
+    setDraft(restored);
+    setDraftSaved(restored !== "");
+  } else if (state.success && prevSuccess !== state.success) {
+    setPrevSuccess(state.success);
+    setDraft("");
+    setDraftSaved(false);
     try {
-      const saved = localStorage.getItem(draftKey(handle));
-      if (saved) {
-        setDraft(saved);
-        setDraftSaved(true);
-        if (textareaRef.current) textareaRef.current.value = saved;
-      } else {
-        setDraft("");
-        setDraftSaved(false);
-        if (textareaRef.current) textareaRef.current.value = "";
-      }
+      localStorage.removeItem(draftKey(handle));
     } catch {
-      // localStorage unavailable (private browsing, etc.)
-      setDraft("");
-      setDraftSaved(false);
-      if (textareaRef.current) textareaRef.current.value = "";
+      // localStorage unavailable
     }
-  }, [handle]);
-
-  // Clear draft on successful submit
-  useEffect(() => {
-    if (state.success) {
-      setDraft("");
-      setDraftSaved(false);
-      try {
-        localStorage.removeItem(draftKey(handle));
-      } catch {
-        // localStorage unavailable
-      }
-      if (textareaRef.current) textareaRef.current.value = "";
-    }
-  }, [state.success, handle]);
+  }
 
   function handleChange(e: React.ChangeEvent<HTMLTextAreaElement>) {
     const val = e.target.value;
@@ -82,14 +78,13 @@ export function GuestbookSignForm({ handle }: { handle: string }) {
         <div className="field">
           <label htmlFor="guestbook-message">Your message</label>
           <textarea
-            ref={textareaRef}
             id="guestbook-message"
             name="message"
             rows={3}
             maxLength={500}
             required
             placeholder="Say something nice…"
-            defaultValue={draft}
+            value={draft}
             onChange={handleChange}
           />
           <span className="hint">Up to 500 characters.{draftSaved && " Draft saved."}</span>

@@ -107,7 +107,7 @@ export default async function HomePage() {
       <h1>This is your wall. Tag it up.</h1>
       <p className="home-lead">
         No feed. No ads. No algorithm watching you. Just your /@handle, your way —
-        shrines, playlists, pixel art, whatever you're actually about.
+        shrines, playlists, pixel art, whatever you&apos;re actually about.
         Find people. Build something weird. Keep it real.
       </p>
 
@@ -116,7 +116,7 @@ export default async function HomePage() {
           Claim your spot
         </Link>
         <Link href="/explore" className="btn secondary">
-          See what's out there
+          See what&apos;s out there
         </Link>
       </div>
 
@@ -168,7 +168,7 @@ export default async function HomePage() {
           </li>
           <li>
             <Link href="/explore">Friend-of-friend walk</Link>
-            <span className="home-explore-desc">Step through the graph. See who's two hops out.</span>
+            <span className="home-explore-desc">Step through the graph. See who&apos;s two hops out.</span>
           </li>
         </ul>
       </section>
