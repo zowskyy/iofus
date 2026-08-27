@@ -6,7 +6,6 @@ import { getCurrentUser } from "@/lib/session";
 import { checkRateLimit, rateLimitActorKey } from "@/lib/rateLimit";
 import { validateProfileCustomCss } from "@/lib/cssScope";
 import {
-  discardDraft,
   exportPageData,
   getPageDocument,
   PageDocumentValidationError,
@@ -86,7 +85,6 @@ export async function saveAndPublishAction(documentJson: string): Promise<Studio
     const cssError = validateDocumentCss(document, viewer.handle);
     if (cssError) return { error: cssError };
     const saved = savePageDocument(viewer.id, document);
-    discardDraft(viewer.id);
     revalidateOwnerPaths(viewer.handle);
     return { ok: true, document: saved };
   } catch (e) {

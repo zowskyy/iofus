@@ -64,6 +64,14 @@ export function checkRateLimit(key: string, maxCount: number, windowMs: number =
         db.prepare("UPDATE rate_limits SET count = count + 1 WHERE key = ?").run(key);
       }
     }
+    // Expired windows are otherwise never removed. The longest window in
+    // use is DAY_MS, so anything older than a week is unambiguously stale
+    // regardless of which window size created it — piggyback the sweep on
+    // this already-open write transaction rather than adding a background
+    // job.
+    db.prepare("DELETE FROM rate_limits WHERE window_start < ?").run(
+      new Date(now - 7 * DAY_MS).toISOString(),
+    );
     db.exec("COMMIT");
   } catch (err) {
     // ROLLBACK is a no-op if the tx already committed or was explicitly rolled back above

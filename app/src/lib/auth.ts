@@ -1,4 +1,4 @@
-import { randomBytes, randomUUID, scryptSync, timingSafeEqual } from "node:crypto";
+import { createHash, randomBytes, randomUUID, scryptSync, timingSafeEqual } from "node:crypto";
 import { getDb } from "./db";
 
 // Password hashing uses Node's built-in crypto.scrypt (no external
@@ -86,6 +86,13 @@ export class HandleTakenError extends Error {
   }
 }
 
+/** True when *error* is a SQLite UNIQUE constraint violation (any indexed column). */
+function isUniqueConstraintViolation(error: unknown): boolean {
+  if (!(error instanceof Error)) return false;
+  const code = (error as { code?: string }).code;
+  return code === "SQLITE_CONSTRAINT_UNIQUE" || error.message.includes("UNIQUE constraint failed");
+}
+
 export function createUser(rawHandle: string, password: string): User {
   const handle = validateHandle(rawHandle);
   validatePassword(password);
@@ -100,10 +107,20 @@ export function createUser(rawHandle: string, password: string): User {
   const createdAt = new Date().toISOString();
   const passwordHash = hashPassword(password);
 
-  db.prepare(
-    `INSERT INTO users (id, handle, handle_lower, password_hash, created_at)
-     VALUES (?, ?, ?, ?, ?)`,
-  ).run(id, handle, handle, passwordHash, createdAt);
+  // The SELECT above only rules out an *already-committed* duplicate — two
+  // concurrent signups for the same handle can both pass it and race on
+  // this INSERT. The handle_lower UNIQUE index (schema.sql) is the real
+  // guard; translate its violation into the same user-facing error the
+  // upfront check produces, instead of letting a raw SQLite error surface.
+  try {
+    db.prepare(
+      `INSERT INTO users (id, handle, handle_lower, password_hash, created_at)
+       VALUES (?, ?, ?, ?, ?)`,
+    ).run(id, handle, handle, passwordHash, createdAt);
+  } catch (error) {
+    if (isUniqueConstraintViolation(error)) throw new HandleTakenError(handle);
+    throw error;
+  }
 
   return { id, handle, createdAt };
 }
@@ -172,14 +189,23 @@ export function createSession(userId: string): string {
     `INSERT INTO sessions (token_hash, user_id, created_at, expires_at) VALUES (?, ?, ?, ?)`,
   ).run(tokenHash, userId, now.toISOString(), expiresAt.toISOString());
 
+  // Expired sessions are otherwise only ever deleted lazily, if someone
+  // happens to present that exact expired token again — an abandoned
+  // account's rows would sit in the table forever. Piggyback a sweep on
+  // the low-frequency "someone is logging in" path rather than adding a
+  // background job.
+  db.prepare("DELETE FROM sessions WHERE expires_at < ?").run(now.toISOString());
+
   return rawToken;
 }
 
 function hashToken(rawToken: string): string {
   // Sessions are looked up by exact hash match (not scrypt — tokens are
   // already high-entropy random, no need for a slow KDF here), so a
-  // fast, deterministic hash is correct and keeps lookups cheap.
-  return scryptSync(rawToken, "iofus-session-salt-v1", 32).toString("hex");
+  // fast, deterministic hash is correct and keeps lookups cheap. This
+  // runs on every getCurrentUser() call (i.e. every authenticated page
+  // load), so an actual slow KDF here would be a self-inflicted cost.
+  return createHash("sha256").update("iofus-session-salt-v1").update(rawToken).digest("hex");
 }
 
 export function resolveSession(rawToken: string | undefined): User | null {
