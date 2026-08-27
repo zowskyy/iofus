@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getAmbientStatus, setAmbientStatus, AmbientStatusError } from "@/lib/ambientStatus";
+import { checkRateLimit, RateLimitError, rateLimitActorKey } from "@/lib/rateLimit";
 import { getCurrentUser } from "@/lib/session";
 
 /** GET /api/status?userId=<id> — returns the current ambient status for a user. */
@@ -7,6 +8,13 @@ export async function GET(req: NextRequest) {
   const userId = req.nextUrl.searchParams.get("userId");
   if (!userId || typeof userId !== "string") {
     return NextResponse.json({ error: "userId required" }, { status: 400 });
+  }
+  const viewer = await getCurrentUser();
+  try {
+    checkRateLimit(await rateLimitActorKey("status:read", viewer?.id ?? null), 60);
+  } catch (e) {
+    if (e instanceof RateLimitError) return NextResponse.json({ error: e.message }, { status: 429 });
+    throw e;
   }
   const status = getAmbientStatus(userId);
   return NextResponse.json({ status: status?.text ?? null, expiresAt: status?.expiresAt ?? null });
@@ -16,6 +24,13 @@ export async function GET(req: NextRequest) {
 export async function POST(req: NextRequest) {
   const user = await getCurrentUser();
   if (!user) return NextResponse.json({ error: "Not signed in" }, { status: 401 });
+
+  try {
+    checkRateLimit(await rateLimitActorKey("status:write", user.id), 20);
+  } catch (e) {
+    if (e instanceof RateLimitError) return NextResponse.json({ error: e.message }, { status: 429 });
+    throw e;
+  }
 
   let body: unknown;
   try {

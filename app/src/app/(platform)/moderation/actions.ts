@@ -6,6 +6,7 @@ import {
   findUserForModeration,
   isModerator,
   logModeratorAction,
+  ReportNotOpenError,
   reviewReport,
   setPlatformBlock,
 } from "@/lib/moderation";
@@ -22,14 +23,24 @@ async function requireModerator() {
 export async function reviewReportAction(reportId: string, formData: FormData): Promise<void> {
   const moderator = await requireModerator();
   const note = String(formData.get("note") ?? "");
-  reviewReport(reportId, moderator.id, "reviewed", note);
+  try {
+    reviewReport(reportId, moderator.id, "reviewed", note);
+  } catch (e) {
+    // Already resolved by another moderator or an earlier click — nothing
+    // more to do, and re-throwing would 500 what's really a stale-UI race.
+    if (!(e instanceof ReportNotOpenError)) throw e;
+  }
   revalidatePath("/moderation");
 }
 
 export async function dismissReportAction(reportId: string, formData: FormData): Promise<void> {
   const moderator = await requireModerator();
   const note = String(formData.get("note") ?? "");
-  reviewReport(reportId, moderator.id, "dismissed", note);
+  try {
+    reviewReport(reportId, moderator.id, "dismissed", note);
+  } catch (e) {
+    if (!(e instanceof ReportNotOpenError)) throw e;
+  }
   revalidatePath("/moderation");
 }
 

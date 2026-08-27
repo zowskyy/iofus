@@ -39,44 +39,64 @@ export function sendFriendRequest(requesterId: string, addresseeId: string): voi
   }
   const db = getDb();
 
-  if (isBlocked(db, requesterId, addresseeId)) {
-    // Deliberately vague: don't reveal whether the block is theirs or
-    // ours, or that a block exists at all — just that this isn't
-    // possible, same principle as not leaking account existence.
-    throw new FriendRequestError("This friend request can't be sent.");
-  }
-
-  const existing = db
-    .prepare(
-      `SELECT id, status, requester_id FROM friend_links
-       WHERE (requester_id = ? AND addressee_id = ?) OR (requester_id = ? AND addressee_id = ?)`,
-    )
-    .get(requesterId, addresseeId, addresseeId, requesterId) as
-    | { id: string; status: string; requester_id: string }
-    | undefined;
-
-  if (existing) {
-    if (existing.status === "accepted") {
-      throw new FriendRequestError("You're already friends.");
+  // The existing-link check and the insert/accept must be atomic: two
+  // concurrent requests in opposite directions (A→B and B→A) can otherwise
+  // both see "no existing link" and both insert a separate pending row,
+  // instead of the second one auto-accepting the first into a single
+  // friendship — a UNIQUE constraint on (requester_id, addressee_id)
+  // doesn't catch this since the two rows differ by direction.
+  db.exec("BEGIN IMMEDIATE");
+  try {
+    if (isBlocked(db, requesterId, addresseeId)) {
+      db.exec("ROLLBACK");
+      // Deliberately vague: don't reveal whether the block is theirs or
+      // ours, or that a block exists at all — just that this isn't
+      // possible, same principle as not leaking account existence.
+      throw new FriendRequestError("This friend request can't be sent.");
     }
-    if (existing.requester_id === requesterId) {
-      throw new FriendRequestError("You've already sent a friend request — it's waiting for them to respond.");
-    }
-    // They already requested us — accept it instead of creating a duplicate.
-    acceptFriendRequest(requesterId, existing.id);
-    return;
-  }
 
-  db.prepare(
-    `INSERT INTO friend_links (id, requester_id, addressee_id, status, created_at) VALUES (?, ?, ?, 'pending', ?)`,
-  ).run(randomUUID(), requesterId, addresseeId, new Date().toISOString());
+    const existing = db
+      .prepare(
+        `SELECT id, status, requester_id FROM friend_links
+         WHERE (requester_id = ? AND addressee_id = ?) OR (requester_id = ? AND addressee_id = ?)`,
+      )
+      .get(requesterId, addresseeId, addresseeId, requesterId) as
+      | { id: string; status: string; requester_id: string }
+      | undefined;
+
+    if (existing) {
+      if (existing.status === "accepted") {
+        db.exec("ROLLBACK");
+        throw new FriendRequestError("You're already friends.");
+      }
+      if (existing.requester_id === requesterId) {
+        db.exec("ROLLBACK");
+        throw new FriendRequestError("You've already sent a friend request — it's waiting for them to respond.");
+      }
+      // They already requested us — accept it instead of creating a duplicate.
+      acceptFriendRequestLocked(db, requesterId, existing.id);
+      db.exec("COMMIT");
+      return;
+    }
+
+    db.prepare(
+      `INSERT INTO friend_links (id, requester_id, addressee_id, status, created_at) VALUES (?, ?, ?, 'pending', ?)`,
+    ).run(randomUUID(), requesterId, addresseeId, new Date().toISOString());
+    db.exec("COMMIT");
+  } catch (err) {
+    try {
+      db.exec("ROLLBACK");
+    } catch {
+      /* already resolved */
+    }
+    throw err;
+  }
 }
 
 export class FriendLinkNotFoundError extends Error {}
 
-/** Accept the pending friend request *requestId* on behalf of *currentUserId*. Idempotent if already accepted. Throws when the request doesn't exist or *currentUserId* is not the addressee. */
-export function acceptFriendRequest(currentUserId: string, requestId: string): void {
-  const db = getDb();
+/** Shared implementation for acceptFriendRequest, usable inside a caller-managed transaction (no getDb()/BEGIN of its own). */
+function acceptFriendRequestLocked(db: ReturnType<typeof getDb>, currentUserId: string, requestId: string): void {
   const row = db
     .prepare("SELECT id, addressee_id, status FROM friend_links WHERE id = ?")
     .get(requestId) as { id: string; addressee_id: string; status: string } | undefined;
@@ -91,6 +111,11 @@ export function acceptFriendRequest(currentUserId: string, requestId: string): v
     new Date().toISOString(),
     requestId,
   );
+}
+
+/** Accept the pending friend request *requestId* on behalf of *currentUserId*. Idempotent if already accepted. Throws when the request doesn't exist or *currentUserId* is not the addressee. */
+export function acceptFriendRequest(currentUserId: string, requestId: string): void {
+  acceptFriendRequestLocked(getDb(), currentUserId, requestId);
 }
 
 /** Declining a pending request or unfriending an accepted one both just remove the link — either side can re-request later unless blocked. */

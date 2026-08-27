@@ -97,9 +97,22 @@ export function getProximityOrdered(startUserId: string, limit = 30): string[] {
 export function getWanderBatch(startUserId: string | null, limit = 30): string[] {
   const db = getDb();
 
+  // A block in either direction must close this discovery path too, same
+  // as a direct profile visit would — otherwise Wander is a way around a
+  // block instead of respecting it.
+  const blockClause = startUserId
+    ? `AND NOT EXISTS (
+         SELECT 1 FROM blocks b
+         WHERE (b.blocker_id = ? AND b.blocked_id = pd.user_id)
+            OR (b.blocker_id = pd.user_id AND b.blocked_id = ?)
+       )`
+    : "";
+  const blockParams = startUserId ? [startUserId, startUserId] : [];
+
   const discoverableWhere = `
     pd.is_published = 1 AND pd.visibility = 'public' AND pd.hidden_from_discovery = 0
     AND u.is_blocked_platform = 0
+    ${blockClause}
   `;
 
   if (startUserId) {
@@ -114,7 +127,7 @@ export function getWanderBatch(startUserId: string | null, limit = 30): string[]
            JOIN users u ON u.id = pd.user_id
            WHERE pd.user_id IN (${placeholders}) AND ${discoverableWhere}`,
         )
-        .all(...proximityIds) as { user_id: string; handle: string }[];
+        .all(...proximityIds, ...blockParams) as { user_id: string; handle: string }[];
 
       // Preserve proximity order from the graph
       const idToHandle = new Map(rows.map((r) => [r.user_id, r.handle]));
@@ -135,7 +148,7 @@ export function getWanderBatch(startUserId: string | null, limit = 30): string[]
              ORDER BY RANDOM()
              LIMIT ?`,
           )
-          .all(...selectedUserIds, remaining) as { handle: string }[];
+          .all(...blockParams, ...selectedUserIds, remaining) as { handle: string }[];
         return ordered.concat(random.map((r) => r.handle));
       }
     }
@@ -150,6 +163,6 @@ export function getWanderBatch(startUserId: string | null, limit = 30): string[]
        ORDER BY RANDOM()
        LIMIT ?`,
     )
-    .all(limit) as { handle: string }[];
+    .all(...blockParams, limit) as { handle: string }[];
   return rows.map((r) => r.handle);
 }

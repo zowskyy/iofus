@@ -24,17 +24,35 @@ export function addStamp(
 
   const db = getDb();
   const since = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString();
-  const recent = db
-    .prepare(
-      "SELECT id FROM page_stamps WHERE page_owner_id = ? AND stamper_id = ? AND created_at >= ?",
-    )
-    .get(pageOwnerId, stamperId, since);
-  if (recent) throw new StampError("You already stamped this page today.");
 
-  db.prepare(
-    `INSERT INTO page_stamps (id, page_owner_id, stamper_id, stamper_handle, stamp_emoji, created_at)
-     VALUES (?, ?, ?, ?, ?, ?)`,
-  ).run(randomUUID(), pageOwnerId, stamperId, stamperHandle, emoji, new Date().toISOString());
+  // The "already stamped today" check and the insert must be atomic — two
+  // concurrent requests from the same stamper can otherwise both pass the
+  // check before either commits, bypassing the one-per-day limit.
+  db.exec("BEGIN IMMEDIATE");
+  try {
+    const recent = db
+      .prepare(
+        "SELECT id FROM page_stamps WHERE page_owner_id = ? AND stamper_id = ? AND created_at >= ?",
+      )
+      .get(pageOwnerId, stamperId, since);
+    if (recent) {
+      db.exec("ROLLBACK");
+      throw new StampError("You already stamped this page today.");
+    }
+
+    db.prepare(
+      `INSERT INTO page_stamps (id, page_owner_id, stamper_id, stamper_handle, stamp_emoji, created_at)
+       VALUES (?, ?, ?, ?, ?, ?)`,
+    ).run(randomUUID(), pageOwnerId, stamperId, stamperHandle, emoji, new Date().toISOString());
+    db.exec("COMMIT");
+  } catch (err) {
+    try {
+      db.exec("ROLLBACK");
+    } catch {
+      /* already resolved */
+    }
+    throw err;
+  }
 }
 
 /** Recent stamps on *pageOwnerId*'s page, newest first, up to *limit*. */

@@ -4,6 +4,7 @@ import { getCurrentUser } from "@/lib/session";
 import { getDb } from "@/lib/db";
 import { getProximityOrdered } from "@/lib/proximityGraph";
 import { getAmbientStatuses } from "@/lib/ambientStatus";
+import { hasBlockRelationship } from "@/lib/friends";
 import { VibeGraph } from "./VibeGraph";
 
 /** Authenticated page showing the current user's proximity-based Vibe Graph. Displays center node + neighbors in radial layout with ambient statuses. */
@@ -47,11 +48,14 @@ export default async function VibeGraphPage() {
       )
       .all(...neighborIds) as unknown as NodeRow[];
 
-    // Preserve proximity order
+    // Preserve proximity order. A block in either direction must exclude
+    // that person from the graph, the same as it excludes them from Wander
+    // and direct profile visits.
     const rowMap = new Map(rows.map((r) => [r.user_id, r]));
     for (const id of neighborIds) {
       const r = rowMap.get(id);
       if (!r) continue;
+      if (hasBlockRelationship(user.id, id)) continue;
       let displayName = r.handle;
       try {
         const doc = JSON.parse(r.document_json) as { identity?: { displayName?: string } };

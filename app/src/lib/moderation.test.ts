@@ -7,6 +7,7 @@ import {
   isModerator,
   listModeratorLogs,
   listOpenReports,
+  ReportNotOpenError,
   reviewReport,
   setPlatformBlock,
 } from "./moderation";
@@ -85,6 +86,29 @@ describe("report queue", () => {
     expect(listOpenReports()).toHaveLength(0);
     const logs = listModeratorLogs();
     expect(logs.some((l) => l.action === "report_reviewed" && l.targetHandle === "neonorchard")).toBe(true);
+  });
+
+  it("a second review of the same report is rejected, not silently overwritten", () => {
+    const modA = createUser("moda", "correct-horse-battery");
+    const modB = createUser("modb", "correct-horse-battery");
+    const reporter = createUser("voidarcade", "correct-horse-battery");
+    createUser("neonorchard", "correct-horse-battery");
+    ensureModeratorSeed();
+    fileReport(reporter.id, "neonorchard", "harassment");
+
+    const [report] = listOpenReports();
+    reviewReport(report!.id, modA.id, "dismissed", "not actionable");
+
+    expect(() => reviewReport(report!.id, modB.id, "reviewed", "actually escalating")).toThrow(
+      ReportNotOpenError,
+    );
+
+    // The first moderator's outcome must stand — not overwritten by the
+    // second, contradictory call.
+    const logs = listModeratorLogs();
+    const reportLogs = logs.filter((l) => l.targetHandle === "neonorchard");
+    expect(reportLogs).toHaveLength(1);
+    expect(reportLogs[0]!.action).toBe("report_dismissed");
   });
 });
 

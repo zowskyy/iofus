@@ -99,9 +99,16 @@ export function sendMessage(senderId: string, recipientId: string, body: string)
 
   db.exec("BEGIN IMMEDIATE");
   try {
+    // Re-read under the write lock rather than trusting the pre-transaction
+    // `existing` snapshot: two concurrent first messages between the same
+    // pair can both see "no conversation" before either transaction opens,
+    // and whichever commits second would otherwise hit the UNIQUE
+    // constraint on (user_a_id, user_b_id) and fail outright instead of
+    // just appending to the thread the other request just created.
+    const existingLocked = findConversationRow(db, userAId, userBId);
     let conversationId: string;
-    if (existing) {
-      conversationId = existing.id;
+    if (existingLocked) {
+      conversationId = existingLocked.id;
       db.prepare("UPDATE conversations SET last_message_at = ? WHERE id = ?").run(now, conversationId);
     } else {
       conversationId = randomUUID();
