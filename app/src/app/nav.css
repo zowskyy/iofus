@@ -103,6 +103,79 @@
   line-height: 1;
 }
 
+/* ── Nav dropdowns (Discover / Account) ───────────────────────────── */
+
+.nav-dropdown {
+  position: relative;
+  display: inline-flex;
+}
+
+.nav-dropdown-trigger {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+}
+
+.nav-dropdown-caret {
+  font-size: 0.7em;
+  transform: translateY(0.05em);
+}
+
+.nav-dropdown-panel {
+  position: absolute;
+  top: calc(100% + 0.35rem);
+  left: 0;
+  z-index: 100;
+  background: var(--paper);
+  border: 2px solid var(--ink);
+  display: flex;
+  flex-direction: column;
+  min-width: 10rem;
+}
+
+.controls-right .nav-dropdown-panel {
+  left: auto;
+  right: 0;
+}
+
+.nav-dropdown-panel a,
+.nav-dropdown-panel button {
+  display: block;
+  width: 100%;
+  padding: 0.6rem 0.85rem;
+  color: var(--ink);
+  -webkit-text-stroke: 0;
+  text-decoration: none;
+  background: none;
+  border: none;
+  border-bottom: 1px solid var(--line);
+  border-radius: 0;
+  font: inherit;
+  font-family: "Bebas Neue", "Impact", sans-serif;
+  font-size: 1rem;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  text-align: left;
+  cursor: pointer;
+  min-height: 44px;
+  transition: background 0.1s;
+}
+
+.nav-dropdown-panel a:hover,
+.nav-dropdown-panel button:hover {
+  background: var(--accent-wash);
+}
+
+.nav-dropdown-panel a:last-child,
+.nav-dropdown-panel button:last-child,
+.nav-dropdown-panel form:last-child button {
+  border-bottom: none;
+}
+
+.nav-dropdown-panel form {
+  display: block;
+}
+
 /* ── Mobile nav hamburger ─────────────────────────────────────────── */
 
 .nav-mobile-right {
