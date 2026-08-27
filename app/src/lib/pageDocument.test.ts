@@ -3,11 +3,15 @@ import {
   canViewPage,
   defaultPageDocument,
   getPageDocument,
+  importPageData,
+  exportPageData,
   listVersions,
   migrateDocument,
   parsePageDocument,
   PageDocumentValidationError,
+  publishDraft,
   restoreVersion,
+  saveDraftDocument,
   savePageDocument,
   setPublished,
   setVisibility,
@@ -281,6 +285,46 @@ describe("setPublished / setVisibility", () => {
     savePageDocument(user.id, defaultPageDocument("Void"));
     setVisibility(user.id, "public");
     expect(getPageDocument(user.id)?.visibility).toBe("public");
+  });
+});
+
+describe("draft invariant: publishing by any path clears a stale draft", () => {
+  it("restoreVersion discards the outstanding draft", () => {
+    const user = createUser("voidarcade", "correct-horse-battery");
+    savePageDocument(user.id, defaultPageDocument("First Name"));
+    savePageDocument(user.id, defaultPageDocument("Second Name"));
+    const firstVersionId = listVersions(user.id)[listVersions(user.id).length - 1]!.id;
+
+    saveDraftDocument(user.id, defaultPageDocument("Unrelated in-progress draft"));
+    expect(getPageDocument(user.id)?.draftDocument).not.toBeNull();
+
+    restoreVersion(user.id, firstVersionId);
+
+    // The stale draft must not resurface on the next Studio load or preview.
+    expect(getPageDocument(user.id)?.draftDocument).toBeNull();
+  });
+
+  it("publishDraft clears the draft it just promoted", () => {
+    const user = createUser("voidarcade", "correct-horse-battery");
+    savePageDocument(user.id, defaultPageDocument("Published"));
+    saveDraftDocument(user.id, defaultPageDocument("Draft"));
+
+    publishDraft(user.id);
+
+    const stored = getPageDocument(user.id);
+    expect(stored?.document.identity.displayName).toBe("Draft");
+    expect(stored?.draftDocument).toBeNull();
+  });
+
+  it("importPageData discards a stale draft that predates the import", () => {
+    const user = createUser("voidarcade", "correct-horse-battery");
+    savePageDocument(user.id, defaultPageDocument("Before import"));
+    saveDraftDocument(user.id, defaultPageDocument("Stale draft"));
+
+    const exported = exportPageData(user.id);
+    importPageData(user.id, exported);
+
+    expect(getPageDocument(user.id)?.draftDocument).toBeNull();
   });
 });
 

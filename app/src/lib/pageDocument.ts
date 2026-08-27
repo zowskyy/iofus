@@ -166,7 +166,16 @@ export function getPageDocument(userId: string): StoredPage | null {
 
 const MAX_VERSIONS_KEPT = 50;
 
-/** Validate, migrate, and persist a new published document for *userId*. Snaps a version history entry. */
+/**
+ * Validate, migrate, and persist a new published document for *userId*.
+ * Snaps a version history entry, and clears any outstanding draft.
+ *
+ * This is the single place every "this is now the published document" path
+ * converges (Studio's explicit publish, restoreVersion, publishDraft,
+ * import) — a stale draft left over from before the new document was
+ * published must never resurface, so clearing it here (rather than at each
+ * call site) is the one invariant that keeps all of them correct.
+ */
 export function savePageDocument(userId: string, input: unknown): PageDocument {
   const document = parsePageDocument(input);
   const db = getDb();
@@ -181,11 +190,9 @@ export function savePageDocument(userId: string, input: unknown): PageDocument {
       "INSERT INTO page_document_versions (id, user_id, document_json, created_at) VALUES (?, ?, ?, ?)",
     ).run(randomUUID(), userId, existing.document_json, now);
 
-    db.prepare("UPDATE page_documents SET document_json = ?, updated_at = ? WHERE user_id = ?").run(
-      JSON.stringify(document),
-      now,
-      userId,
-    );
+    db.prepare(
+      "UPDATE page_documents SET document_json = ?, draft_document_json = NULL, updated_at = ? WHERE user_id = ?",
+    ).run(JSON.stringify(document), now, userId);
   } else {
     db.prepare(
       `INSERT INTO page_documents (user_id, document_json, is_published, visibility, updated_at)
@@ -198,7 +205,7 @@ export function savePageDocument(userId: string, input: unknown): PageDocument {
   db.prepare(
     `DELETE FROM page_document_versions
      WHERE user_id = ? AND id NOT IN (
-       SELECT id FROM page_document_versions WHERE user_id = ? ORDER BY created_at DESC LIMIT ?
+       SELECT id FROM page_document_versions WHERE user_id = ? ORDER BY created_at DESC, rowid DESC LIMIT ?
      )`,
   ).run(userId, userId, MAX_VERSIONS_KEPT);
 
@@ -274,7 +281,9 @@ function syncPageTags(userId: string, tags: string[]): void {
 export function listVersions(userId: string): { id: string; createdAt: string }[] {
   const db = getDb();
   const rows = db
-    .prepare("SELECT id, created_at FROM page_document_versions WHERE user_id = ? ORDER BY created_at DESC")
+    .prepare(
+      "SELECT id, created_at FROM page_document_versions WHERE user_id = ? ORDER BY created_at DESC, rowid DESC",
+    )
     .all(userId) as { id: string; created_at: string }[];
   return rows.map((r) => ({ id: r.id, createdAt: r.created_at }));
 }
