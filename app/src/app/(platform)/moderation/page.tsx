@@ -26,7 +26,7 @@ export default async function ModerationPage() {
   if (!viewer) redirect("/login?next=/moderation");
   if (!isModerator(viewer.id)) {
     ensureModeratorSeed();
-    redirect("/");
+    if (!isModerator(viewer.id)) redirect("/");
   }
 
   const reports = listOpenReports();

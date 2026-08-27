@@ -22,6 +22,23 @@ function indexExists(db: DatabaseSync, name: string): boolean {
   return !!row;
 }
 
+/**
+ * Adds *column* to *table* if it isn't already present. The existence check
+ * and the ALTER are not atomic, so two processes can both see the column
+ * missing and both issue the ALTER on first boot; the second one's
+ * "duplicate column name" error is swallowed rather than aborting startup.
+ */
+function addColumnIfMissing(db: DatabaseSync, table: string, definition: string): void {
+  const column = definition.trim().split(/\s+/)[0]!;
+  if (columnExists(db, table, column)) return;
+  try {
+    db.exec(`ALTER TABLE ${table} ADD COLUMN ${definition}`);
+  } catch (err) {
+    if (err instanceof Error && /duplicate column name/i.test(err.message)) return;
+    throw err;
+  }
+}
+
 /** Applies the base schema and any incremental column/index migrations to *db*. Safe to call on an already-migrated database. */
 function migrate(db: DatabaseSync): void {
   const schemaPath = join(__dirname, "schema.sql");
@@ -29,39 +46,27 @@ function migrate(db: DatabaseSync): void {
   db.exec(schema);
 
   // Incremental migrations for existing databases.
-  if (!columnExists(db, "users", "is_moderator")) {
-    db.exec("ALTER TABLE users ADD COLUMN is_moderator INTEGER NOT NULL DEFAULT 0");
-  }
-  if (!columnExists(db, "page_documents", "draft_document_json")) {
-    db.exec("ALTER TABLE page_documents ADD COLUMN draft_document_json TEXT");
-  }
-  if (!columnExists(db, "page_documents", "guestbook_disabled")) {
-    db.exec("ALTER TABLE page_documents ADD COLUMN guestbook_disabled INTEGER NOT NULL DEFAULT 0");
-  }
-  if (!columnExists(db, "reports", "moderator_id")) {
-    db.exec("ALTER TABLE reports ADD COLUMN moderator_id TEXT REFERENCES users(id) ON DELETE SET NULL");
-    db.exec("ALTER TABLE reports ADD COLUMN moderator_note TEXT");
-    db.exec("ALTER TABLE reports ADD COLUMN reviewed_at TEXT");
-  }
-  if (!columnExists(db, "theme_reports", "moderator_id")) {
-    db.exec("ALTER TABLE theme_reports ADD COLUMN moderator_id TEXT REFERENCES users(id) ON DELETE SET NULL");
-    db.exec("ALTER TABLE theme_reports ADD COLUMN moderator_note TEXT");
-    db.exec("ALTER TABLE theme_reports ADD COLUMN reviewed_at TEXT");
-  }
+  addColumnIfMissing(db, "users", "is_moderator INTEGER NOT NULL DEFAULT 0");
+  addColumnIfMissing(db, "page_documents", "draft_document_json TEXT");
+  addColumnIfMissing(db, "page_documents", "guestbook_disabled INTEGER NOT NULL DEFAULT 0");
+  addColumnIfMissing(db, "reports", "moderator_id TEXT REFERENCES users(id) ON DELETE SET NULL");
+  addColumnIfMissing(db, "reports", "moderator_note TEXT");
+  addColumnIfMissing(db, "reports", "reviewed_at TEXT");
+  addColumnIfMissing(db, "theme_reports", "moderator_id TEXT REFERENCES users(id) ON DELETE SET NULL");
+  addColumnIfMissing(db, "theme_reports", "moderator_note TEXT");
+  addColumnIfMissing(db, "theme_reports", "reviewed_at TEXT");
   if (!indexExists(db, "idx_appeals_one_open_per_user")) {
-    db.exec(
-      "CREATE UNIQUE INDEX idx_appeals_one_open_per_user ON appeals(user_id) WHERE status = 'open'",
-    );
+    try {
+      db.exec(
+        "CREATE UNIQUE INDEX idx_appeals_one_open_per_user ON appeals(user_id) WHERE status = 'open'",
+      );
+    } catch (err) {
+      if (!(err instanceof Error && /already exists/i.test(err.message))) throw err;
+    }
   }
-  if (!columnExists(db, "users", "reachable_for_asks")) {
-    db.exec("ALTER TABLE users ADD COLUMN reachable_for_asks INTEGER NOT NULL DEFAULT 0");
-  }
-  if (!columnExists(db, "web_rings", "creator_user_id")) {
-    db.exec("ALTER TABLE web_rings ADD COLUMN creator_user_id TEXT REFERENCES users(id) ON DELETE SET NULL");
-  }
-  if (!columnExists(db, "web_rings", "is_open")) {
-    db.exec("ALTER TABLE web_rings ADD COLUMN is_open INTEGER NOT NULL DEFAULT 1");
-  }
+  addColumnIfMissing(db, "users", "reachable_for_asks INTEGER NOT NULL DEFAULT 0");
+  addColumnIfMissing(db, "web_rings", "creator_user_id TEXT REFERENCES users(id) ON DELETE SET NULL");
+  addColumnIfMissing(db, "web_rings", "is_open INTEGER NOT NULL DEFAULT 1");
   db.exec(`
     CREATE TABLE IF NOT EXISTS web_ring_join_requests (
       ring_id TEXT NOT NULL REFERENCES web_rings(id) ON DELETE CASCADE,

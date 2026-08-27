@@ -155,7 +155,12 @@ export const PageDocumentSchema = z.object({
   version: z.literal(CURRENT_SCHEMA_VERSION),
   identity: IdentitySchema,
   theme: ThemeSchema,
-  pageParts: z.array(z.enum(PAGE_PART_IDS)).max(PAGE_PART_IDS.length),
+  pageParts: z
+    .array(z.enum(PAGE_PART_IDS))
+    .max(PAGE_PART_IDS.length)
+    .refine((parts) => new Set(parts).size === parts.length, {
+      message: "pageParts may not contain duplicate module ids.",
+    }),
   links: z.array(LinkItemSchema).max(30).default([]),
   now: z.string().trim().max(280).default(""),
   gallery: z.array(GalleryItemSchema).max(12).default([]),

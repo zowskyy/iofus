@@ -13,7 +13,23 @@ const BLOCKED_PATTERNS: RegExp[] = [
   /url\s*\(\s*["']?\s*javascript:/i,
   /url\s*\(\s*["']?\s*data:/i,
   /<\s*\/?\s*style/i,
+  /!\s*important/i,
 ];
+
+/** Block a property value from a rule body regardless of which of its rules it appears in. */
+function blockedBodyPattern(body: string): string | null {
+  // Fixed/absolute/sticky positioning and transforms can cover the nav bar
+  // or other page content regardless of z-index, and the check can't be
+  // scoped to "harmless" values without a full CSS value parser, so both
+  // properties are blocked outright rather than allow-listed.
+  if (/position\s*:\s*(fixed|absolute|sticky)/i.test(body)) {
+    return "Custom CSS may not use fixed, absolute, or sticky positioning.";
+  }
+  if (/\btransform\s*:/i.test(body)) {
+    return "Custom CSS may not use the transform property.";
+  }
+  return null;
+}
 
 const BLOCKED_SELECTORS = /\b(html|body|:root|iframe|dialog|script|\.top-bar|\.studio-|#studio)\b/i;
 
@@ -42,15 +58,21 @@ export function scopeProfileCss(raw: string, scopeClass: string): CssScopeResult
     return { css: "", warnings, rejected };
   }
 
+  // Strip comments before any pattern matching or rule splitting — browsers
+  // ignore /* ... */ anywhere in a stylesheet, so a token split across a
+  // comment (e.g. "ht/**/ml") would otherwise dodge every regex below while
+  // still applying at render time.
+  const withoutComments = raw.replace(/\/\*[\s\S]*?\*\//g, " ");
+
   for (const pattern of BLOCKED_PATTERNS) {
-    if (pattern.test(raw)) {
+    if (pattern.test(withoutComments)) {
       rejected.push(`Blocked pattern: ${pattern.source}`);
     }
   }
 
   if (rejected.length > 0) return { css: "", warnings, rejected };
 
-  const rules = splitCssRules(raw);
+  const rules = splitCssRules(withoutComments);
   if (rules.length > MAX_RULE_COUNT) {
     rejected.push(`Too many rules (${rules.length}); maximum is ${MAX_RULE_COUNT}.`);
     return { css: "", warnings, rejected };
@@ -86,12 +108,9 @@ export function scopeProfileCss(raw: string, scopeClass: string): CssScopeResult
       continue;
     }
 
-    // Block fixed/absolute/sticky positioning unconditionally — they can
-    // cover the nav bar or other profiles regardless of z-index, and the
-    // z-index check can be defeated by splitting the properties across two
-    // rules that are both applied by the browser to the same element.
-    if (/position\s*:\s*(fixed|absolute|sticky)/i.test(body)) {
-      rejected.push("Custom CSS may not use fixed, absolute, or sticky positioning.");
+    const blocked = blockedBodyPattern(body);
+    if (blocked) {
+      rejected.push(blocked);
       continue;
     }
 
@@ -139,11 +158,17 @@ function scopeSelectors(block: string, scopeClass: string, rejected: string[]): 
       rejected.push(`Blocked selector: ${selector}`);
       continue;
     }
+    const body = ruleMatch[2]!.trim();
+    const blocked = blockedBodyPattern(body);
+    if (blocked) {
+      rejected.push(blocked);
+      continue;
+    }
     const scopedSelector = selector
       .split(",")
       .map((s) => `${scopeClass} ${s.trim()}`)
       .join(", ");
-    out.push(`${scopedSelector} { ${ruleMatch[2]!.trim()} }`);
+    out.push(`${scopedSelector} { ${body} }`);
   }
   return out.join("\n");
 }
