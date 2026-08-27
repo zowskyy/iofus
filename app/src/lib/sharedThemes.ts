@@ -107,14 +107,17 @@ export function publishTheme(
   description: string,
   tags: string[],
   theme: PageDocument["theme"],
+  forkedFromId: string | null = null,
+  attributionHandle: string | null = null,
 ): string {
   const db = getDb();
   const id = randomUUID();
   const now = new Date().toISOString();
   db.prepare(
-    `INSERT INTO shared_themes (id, creator_user_id, name, description, tags_json, version, theme_json, created_at, updated_at)
-     VALUES (?, ?, ?, ?, ?, 1, ?, ?, ?)`,
-  ).run(id, userId, name, description, JSON.stringify(tags), JSON.stringify(theme), now, now);
+    `INSERT INTO shared_themes
+       (id, creator_user_id, name, description, tags_json, version, theme_json, forked_from_id, attribution_handle, created_at, updated_at)
+     VALUES (?, ?, ?, ?, ?, 1, ?, ?, ?, ?, ?)`,
+  ).run(id, userId, name, description, JSON.stringify(tags), JSON.stringify(theme), forkedFromId, attributionHandle, now, now);
   db.prepare(
     "INSERT INTO theme_versions (id, theme_id, version, theme_json, created_at) VALUES (?, ?, 1, ?, ?)",
   ).run(randomUUID(), id, JSON.stringify(theme), now);
@@ -132,7 +135,16 @@ export function forkTheme(userId: string, handle: string, sourceId: string): str
       credit: `Theme forked from @${source.creatorHandle} — ${source.name}`,
     },
   };
-  return publishTheme(userId, handle, `${source.name} (fork)`, `Forked from ${source.name}`, source.tags, theme);
+  return publishTheme(
+    userId,
+    handle,
+    `${source.name} (fork)`,
+    `Forked from ${source.name}`,
+    source.tags,
+    theme,
+    source.id,
+    source.creatorHandle,
+  );
 }
 
 export function installThemeOnDocument(document: PageDocument, theme: SharedTheme): PageDocument {
