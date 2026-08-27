@@ -49,18 +49,24 @@ interface Props {
 }
 
 /** Resolves raw handle strings into TopEightLink objects, skipping handles with no published page. */
-function resolveTopEight(handles: string[]): TopEightLink[] {
+/**
+ * Resolve Top Eight handles to display links, applying the same
+ * visibility rules as listPublicFriends: a private/unlisted or
+ * discovery-hidden page must not leak its identity to a visitor who
+ * couldn't otherwise see it.
+ */
+function resolveTopEight(handles: string[], ownerId: string, viewerId: string | null): TopEightLink[] {
   if (!handles.length) return [];
   const placeholders = handles.map(() => "?").join(", ");
   const rows = getDb()
     .prepare(
-      `SELECT u.handle, pd.document_json, pd.is_published, pd.visibility, pd.hidden_from_discovery
+      `SELECT u.id, u.handle, pd.document_json, pd.is_published, pd.visibility, pd.hidden_from_discovery
        FROM users u
        JOIN page_documents pd ON pd.user_id = u.id
        WHERE u.handle IN (${placeholders})
          AND pd.is_published = 1`,
     )
-    .all(...handles) as { handle: string; document_json: string; is_published: number; visibility: string; hidden_from_discovery: number }[];
+    .all(...handles) as { id: string; handle: string; document_json: string; is_published: number; visibility: string; hidden_from_discovery: number }[];
 
   // Preserve the original order from the handles array
   const byHandle = new Map(rows.map((r) => [r.handle, r]));
@@ -68,6 +74,11 @@ function resolveTopEight(handles: string[]): TopEightLink[] {
   for (const raw of handles) {
     const r = byHandle.get(raw);
     if (!r) continue;
+    const canSee =
+      viewerId === r.id ||
+      viewerId === ownerId ||
+      (r.visibility !== "private" && r.visibility !== "unlisted" && !r.hidden_from_discovery);
+    if (!canSee) continue;
     let displayName = raw;
     try {
       const doc = JSON.parse(r.document_json) as { identity?: { displayName?: string } };
@@ -104,7 +115,7 @@ export default async function ProfilePage({ params, searchParams }: Props) {
   const viewerId = viewer?.id ?? null;
   const friends = listPublicFriends(user.id, viewerId);
   const guestbookEntries = listApprovedGuestbookEntries(user.id);
-  const topEightLinks = resolveTopEight(document.topEight);
+  const topEightLinks = resolveTopEight(document.topEight, user.id, viewerId);
   const ambientStatus = getAmbientStatus(user.id);
   const rings = listUserWebRings(user.id);
 
