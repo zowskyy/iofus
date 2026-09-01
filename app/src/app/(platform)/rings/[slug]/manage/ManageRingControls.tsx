@@ -2,6 +2,7 @@
 
 import { useActionState } from "react";
 import { WebRing, WebRingMember, WebRingJoinRequest } from "@/lib/webRings";
+import { withNetworkErrorHandling } from "@/lib/actionResilience";
 import {
   deleteRingAction,
   ManageRingState,
@@ -18,7 +19,10 @@ interface Props {
 
 export function ManageRingControls({ ring, members, requests }: Props) {
   const updateBound = updateRingAction.bind(null, ring.slug);
-  const [updateState, updateAction, updatePending] = useActionState<ManageRingState, FormData>(updateBound, {});
+  const [updateState, updateAction, updatePending] = useActionState<ManageRingState, FormData>(
+    withNetworkErrorHandling(updateBound),
+    {},
+  );
 
   return (
     <>

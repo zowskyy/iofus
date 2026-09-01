@@ -2,6 +2,7 @@
 
 import { useActionState, useState } from "react";
 import { signGuestbookAction, type GuestbookActionState } from "./actions";
+import { withNetworkErrorHandling } from "@/lib/actionResilience";
 
 const initialState: GuestbookActionState = {};
 
@@ -22,7 +23,7 @@ function readSavedDraft(handle: string): string {
 /** Guestbook form with localStorage draft auto-save/restore. Saves on every change; clears on submit. */
 export function GuestbookSignForm({ handle }: { handle: string }) {
   const boundAction = signGuestbookAction.bind(null, handle);
-  const [state, formAction, pending] = useActionState(boundAction, initialState);
+  const [state, formAction, pending] = useActionState(withNetworkErrorHandling(boundAction), initialState);
   const [draft, setDraft] = useState(() => readSavedDraft(handle));
   const [draftSaved, setDraftSaved] = useState(() => readSavedDraft(handle) !== "");
 

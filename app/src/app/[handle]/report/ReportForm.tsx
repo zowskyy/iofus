@@ -2,6 +2,7 @@
 
 import { useActionState } from "react";
 import { reportAction, type ReportState } from "./actions";
+import { withNetworkErrorHandling } from "@/lib/actionResilience";
 
 const initialState: ReportState = {};
 
@@ -15,7 +16,7 @@ const REASONS: { value: string; label: string }[] = [
 
 export function ReportForm({ handle }: { handle: string }) {
   const boundAction = reportAction.bind(null, handle);
-  const [state, formAction, pending] = useActionState(boundAction, initialState);
+  const [state, formAction, pending] = useActionState(withNetworkErrorHandling(boundAction), initialState);
 
   return (
     <form action={formAction}>

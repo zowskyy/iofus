@@ -3,11 +3,12 @@
 import { useActionState } from "react";
 import Link from "next/link";
 import { signupAction, type SignupState } from "./actions";
+import { withNetworkErrorHandling } from "@/lib/actionResilience";
 
 const initialState: SignupState = {};
 
 export default function SignupPage() {
-  const [state, formAction, pending] = useActionState(signupAction, initialState);
+  const [state, formAction, pending] = useActionState(withNetworkErrorHandling(signupAction), initialState);
 
   return (
     <main className="container">

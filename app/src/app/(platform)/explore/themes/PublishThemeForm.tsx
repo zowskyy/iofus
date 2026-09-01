@@ -2,11 +2,12 @@
 
 import { useActionState } from "react";
 import { publishThemeAction, type ThemeActionResult } from "./actions";
+import { withNetworkErrorHandling } from "@/lib/actionResilience";
 
 const initialState: ThemeActionResult = {};
 
 export function PublishThemeForm({ defaultName }: { defaultName: string }) {
-  const [state, formAction, pending] = useActionState(publishThemeAction, initialState);
+  const [state, formAction, pending] = useActionState(withNetworkErrorHandling(publishThemeAction), initialState);
 
   return (
     <form action={formAction} className="theme-publish-form">

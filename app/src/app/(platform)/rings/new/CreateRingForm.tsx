@@ -2,9 +2,10 @@
 
 import { useActionState } from "react";
 import { createRingAction, CreateRingState } from "./actions";
+import { withNetworkErrorHandling } from "@/lib/actionResilience";
 
 export function CreateRingForm() {
-  const [state, action, pending] = useActionState<CreateRingState, FormData>(createRingAction, {});
+  const [state, action, pending] = useActionState<CreateRingState, FormData>(withNetworkErrorHandling(createRingAction), {});
 
   return (
     <form action={action} className="settings-section" style={{ maxWidth: "32rem" }}>
