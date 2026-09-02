@@ -1,6 +1,6 @@
 "use client";
 
-import { useActionState } from "react";
+import { useActionState, useState } from "react";
 import Link from "next/link";
 import { signupAction, type SignupState } from "./actions";
 import { withNetworkErrorHandling } from "@/lib/actionResilience";
@@ -9,6 +9,12 @@ const initialState: SignupState = {};
 
 export default function SignupPage() {
   const [state, formAction, pending] = useActionState(withNetworkErrorHandling(signupAction), initialState);
+  // Controlled so a handled network failure doesn't wipe out what the user
+  // typed — see PublishThemeForm.tsx. Password is deliberately left
+  // uncontrolled/reset: browsers don't preserve failed-login passwords
+  // either, and there's no reason to keep it sitting in React state.
+  const [handle, setHandle] = useState("");
+  const [displayName, setDisplayName] = useState("");
 
   return (
     <main className="container">
@@ -40,6 +46,8 @@ export default function SignupPage() {
             autoComplete="username"
             placeholder="voidarcade"
             aria-describedby="handle-hint"
+            value={handle}
+            onChange={(e) => setHandle(e.target.value)}
           />
           <span id="handle-hint" className="hint">
             This becomes your page: iofus.example/@yourhandle
@@ -48,7 +56,15 @@ export default function SignupPage() {
 
         <div className="field">
           <label htmlFor="displayName">Display name</label>
-          <input id="displayName" name="displayName" type="text" maxLength={60} placeholder="Void Arcade" />
+          <input
+            id="displayName"
+            name="displayName"
+            type="text"
+            maxLength={60}
+            placeholder="Void Arcade"
+            value={displayName}
+            onChange={(e) => setDisplayName(e.target.value)}
+          />
         </div>
 
         <div className="field">

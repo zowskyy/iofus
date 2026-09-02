@@ -111,17 +111,28 @@ test.describe("Make → Shape → Publish → Wander", () => {
     await visitorPage.fill("#password", "correct horse battery staple");
     await visitorPage.getByRole("button", { name: "Make your page" }).click();
     await visitorPage.getByRole("button", { name: "Publish your corner" }).click();
+    await expect(visitorPage).toHaveURL(new RegExp(`/@${visitorHandle}$`));
 
     await visitorPage.goto(`/@${ownerHandle}`);
     const guestbookForm = visitorPage.locator("form:has(textarea[name='message'])");
     await expect(guestbookForm).toBeVisible();
     await guestbookForm.locator("textarea[name='message']").fill("Loved wandering into your corner!");
     await guestbookForm.getByRole("button", { name: "Sign guestbook" }).click();
+    await expect(visitorPage.locator(".success-banner")).toBeVisible({ timeout: 10_000 });
 
     // Approval is required by default — the entry must not be publicly
     // visible yet.
     await ownerPage.goto(`/@${ownerHandle}`);
     await expect(ownerPage.locator(".guestbook-entries")).toHaveCount(0);
+
+    // Approve as owner, then confirm the entry is now publicly visible.
+    await ownerPage.goto("/settings");
+    const approveButton = ownerPage.getByRole("button", { name: /approve/i }).first();
+    await expect(approveButton).toBeVisible({ timeout: 10_000 });
+    await approveButton.click();
+
+    await ownerPage.goto(`/@${ownerHandle}`);
+    await expect(ownerPage.locator(".guestbook-entries")).toHaveCount(1);
 
     await ownerContext.close();
     await visitorContext.close();

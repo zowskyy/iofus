@@ -1,4 +1,5 @@
 import { describe, expect, it, vi } from "vitest";
+import { redirect } from "next/navigation";
 import { withNetworkErrorHandling } from "./actionResilience";
 
 interface State {
@@ -39,6 +40,16 @@ describe("withNetworkErrorHandling", () => {
     const wrapped = withNetworkErrorHandling(action);
     const result = await wrapped({ draft: "unsaved text" }, new FormData());
     expect(result).toEqual({ draft: "unsaved text", error: "Network error — please try again." });
+  });
+
+  it("re-throws a Next.js redirect() control-flow error instead of converting it to an error state", async () => {
+    const action = vi.fn(async (_prev: State, _fd: FormData): Promise<State> => {
+      redirect("/somewhere");
+    });
+    const wrapped = withNetworkErrorHandling(action);
+    await expect(wrapped({}, new FormData())).rejects.toMatchObject({
+      digest: expect.stringContaining("NEXT_REDIRECT"),
+    });
   });
 
   it("accepts a custom message", async () => {

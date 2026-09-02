@@ -228,6 +228,7 @@ test.describe("Network failure and retry", () => {
     await visitorPage.fill("#password", "correct horse battery staple");
     await visitorPage.getByRole("button", { name: "Make your page" }).click();
     await visitorPage.getByRole("button", { name: "Publish your corner" }).click();
+    await expect(visitorPage).toHaveURL(new RegExp(`/@${visitorHandle}$`));
 
     await visitorPage.goto(`/@${ownerHandle}`);
     const form = visitorPage.locator("form:has(textarea[name='message'])");

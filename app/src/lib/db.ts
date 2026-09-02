@@ -163,6 +163,7 @@ function migrate(db: DatabaseSync): void {
     seedWebRings(db);
     seedCollections(db);
     seedSharedThemes(db);
+    fixLegacyThemeContrast(db);
     db.exec("COMMIT");
   } catch (err) {
     try {
@@ -245,6 +246,36 @@ function seedSharedThemes(db: DatabaseSync): void {
       attribution: undefined,
     };
     stmt.run(randomUUID(), seed.name, seed.description, JSON.stringify(seed.tags), JSON.stringify(themeData), now, now);
+  }
+}
+
+/**
+ * One-time repair for databases seeded before the contrast fix above: an
+ * already-seeded shared_themes table (count > 0) short-circuits
+ * seedSharedThemes entirely, so it would otherwise keep the old
+ * failing-contrast accents (#0284c7, #c7314b, #e0526b) forever. Rewrites
+ * only the exact legacy seed rows (matched by name AND their original
+ * accent, so a creator's own edited copy of a same-named theme is never
+ * touched) to the corrected accent. Safe to run on every boot — idempotent
+ * once the accents are already corrected.
+ */
+function fixLegacyThemeContrast(db: DatabaseSync): void {
+  const legacyFixes: { name: string; oldAccent: string; newAccent: string }[] = [
+    { name: "Y2K Chrome", oldAccent: "#0284c7", newAccent: "#026ea7" },
+    { name: "Pixel RPG Tavern", oldAccent: "#c7314b", newAccent: "#d75e73" },
+    { name: "Soft Angelcore", oldAccent: "#e0526b", newAccent: "#cf2543" },
+  ];
+  const rows = db
+    .prepare("SELECT id, name, theme_json FROM shared_themes WHERE name IN (?, ?, ?)")
+    .all(...legacyFixes.map((f) => f.name)) as { id: string; name: string; theme_json: string }[];
+  const update = db.prepare("UPDATE shared_themes SET theme_json = ? WHERE id = ?");
+  for (const row of rows) {
+    const fix = legacyFixes.find((f) => f.name === row.name);
+    if (!fix) continue;
+    const theme = JSON.parse(row.theme_json) as { accent?: string };
+    if (theme.accent !== fix.oldAccent) continue;
+    theme.accent = fix.newAccent;
+    update.run(JSON.stringify(theme), row.id);
   }
 }
 

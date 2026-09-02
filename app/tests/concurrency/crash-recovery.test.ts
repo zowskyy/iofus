@@ -28,15 +28,44 @@ afterAll(async () => {
   await rm(tmpDir, { recursive: true, force: true }).catch(() => {});
 });
 
-/** Spawns the crash-worker, waits for it to confirm an open uncommitted transaction, then SIGKILLs it. Resolves once the process has actually exited. */
+/**
+ * Kills the full process tree rooted at *pid*. With `shell: true` (needed
+ * on Windows to resolve tsx.cmd), `child.kill()` only signals the shell —
+ * the shell's own child (the actual tsx/worker process) survives and can
+ * keep running, including reaching its COMMIT, after the parent here has
+ * already moved on. On POSIX we avoid the shell and launch detached instead,
+ * so killing the negative pid (the process group) reaches every descendant;
+ * on Windows, taskkill /T recurses the real process tree regardless of how
+ * many shell layers are in between.
+ */
+function killProcessTree(child: import("node:child_process").ChildProcess): void {
+  if (process.platform === "win32") {
+    if (child.pid !== undefined) spawn("taskkill", ["/PID", String(child.pid), "/T", "/F"]);
+  } else {
+    if (child.pid !== undefined) {
+      try {
+        process.kill(-child.pid, "SIGKILL");
+      } catch {
+        child.kill("SIGKILL");
+      }
+    } else {
+      child.kill("SIGKILL");
+    }
+  }
+}
+
+/** Spawns the crash-worker, waits for it to confirm an open uncommitted transaction, then kills the full process tree. Resolves once the process has actually exited — rejects if it exits before ever reaching that handshake. */
 function killMidTransaction(dbPath: string, handlePrefix: string, rowCount: number): Promise<void> {
   return new Promise((resolve, reject) => {
-    const child = spawn(TSX, [WORKER, dbPath, handlePrefix, String(rowCount)], { shell: true });
+    const child = spawn(TSX, [WORKER, dbPath, handlePrefix, String(rowCount)], {
+      shell: process.platform === "win32",
+      detached: process.platform !== "win32",
+    });
     let settled = false;
     const timeout = setTimeout(() => {
       if (!settled) {
         settled = true;
-        child.kill("SIGKILL");
+        killProcessTree(child);
         reject(new Error("crash-worker never reported TRANSACTION_OPEN within 10s"));
       }
     }, 10_000);
@@ -51,11 +80,19 @@ function killMidTransaction(dbPath: string, handlePrefix: string, rowCount: numb
         // TerminateProcess, which is equally abrupt (no handler, no
         // cleanup) — both give the same guarantee this test needs: the
         // process cannot commit, flush, or close anything on its way out.
-        child.kill("SIGKILL");
+        killProcessTree(child);
       }
     });
 
-    child.on("exit", () => resolve());
+    child.on("exit", (code, signal) => {
+      clearTimeout(timeout);
+      if (!settled) {
+        settled = true;
+        reject(new Error(`crash-worker exited (code=${code}, signal=${signal}) before reporting TRANSACTION_OPEN`));
+        return;
+      }
+      resolve();
+    });
     child.on("error", (err) => {
       if (!settled) {
         settled = true;

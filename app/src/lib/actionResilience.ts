@@ -1,3 +1,5 @@
+import { unstable_rethrow } from "next/navigation";
+
 /**
  * Wraps a `useActionState` action so a genuine network failure (dropped
  * connection, aborted request) becomes a normal `{ error }` state update
@@ -16,6 +18,19 @@
  * Every action's state shape in this codebase already carries `error?:
  * string` (13 forms, checked directly against every actions.ts file), so
  * one generic wrapper covers all of them without per-form duplication.
+ *
+ * `redirect()` (used by loginAction, signupAction, makeFlowAction) works by
+ * throwing a special NEXT_REDIRECT control-flow error that Next.js's
+ * framework catches to perform the navigation — a plain `catch {}` here
+ * would intercept it first and turn a successful redirect into a false
+ * "Network error" state. `unstable_rethrow` re-throws that (and notFound's)
+ * control-flow error unchanged; only genuine exceptions reach the fallback.
+ *
+ * States that carry a `success` message (ManageRingControls, GuestbookSignForm)
+ * render success and error independently, so a handled failure that only sets
+ * `error` would leave a stale success message from a prior submission showing
+ * alongside it. Clearing `success` here (a no-op cast for states that never
+ * had the field) keeps a failure state unambiguous.
  */
 export function withNetworkErrorHandling<State extends { error?: string }>(
   action: (prevState: State, formData: FormData) => Promise<State>,
@@ -24,8 +39,9 @@ export function withNetworkErrorHandling<State extends { error?: string }>(
   return async (prevState, formData) => {
     try {
       return await action(prevState, formData);
-    } catch {
-      return { ...prevState, error: message };
+    } catch (error) {
+      unstable_rethrow(error);
+      return { ...prevState, error: message, success: undefined } as State;
     }
   };
 }

@@ -1,6 +1,6 @@
 "use client";
 
-import { useActionState } from "react";
+import { useActionState, useState } from "react";
 import { reportAction, type ReportState } from "./actions";
 import { withNetworkErrorHandling } from "@/lib/actionResilience";
 
@@ -17,6 +17,9 @@ const REASONS: { value: string; label: string }[] = [
 export function ReportForm({ handle }: { handle: string }) {
   const boundAction = reportAction.bind(null, handle);
   const [state, formAction, pending] = useActionState(withNetworkErrorHandling(boundAction), initialState);
+  // Controlled so a handled network failure doesn't reset the selected
+  // reason back to "nothing chosen" — see PublishThemeForm.tsx.
+  const [reason, setReason] = useState("");
 
   return (
     <form action={formAction}>
@@ -29,7 +32,14 @@ export function ReportForm({ handle }: { handle: string }) {
         <legend style={{ fontWeight: 600, marginBottom: "0.5rem" }}>Reason</legend>
         {REASONS.map((r) => (
           <label key={r.value} style={{ display: "flex", gap: "0.5rem", padding: "0.35rem 0", alignItems: "center" }}>
-            <input type="radio" name="reason" value={r.value} required />
+            <input
+              type="radio"
+              name="reason"
+              value={r.value}
+              required
+              checked={reason === r.value}
+              onChange={() => setReason(r.value)}
+            />
             {r.label}
           </label>
         ))}

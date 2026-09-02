@@ -86,7 +86,7 @@ function apply(pool: User[], cmd: Command): void {
         break;
       }
       case "block":
-        if (cmd.by !== cmd.target) blockUser(pool[cmd.by]!.id, pool[cmd.target]!.id);
+        blockUser(pool[cmd.by]!.id, pool[cmd.target]!.id);
         break;
       case "unblock":
         unblockUser(pool[cmd.by]!.id, pool[cmd.target]!.id);

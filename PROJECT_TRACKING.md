@@ -17,6 +17,7 @@ iofus (`app/`) is a Next.js 16 personal-webspace platform — MySpace-style page
 ## File Inventory
 
 ### New/modified production code this work (`app/src/`)
+
 | File | Status | Note |
 |---|---|---|
 | `lib/db.ts` | modified | `busy_timeout`, wedged-connection fix, seed-race transaction, all backed by real multi-process tests |
@@ -33,6 +34,7 @@ iofus (`app/`) is a Next.js 16 personal-webspace platform — MySpace-style page
 | `components/VisitorCounter.tsx`, `components/PresenceIndicator.tsx` | **removed** | contradicted PLAN.md's "no visitor analytics" decision |
 
 ### Test suites added
+
 | Suite | Location | Count | Run via |
 |---|---|---|---|
 | Unit + property | `src/**/*.test.ts` | 276 tests, 25 files | `npm test` |
@@ -51,7 +53,7 @@ iofus (`app/`) is a Next.js 16 personal-webspace platform — MySpace-style page
 
 **Zero test coverage:** `notifications.ts`, `activityFeed.ts`, `exportPage.ts`, `collections.ts`, `stamps.ts`.
 
-**4 ring-management actions bypass the network-resilience work**: `reviewRequestAction`/`removeMemberAction`/`deleteRingAction` in `ManageRingControls.tsx` are plain `<form action={bind(...)}>`, not `useActionState` — a network failure there falls back to the root error boundary (safe, no crash) rather than an inline recoverable error like the other 13 forms.
+**3 ring-management actions bypass the network-resilience work**: `reviewRequestAction`/`removeMemberAction`/`deleteRingAction` in `ManageRingControls.tsx` are plain `<form action={bind(...)}>`, not `useActionState` — a network failure there falls back to the root error boundary (safe, no crash) rather than an inline recoverable error like the other 13 forms.
 
 **Mobile:** no real-device or throttled-network testing (everything is Chromium desktop emulating a viewport); gallery/shrine `<img>` tags have no lazy-loading/`srcset`/`next/image`; no iOS Safari-specific testing; Studio's touch-editing ergonomics (not just no-overflow) never exercised end-to-end.
 

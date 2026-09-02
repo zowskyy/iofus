@@ -92,7 +92,13 @@ async function main() {
     const ownerId = requireArg(4);
     const handlePrefix = requireArg(5);
     const count = Number(requireArg(6));
-    const visitor = createUser(handlePrefix, "correct-horse-battery");
+    const visitorResult = record("createVisitor", () => createUser(handlePrefix, "correct-horse-battery"));
+    results.push({ op: "createVisitor", result: visitorResult });
+    if (!visitorResult.ok) {
+      process.stdout.write(JSON.stringify(results) + "\n");
+      return;
+    }
+    const visitor = visitorResult.value as { id: string; handle: string };
     for (let i = 0; i < count; i++) {
       results.push({
         op: "signGuestbook",
