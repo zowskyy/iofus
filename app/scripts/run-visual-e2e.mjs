@@ -7,13 +7,32 @@
 // itself already does.
 import { spawn } from "node:child_process";
 import { createRequire } from "node:module";
+import { existsSync, rmSync } from "node:fs";
 import path from "node:path";
+import { fileURLToPath } from "node:url";
 
 // Forward any extra args (e.g. `-- --update-snapshots`, `-g "pattern"`) —
 // dropped silently before this fix, which meant `npm run test:e2e:visual --
 // --update-snapshots` looked like it ran but never actually wrote new
 // baselines.
 const extraArgs = process.argv.slice(2);
+
+// The visual suite's whole reason for a separate database (see the comment
+// in playwright.config.ts) is pixel-exact screenshots — but nothing ever
+// reset that database between runs. Confirmed by actually re-running the
+// suite back-to-back without wiping it: 14/14 pass on a fresh DB, then
+// 13/14 fail on the second run alone, purely from accounts and content the
+// first run's own accounts/pages left behind (e.g. Explore's "N pages
+// redecorated" banner). Deleting the DB (and its WAL/SHM siblings) before
+// every invocation makes the suite idempotent — safe to re-run locally or
+// after a CI retry — instead of only passing the first time a machine ever
+// runs it.
+const __dirname = path.dirname(fileURLToPath(import.meta.url));
+const visualDbPath = path.join(__dirname, "..", ".e2e-data", "iofus-e2e-visual.db");
+for (const suffix of ["", "-shm", "-wal"]) {
+  const file = visualDbPath + suffix;
+  if (existsSync(file)) rmSync(file);
+}
 
 // shell: true joins the args array into one string before handing it to the
 // shell, so a multi-word arg like ["-g", "publish theme"] arrives as four
