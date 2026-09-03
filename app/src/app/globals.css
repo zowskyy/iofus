@@ -3027,36 +3027,6 @@ kbd {
 }
 .ping-indicator a { color: var(--paper); font-weight: 700; }
 
-/* ── Visitor counter ── */
-.visitor-counter {
-  display: inline-flex;
-  align-items: center;
-  gap: 0.4rem;
-  margin: 0.75rem 0;
-  padding: 0.25rem 0.5rem;
-  border: 1px solid color-mix(in srgb, var(--page-accent, #111) 40%, transparent);
-  border-radius: 3px;
-  background: color-mix(in srgb, var(--page-ink, #111) 5%, transparent);
-}
-.visitor-counter-label {
-  font-size: 0.65rem;
-  text-transform: uppercase;
-  letter-spacing: 0.08em;
-  color: var(--page-ink-soft, #666);
-}
-.visitor-counter-digits {
-  font-size: 1rem;
-  letter-spacing: 0.12em;
-  color: var(--page-accent, #111);
-}
-
-/* ── Presence indicator ── */
-.presence-indicator {
-  font-size: 0.75rem;
-  opacity: 0.7;
-  margin: 0.25rem 0;
-}
-
 /* ── Ambient status ── */
 .ambient-status {
   font-size: 0.78rem;

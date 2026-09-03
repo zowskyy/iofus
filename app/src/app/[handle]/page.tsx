@@ -159,7 +159,7 @@ export default async function ProfilePage({ params, searchParams }: Props) {
           <Link href={readerMode ? `/@${user.handle}` : `/@${user.handle}?reader=1`}>
             {readerMode ? "Exit Reader" : "Reader"}
           </Link>
-          {!isOwner && viewer && <Link href={`/messages/${user.handle}`}>Message</Link>}
+          {!isOwner && viewer && <Link href={`/messages/@${user.handle}`}>Message</Link>}
           {!isOwner && <Link href={`/@${user.handle}/report`}>Report</Link>}
           {!isOwner && <Link href={`/@${user.handle}/block`}>Block</Link>}
         </div>
@@ -219,11 +219,11 @@ export default async function ProfilePage({ params, searchParams }: Props) {
             <div style={{ marginBottom: "0.75rem" }}>
               <h3>Leave your mark</h3>
               <div className="after-page-actions">
-                <Link href={`/@${handle}/guestbook`} className="btn">
+                <Link href="#guestbook-form" className="btn">
                   Sign the guestbook
                 </Link>
                 {viewer && (
-                  <Link href={`/messages/${handle}`} className="btn secondary">
+                  <Link href={`/messages/@${handle}`} className="btn secondary">
                     Send a message
                   </Link>
                 )}

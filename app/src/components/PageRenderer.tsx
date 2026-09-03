@@ -6,8 +6,6 @@ import type { GuestbookEntry } from "@/lib/guestbook";
 import { readableTextFor } from "@/lib/color";
 import { profileScopeClass, validateProfileCustomCss } from "@/lib/cssScope";
 import { renderPagePart, type TopEightLink } from "@/lib/moduleRegistry";
-import { VisitorCounter } from "./VisitorCounter";
-import { PresenceIndicator } from "./PresenceIndicator";
 import { AmbientStatusDisplay } from "./AmbientStatusDisplay";
 
 export type { TopEightLink };
@@ -109,7 +107,6 @@ export function PageRenderer({
       {document.theme.attribution?.credit && !readerMode && (
         <p className="theme-attribution mono">{document.theme.attribution.credit}</p>
       )}
-      {showInteractive && <PresenceIndicator pageOwnerId={pageOwnerId!} />}
       {showInteractive && (
         <AmbientStatusDisplay pageOwnerId={pageOwnerId!} initialStatus={initialAmbientStatus} />
       )}
@@ -117,7 +114,6 @@ export function PageRenderer({
       {document.pageParts.map((partId) => (
         <Fragment key={partId}>{renderPagePart(partId, ctx)}</Fragment>
       ))}
-      {showInteractive && <VisitorCounter pageOwnerId={pageOwnerId!} />}
       <p className="page-footer mono">@{handle} on iofus</p>
     </div>
   );

@@ -1,7 +1,8 @@
 "use client";
 
-import { useActionState } from "react";
+import { useActionState, useState } from "react";
 import { WebRing, WebRingMember, WebRingJoinRequest } from "@/lib/webRings";
+import { withNetworkErrorHandling } from "@/lib/actionResilience";
 import {
   deleteRingAction,
   ManageRingState,
@@ -18,7 +19,14 @@ interface Props {
 
 export function ManageRingControls({ ring, members, requests }: Props) {
   const updateBound = updateRingAction.bind(null, ring.slug);
-  const [updateState, updateAction, updatePending] = useActionState<ManageRingState, FormData>(updateBound, {});
+  const [updateState, updateAction, updatePending] = useActionState<ManageRingState, FormData>(
+    withNetworkErrorHandling(updateBound),
+    {},
+  );
+  // Controlled so a handled network failure doesn't wipe out edits in
+  // progress — see PublishThemeForm.tsx for the full reasoning.
+  const [name, setName] = useState(ring.name);
+  const [description, setDescription] = useState(ring.description);
 
   return (
     <>
@@ -29,11 +37,26 @@ export function ManageRingControls({ ring, members, requests }: Props) {
         <form action={updateAction}>
           <label className="settings-label">
             Name
-            <input name="name" type="text" required maxLength={80} defaultValue={ring.name} className="settings-input" />
+            <input
+              name="name"
+              type="text"
+              required
+              maxLength={80}
+              value={name}
+              onChange={(e) => setName(e.target.value)}
+              className="settings-input"
+            />
           </label>
           <label className="settings-label">
             Description
-            <textarea name="description" rows={3} maxLength={500} defaultValue={ring.description} className="settings-input" />
+            <textarea
+              name="description"
+              rows={3}
+              maxLength={500}
+              value={description}
+              onChange={(e) => setDescription(e.target.value)}
+              className="settings-input"
+            />
           </label>
           <button type="submit" className="btn" disabled={updatePending}>
             {updatePending ? "Saving…" : "Save changes"}

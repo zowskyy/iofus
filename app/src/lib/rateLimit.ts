@@ -42,6 +42,15 @@ export class RateLimitError extends Error {
  * under the limit and both be allowed through.
  */
 export function checkRateLimit(key: string, maxCount: number, windowMs: number = DEFAULT_WINDOW_MS): void {
+  // E2E suites run many actions (signups especially) back-to-back from the
+  // same loopback IP within a single rate-limit window — a real trip of
+  // this exact limit, confirmed by a CI run where the visual regression
+  // suite's sequential signups hit signup's maxCount=5/60s and every test
+  // after the 5th stayed stuck on /signup with a rate-limit error. This
+  // flag only exists in playwright.config.ts's webServer env — never set
+  // in production — so the limit stays fully enforced everywhere real
+  // traffic reaches it.
+  if (process.env.IOFUS_DISABLE_RATE_LIMIT === "true") return;
   const db = getDb();
   db.exec("BEGIN IMMEDIATE");
   let limitError: RateLimitError | undefined;

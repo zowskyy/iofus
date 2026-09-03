@@ -1,5 +1,5 @@
 import { DatabaseSync } from "node:sqlite";
-import { readFileSync } from "node:fs";
+import { readFileSync, mkdirSync } from "node:fs";
 import { join, dirname } from "node:path";
 import { fileURLToPath } from "node:url";
 import { randomUUID } from "node:crypto";
@@ -94,17 +94,16 @@ function migrate(db: DatabaseSync): void {
     db.exec("CREATE INDEX IF NOT EXISTS idx_notifications_user ON notifications(user_id, read_at, created_at)");
   }
 
-  db.exec(`
-    CREATE TABLE IF NOT EXISTS page_visits (
-      id TEXT PRIMARY KEY,
-      page_owner_id TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
-      visitor_session TEXT,
-      visited_at TEXT NOT NULL
-    )
-  `);
-  if (!indexExists(db, "idx_visits_owner")) {
-    db.exec("CREATE INDEX IF NOT EXISTS idx_visits_owner ON page_visits(page_owner_id, visited_at)");
-  }
+  // page_visits (per-page visitor-session tracking) and the in-memory
+  // presence store were removed: PLAN.md's "Decisions" section states
+  // "Visitor privacy — decided: none. Creators do not get page views,
+  // referrers, or any visitor analytics... this is not revisited quietly
+  // later," and /policy promises visitors "No visitor analytics or
+  // tracking pixels on your page." A visible page-view counter and a live
+  // viewer-presence indicator both broke that promise. Drop the table (and
+  // its index) outright for already-migrated databases rather than leaving
+  // dead visitor data sitting around unused.
+  db.exec("DROP TABLE IF EXISTS page_visits");
 
   db.exec(`
     CREATE TABLE IF NOT EXISTS page_stamps (
@@ -147,9 +146,33 @@ function migrate(db: DatabaseSync): void {
     )
   `);
 
-  seedWebRings(db);
-  seedCollections(db);
-  seedSharedThemes(db);
+  // Each seed*() below does its own "SELECT COUNT(*) ... if > 0 return"
+  // check before inserting fixed-slug/fixed-name rows. A real multi-process
+  // test caught the race that check-then-act invites: two processes can
+  // both see an empty table and both insert the same seed rows — for
+  // web_rings/collections (whose slug column is UNIQUE) that surfaced as an
+  // uncaught "UNIQUE constraint failed" crashing migrate() outright, and
+  // shared_themes has no unique column for SQLite to de-duplicate against
+  // at all, so it would have silently ended up with duplicate seed themes.
+  // Wrapping all three in one transaction makes the whole "check candidates,
+  // seed defaults" phase atomic: a second process's BEGIN IMMEDIATE waits
+  // (via the busy_timeout set above) for the first to commit, then its own
+  // count check correctly sees the rows already exist and skips seeding.
+  db.exec("BEGIN IMMEDIATE");
+  try {
+    seedWebRings(db);
+    seedCollections(db);
+    seedSharedThemes(db);
+    fixLegacyThemeContrast(db);
+    db.exec("COMMIT");
+  } catch (err) {
+    try {
+      db.exec("ROLLBACK");
+    } catch {
+      /* already resolved */
+    }
+    throw err;
+  }
 }
 
 /** Seed the default web rings if none exist yet. Idempotent. */
@@ -192,11 +215,15 @@ function seedSharedThemes(db: DatabaseSync): void {
   const count = db.prepare("SELECT COUNT(*) as c FROM shared_themes").get() as { c: number };
   if (count.c > 0) return;
   const now = new Date().toISOString();
+  // Y2K Chrome, Pixel RPG Tavern, and Soft Angelcore originally reused the
+  // pre-fix pageDocumentTheme.ts accents (#0284c7, #c7314b, #e0526b), which
+  // failed 4.5:1 WCAG AA contrast against their paired background — see the
+  // matching comment in pageDocumentTheme.ts.
   const seeds = [
-    { name: "Y2K Chrome", description: "Glossy panels, cool blues, reflective accents.", tags: ["y2k", "glossy"], template: "chrome-angel", accent: "#0284c7", background: "#dbeafe", fontStyle: "sans" },
+    { name: "Y2K Chrome", description: "Glossy panels, cool blues, reflective accents.", tags: ["y2k", "glossy"], template: "chrome-angel", accent: "#026ea7", background: "#dbeafe", fontStyle: "sans" },
     { name: "Scene Neon", description: "Hot pink and electric purple nightlife energy.", tags: ["scene", "neon"], template: "chrome-angel", accent: "#ff4db8", background: "#160a23", fontStyle: "sans" },
-    { name: "Pixel RPG Tavern", description: "Retro dungeon menu vibes.", tags: ["pixel", "rpg"], template: "pixel-tavern", accent: "#c7314b", background: "#241b2e", fontStyle: "mono" },
-    { name: "Soft Angelcore", description: "Dreamy pastels and gentle serif type.", tags: ["soft", "angelcore"], template: "soft-web", accent: "#e0526b", background: "#f6ecec", fontStyle: "serif" },
+    { name: "Pixel RPG Tavern", description: "Retro dungeon menu vibes.", tags: ["pixel", "rpg"], template: "pixel-tavern", accent: "#d75e73", background: "#241b2e", fontStyle: "mono" },
+    { name: "Soft Angelcore", description: "Dreamy pastels and gentle serif type.", tags: ["soft", "angelcore"], template: "soft-web", accent: "#cf2543", background: "#f6ecec", fontStyle: "serif" },
     { name: "CRT Terminal", description: "Green phosphor on near-black.", tags: ["crt", "terminal"], template: "dark-zine", accent: "#7fbe95", background: "#0e0e0e", fontStyle: "mono" },
     { name: "Indie Devlog", description: "Clean, readable, maker-focused.", tags: ["devlog", "minimal"], template: "clean-portfolio", accent: "#2563eb", background: "#ffffff", fontStyle: "sans" },
     { name: "Zine Punk", description: "High contrast cut-and-paste energy.", tags: ["zine", "punk"], template: "dark-zine", accent: "#f1eaee", background: "#0e0e0e", fontStyle: "serif" },
@@ -222,15 +249,112 @@ function seedSharedThemes(db: DatabaseSync): void {
   }
 }
 
+/**
+ * One-time repair for databases seeded before the contrast fix above: an
+ * already-seeded shared_themes table (count > 0) short-circuits
+ * seedSharedThemes entirely, so it would otherwise keep the old
+ * failing-contrast accents (#0284c7, #c7314b, #e0526b) forever. Rewrites
+ * only the exact legacy seed rows (matched by name AND their original
+ * accent, so a creator's own edited copy of a same-named theme is never
+ * touched) to the corrected accent. Safe to run on every boot — idempotent
+ * once the accents are already corrected.
+ */
+function fixLegacyThemeContrast(db: DatabaseSync): void {
+  const legacyFixes: { name: string; oldAccent: string; newAccent: string }[] = [
+    { name: "Y2K Chrome", oldAccent: "#0284c7", newAccent: "#026ea7" },
+    { name: "Pixel RPG Tavern", oldAccent: "#c7314b", newAccent: "#d75e73" },
+    { name: "Soft Angelcore", oldAccent: "#e0526b", newAccent: "#cf2543" },
+  ];
+  const rows = db
+    .prepare("SELECT id, name, theme_json FROM shared_themes WHERE name IN (?, ?, ?)")
+    .all(...legacyFixes.map((f) => f.name)) as { id: string; name: string; theme_json: string }[];
+  const update = db.prepare("UPDATE shared_themes SET theme_json = ? WHERE id = ?");
+  for (const row of rows) {
+    const fix = legacyFixes.find((f) => f.name === row.name);
+    if (!fix) continue;
+    const theme = JSON.parse(row.theme_json) as { accent?: string };
+    if (theme.accent !== fix.oldAccent) continue;
+    theme.accent = fix.newAccent;
+    update.run(JSON.stringify(theme), row.id);
+  }
+}
+
+/** True when *error* is SQLite's "database is locked" (SQLITE_BUSY) — the specific, narrow condition first-boot migration retries, never any other failure. */
+function isSqliteBusy(error: unknown): boolean {
+  return error instanceof Error && /database is locked/i.test(error.message);
+}
+
+const MIGRATION_RETRY_ATTEMPTS = 3;
+
+/** Opens a fresh connection and runs migrate() on it. Throws (never leaves a wedged connection behind) on failure. */
+function openAndMigrate(path: string): DatabaseSync {
+  // A fresh CI checkout (or first run on a new machine) has no .e2e-data/
+  // directory — it's gitignored — so DatabaseSync would throw ENOENT
+  // opening the file. Confirmed as the cause of a full CI run failing 17/17
+  // E2E tests identically (every test stuck on /signup): the db file's
+  // directory didn't exist, so getDb() threw on the very first write and
+  // signup's server action failed silently from the test's perspective.
+  mkdirSync(dirname(path), { recursive: true });
+  const db = new DatabaseSync(path);
+  try {
+    db.exec("PRAGMA foreign_keys = ON;");
+    db.exec("PRAGMA journal_mode = WAL;");
+    // Without this, SQLite raises SQLITE_BUSY ("database is locked")
+    // immediately whenever a second connection's write overlaps the first —
+    // confirmed with a real multi-process test (tests/concurrency), not
+    // assumed from documentation. A busy_timeout makes SQLite itself block
+    // and retry internally for up to this many ms before giving up — a
+    // bounded, deterministic wait, not an application-level retry loop —
+    // so ordinary transient contention (two requests touching the same row
+    // a few milliseconds apart) resolves on its own instead of failing a
+    // real user's request. Callers (e.g. rateLimit.ts's BEGIN IMMEDIATE)
+    // still see a real thrown error if contention outlasts this window.
+    db.exec("PRAGMA busy_timeout = 5000;");
+    migrate(db);
+    return db;
+  } catch (err) {
+    try {
+      db.close();
+    } catch {
+      /* already unusable */
+    }
+    throw err;
+  }
+}
+
 /** Returns the singleton database connection, opening and migrating it on first call. */
 export function getDb(): DatabaseSync {
   if (dbInstance) return dbInstance;
   const path = process.env.IOFUS_DB_PATH ?? join(__dirname, "..", "..", "iofus.db");
-  dbInstance = new DatabaseSync(path);
-  dbInstance.exec("PRAGMA foreign_keys = ON;");
-  dbInstance.exec("PRAGMA journal_mode = WAL;");
-  migrate(dbInstance);
-  return dbInstance;
+  // Built up in a local first, and only assigned to the module-level
+  // singleton once setup fully succeeds. A real multi-process test caught
+  // the bug in assigning `dbInstance` before migrate() runs: if migration
+  // hit contention and threw, the *next* getDb() call in this same process
+  // saw the already-non-null (but never-migrated) singleton and returned
+  // it straight away via the guard above — permanently wedging every later
+  // query in that process with "no such table" errors instead of
+  // retrying. Discarding a failed attempt means the next call starts clean.
+  //
+  // Several processes racing to migrate a brand-new database file at once
+  // (multi-process cold start) is a real, reproduced scenario where the
+  // sheer number of DDL statements in migrate() can occasionally still
+  // exceed a single busy_timeout window even with it set — migrate() is
+  // fully idempotent (every statement is CREATE TABLE IF NOT EXISTS or a
+  // checked ALTER), so a small, bounded number of whole-setup retries is
+  // safe and correct here specifically, unlike a steady-state query.
+  let lastError: unknown;
+  for (let attempt = 1; attempt <= MIGRATION_RETRY_ATTEMPTS; attempt++) {
+    try {
+      dbInstance = openAndMigrate(path);
+      return dbInstance;
+    } catch (err) {
+      lastError = err;
+      if (!isSqliteBusy(err) || attempt === MIGRATION_RETRY_ATTEMPTS) throw err;
+    }
+  }
+  // Unreachable (the loop always returns or throws), but keeps TypeScript's
+  // control-flow analysis happy without an unsound non-null assertion.
+  throw lastError;
 }
 
 /** Closes and clears the singleton so the next `getDb()` call opens a fresh connection. Only for use in tests. */

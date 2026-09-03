@@ -2,12 +2,13 @@
 
 import { useActionState } from "react";
 import { reportThemeAction, type ThemeReportState } from "./actions";
+import { withNetworkErrorHandling } from "@/lib/actionResilience";
 
 const initialState: ThemeReportState = {};
 
 export function ThemeReportForm({ themeId, compact = false }: { themeId: string; compact?: boolean }) {
   const boundAction = reportThemeAction.bind(null, themeId);
-  const [state, formAction, pending] = useActionState(boundAction, initialState);
+  const [state, formAction, pending] = useActionState(withNetworkErrorHandling(boundAction), initialState);
 
   return (
     <form action={formAction} className={compact ? "theme-report-form theme-report-form--compact" : "theme-report-form"}>

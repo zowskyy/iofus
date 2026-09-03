@@ -86,7 +86,9 @@ export function migrateDocument(input: Record<string, unknown>): PageDocument {
       version: CURRENT_SCHEMA_VERSION,
       theme: {
         template: theme?.template ?? "start-simple",
-        accent: theme?.accent ?? "#e0526b",
+        // Matches the corrected start-simple preset in pageDocumentTheme.ts
+        // (was #e0526b, a 3.2:1 contrast failure against this background).
+        accent: theme?.accent ?? "#cf2543",
         background: theme?.background ?? "#f1ede9",
         density: theme?.density ?? "comfortable",
         fontStyle: "sans",

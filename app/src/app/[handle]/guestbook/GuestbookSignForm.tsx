@@ -2,6 +2,7 @@
 
 import { useActionState, useState } from "react";
 import { signGuestbookAction, type GuestbookActionState } from "./actions";
+import { withNetworkErrorHandling } from "@/lib/actionResilience";
 
 const initialState: GuestbookActionState = {};
 
@@ -22,7 +23,7 @@ function readSavedDraft(handle: string): string {
 /** Guestbook form with localStorage draft auto-save/restore. Saves on every change; clears on submit. */
 export function GuestbookSignForm({ handle }: { handle: string }) {
   const boundAction = signGuestbookAction.bind(null, handle);
-  const [state, formAction, pending] = useActionState(boundAction, initialState);
+  const [state, formAction, pending] = useActionState(withNetworkErrorHandling(boundAction), initialState);
   const [draft, setDraft] = useState(() => readSavedDraft(handle));
   const [draftSaved, setDraftSaved] = useState(() => readSavedDraft(handle) !== "");
 
@@ -66,7 +67,7 @@ export function GuestbookSignForm({ handle }: { handle: string }) {
   }
 
   return (
-    <section className="guestbook-sign container-narrow" aria-label="Sign guestbook">
+    <section id="guestbook-form" className="guestbook-sign container-narrow" aria-label="Sign guestbook">
       <h2 className="part-label">Sign the guestbook</h2>
       {state.error && (
         <div className="error-banner" role="alert">{state.error}</div>

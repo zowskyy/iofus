@@ -148,15 +148,6 @@ export function countDecoratedToday(): number {
   return row.n;
 }
 
-/** Count of page visits recorded in the last 24 hours — ambient social signal. */
-export function countTotalVisitsToday(): number {
-  const since = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString();
-  const row = getDb()
-    .prepare("SELECT COUNT(*) as n FROM page_visits WHERE visited_at >= ?")
-    .get(since) as { n: number };
-  return row.n;
-}
-
 /** Most-used tags on public pages, ordered by frequency. */
 export function listPopularTags(limit = 20): { tag: string; count: number }[] {
   const db = getDb();
