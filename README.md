@@ -18,7 +18,7 @@ Make → Shape → Publish → Wander
 
 ## The four screens
 
-Everything in iofus lives on four screens. No notification center, no DMs, no creator analytics dashboard.
+Everything in iofus lives on four screens. No notification center, no creator analytics dashboard. Private messaging exists (see [`PLAN.md`](PLAN.md)'s Phase 7) but it's a deliberate, narrow exception — real 1:1 threads you start on purpose, guarded by the same block and rate-limit rules as the rest of the platform, never a mainstream always-on DM inbox.
 
 | Screen | What you do | What it's for |
 |--------|-------------|---------------|
@@ -124,14 +124,14 @@ platform. The name change marks a direction, not just a rebrand: everyone
 should get a piece of the internet to call their own (the page you already
 get today) *and* a way to reach people beyond who they already know when
 they actually need to (see `PLAN.md`'s roadmap for what that means in
-practice, and why it stays true to the no-feed, no-DM, no-algorithm rules
-above).
+practice — including Messages, the one deliberate, guarded exception to
+"no DMs" — and why the no-feed, no-algorithm rules above still hold).
 
 ---
 
 ## What iofus is not (V1)
 
-No infinite feed · no DMs · no arbitrary HTML or JavaScript in pages · no third-party embeds · no autoplay music · no plugin marketplace · no AI-generated pages · no federation or self-hosting controls at launch · no recommendation algorithms.
+No infinite feed · no open DM inbox (Messages is a narrow, guarded 1:1 exception — see above) · no arbitrary HTML or JavaScript in pages · no third-party embeds · no autoplay music · no plugin marketplace · no AI-generated pages · no federation or self-hosting controls at launch · no recommendation algorithms.
 
 iofus stays ambitious by making expressive personal publishing simple, durable, safe, and accessible — not by shipping every possible social feature.
 
