@@ -64,7 +64,17 @@ test.describe("Visual regression", () => {
   // handles inherently dynamic content) rather than loosen the diff
   // threshold — everything else on the page (header, search, nav, section
   // chrome, empty-state copy) still gets pixel-compared.
-  const EXPLORE_MASK = (page: Page) => [page.locator(".explore-ambient"), page.locator(".explore-grid").first()];
+  // .explore-template-grid ("Browse by feeling") is exactly as
+  // data-driven as .explore-grid (real per-template page counts and
+  // handles) but was missing from this mask — confirmed as the actual
+  // source of a real CI flake on explore-mobile-375.png (4506px / 0.02
+  // ratio diff, above the 0.01 threshold), reproduced from a live CI run
+  // rather than assumed.
+  const EXPLORE_MASK = (page: Page) => [
+    page.locator(".explore-ambient"),
+    page.locator(".explore-grid").first(),
+    page.locator(".explore-template-grid"),
+  ];
 
   test("Explore — normal state (viewport)", async ({ page }) => {
     await page.goto("/explore");
