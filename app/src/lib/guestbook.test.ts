@@ -1,5 +1,7 @@
 import { describe, it, expect, beforeEach } from "vitest";
 import { getDb } from "./db";
+
+process.env.IOFUS_DB_PATH = ":memory:";
 import {
   signGuestbook,
   moderateGuestbookEntry,
