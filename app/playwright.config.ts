@@ -53,6 +53,12 @@ export default defineConfig({
     env: {
       IOFUS_DB_PATH: DB_PATH,
       IOFUS_AUTO_MODERATOR_SEED: "false",
+      // Every test runs from the same loopback IP, so a suite that does
+      // many signups back-to-back (the visual suite especially) can trip
+      // signup's real maxCount=5/60s rate limit — confirmed in CI, where
+      // every visual-regression test after the 5th signup got stuck on
+      // /signup with a rate-limit error instead of reaching /make.
+      IOFUS_DISABLE_RATE_LIMIT: "true",
     },
   },
 });
