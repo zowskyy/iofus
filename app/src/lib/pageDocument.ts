@@ -344,11 +344,21 @@ export function setGuestbookDisabled(userId: string, disabled: boolean): void {
   );
 }
 
-/** Immediately unpublish the page, set visibility to private, hide from discovery, and disable the guestbook in one atomic step. */
+/**
+ * Immediately hide the page from Explore and discovery and disable the
+ * guestbook, while keeping it published and reachable by direct link — the
+ * page stays published (canViewPage blocks all non-owner access to an
+ * unpublished page) and visibility becomes "unlisted" rather than "private"
+ * (canViewPage blocks non-owner access to a "private" page too; "unlisted"
+ * is the state that means "reachable by direct link, excluded from every
+ * discovery query" — see discovery.ts, which requires visibility = 'public'
+ * for any listing). hidden_from_discovery is set as well for defense in
+ * depth even though visibility != 'public' already excludes it.
+ */
 export function activatePanicMode(userId: string): void {
   const db = getDb();
   db.prepare(
-    "UPDATE page_documents SET is_published = 0, visibility = 'private', hidden_from_discovery = 1, guestbook_disabled = 1, updated_at = ? WHERE user_id = ?",
+    "UPDATE page_documents SET visibility = 'unlisted', hidden_from_discovery = 1, guestbook_disabled = 1, updated_at = ? WHERE user_id = ?",
   ).run(new Date().toISOString(), userId);
 }
 
