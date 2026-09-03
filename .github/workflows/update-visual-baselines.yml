@@ -44,11 +44,6 @@ jobs:
           if git diff --cached --quiet; then
             echo "No baseline changes to commit."
           else
-            git commit -m "Regenerate visual regression baselines on ubuntu-latest
-
-Locally-captured baselines don't match CI's font rendering; this
-recaptures them in the exact environment CI compares against.
-
-Co-Authored-By: github-actions[bot] <github-actions[bot]@users.noreply.github.com>"
+            git commit -m "$(printf 'Regenerate visual regression baselines on ubuntu-latest\n\nLocally-captured baselines do not match CI font rendering; this recaptures them in the exact environment CI compares against.\n\nCo-Authored-By: github-actions[bot] <github-actions[bot]@users.noreply.github.com>')"
             git push
           fi
