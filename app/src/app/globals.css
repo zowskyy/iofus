@@ -237,6 +237,19 @@ select {
   opacity: 0.85;
 }
 
+/* Disabled buttons (e.g. Studio's "Publish theme to gallery" before a
+   theme name is entered) rendered fully opaque with no visual cue,
+   reading as a plain dead click to the user. Matches the .stamp-btn:disabled
+   treatment already used elsewhere. */
+.btn:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
+.btn:disabled:hover {
+  opacity: 0.45;
+}
+
 .btn.secondary {
   background: transparent;
   border: 2px solid var(--ink);
@@ -244,7 +257,7 @@ select {
   -webkit-text-stroke: 0;
 }
 
-.btn.secondary:hover {
+.btn.secondary:hover:not(:disabled) {
   background: var(--ink);
   color: var(--paper);
   opacity: 1;
