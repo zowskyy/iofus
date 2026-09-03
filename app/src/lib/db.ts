@@ -1,5 +1,5 @@
 import { DatabaseSync } from "node:sqlite";
-import { readFileSync } from "node:fs";
+import { readFileSync, mkdirSync } from "node:fs";
 import { join, dirname } from "node:path";
 import { fileURLToPath } from "node:url";
 import { randomUUID } from "node:crypto";
@@ -288,6 +288,13 @@ const MIGRATION_RETRY_ATTEMPTS = 3;
 
 /** Opens a fresh connection and runs migrate() on it. Throws (never leaves a wedged connection behind) on failure. */
 function openAndMigrate(path: string): DatabaseSync {
+  // A fresh CI checkout (or first run on a new machine) has no .e2e-data/
+  // directory — it's gitignored — so DatabaseSync would throw ENOENT
+  // opening the file. Confirmed as the cause of a full CI run failing 17/17
+  // E2E tests identically (every test stuck on /signup): the db file's
+  // directory didn't exist, so getDb() threw on the very first write and
+  // signup's server action failed silently from the test's perspective.
+  mkdirSync(dirname(path), { recursive: true });
   const db = new DatabaseSync(path);
   try {
     db.exec("PRAGMA foreign_keys = ON;");
