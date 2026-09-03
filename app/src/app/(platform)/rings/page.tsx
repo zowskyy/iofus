@@ -2,6 +2,7 @@ import Link from "next/link";
 import { redirect } from "next/navigation";
 import { getCurrentUser } from "@/lib/session";
 import { getUserOwnedRings, listUserWebRings, listWebRings } from "@/lib/webRings";
+import { joinRingAction, leaveRingAction } from "@/app/(platform)/rings/[slug]/join/actions";
 
 export default async function RingsPage() {
   const viewer = await getCurrentUser();
@@ -57,13 +58,17 @@ export default async function RingsPage() {
                     {ring.isOpen ? "open" : "invite-only"}
                   </span>
                   {memberIds.has(ring.id) ? (
-                    <Link href={`/rings/${ring.slug}/join`} className="btn secondary" style={{ fontSize: "0.75rem", padding: "0.2rem 0.6rem" }}>
-                      Leave
-                    </Link>
+                    <form action={leaveRingAction.bind(null, ring.slug)}>
+                      <button type="submit" className="btn secondary" style={{ fontSize: "0.75rem", padding: "0.2rem 0.6rem" }}>
+                        Leave
+                      </button>
+                    </form>
                   ) : (
-                    <Link href={`/rings/${ring.slug}/join`} className="btn" style={{ fontSize: "0.75rem", padding: "0.2rem 0.6rem" }}>
-                      {ring.isOpen ? "Join" : "Request to join"}
-                    </Link>
+                    <form action={joinRingAction.bind(null, ring.slug)}>
+                      <button type="submit" className="btn" style={{ fontSize: "0.75rem", padding: "0.2rem 0.6rem" }}>
+                        {ring.isOpen ? "Join" : "Request to join"}
+                      </button>
+                    </form>
                   )}
                 </div>
                 {ring.description && <p style={{ margin: "0.25rem 0 0", color: "var(--ink-soft)", fontSize: "0.875rem" }}>{ring.description}</p>}
