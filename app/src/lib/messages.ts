@@ -2,17 +2,9 @@ import { randomUUID } from "node:crypto";
 import { getDb } from "./db";
 import { hasBlockRelationship } from "./friends";
 import { checkRateLimit, DAY_MS } from "./rateLimit";
+import { createMonotonicClock } from "./monotonicTime";
 
-// ISO timestamps have millisecond precision, so messages created within the
-// same millisecond would otherwise tie on created_at and make ORDER BY
-// non-deterministic. This returns a strictly increasing ISO string.
-let lastTimestampMs = 0;
-function monotonicNow(): string {
-  let ms = Date.now();
-  if (ms <= lastTimestampMs) ms = lastTimestampMs + 1;
-  lastTimestampMs = ms;
-  return new Date(ms).toISOString();
-}
+const monotonicNow = createMonotonicClock();
 
 // Direct messages (Phase 7). A deliberate reversal of the original "no
 // DMs, ever" stance — kept as safe as the rest of the platform rather

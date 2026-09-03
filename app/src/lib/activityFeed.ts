@@ -58,6 +58,11 @@ export function getFriendActivityFeed(viewerId: string, limit = 40): FeedItem[] 
     .all(...friendIds) as unknown as GuestbookRow[];
 
   const items: FeedItem[] = [];
+  // handle → displayName, resolved once per friend and reused both for that
+  // friend's own feed items (page_decorated/blog_post/devlog_entry) and for
+  // guestbook entries they authored on someone else's page — previously
+  // parsed and migrated twice per friend in two separate passes.
+  const handleToDisplay: Record<string, string> = {};
 
   for (const row of pageRows) {
     let displayName = row.handle;
@@ -73,6 +78,7 @@ export function getFriendActivityFeed(viewerId: string, limit = 40): FeedItem[] 
     } catch {
       // If parse fails, skip blog/devlog for this friend
     }
+    handleToDisplay[row.handle] = displayName;
 
     // page_decorated — use updated_at
     items.push({
@@ -105,18 +111,6 @@ export function getFriendActivityFeed(viewerId: string, limit = 40): FeedItem[] 
         href: `/@${row.handle}`,
         timestamp: entry.date,
       });
-    }
-  }
-
-  // Build a handle → displayName map for guestbook signing
-  const handleToDisplay: Record<string, string> = {};
-  for (const row of pageRows) {
-    try {
-      const raw = JSON.parse(row.document_json) as Record<string, unknown>;
-      const doc = migrateDocument(raw);
-      handleToDisplay[row.handle] = doc.identity.displayName || row.handle;
-    } catch {
-      handleToDisplay[row.handle] = row.handle;
     }
   }
 

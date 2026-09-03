@@ -6,6 +6,8 @@ import { listPublicFriends } from "./friends";
 import { getDb } from "./db";
 import type { PageDocument } from "./pageDocumentTypes";
 
+export class ExportError extends Error {}
+
 function esc(str: string): string {
   return str
     .replace(/&/g, "&amp;")
@@ -280,7 +282,7 @@ ${parts}
 
 export function exportPageAsHtml(userId: string): string {
   const stored = getPageDocument(userId);
-  if (!stored) throw new Error("No page found.");
+  if (!stored) throw new ExportError("No page found.");
 
   const handle = getHandleForUser(userId);
   const doc = stored.document;

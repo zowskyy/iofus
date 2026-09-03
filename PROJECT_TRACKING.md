@@ -49,11 +49,22 @@ iofus (`app/`) is a Next.js 16 personal-webspace platform — MySpace-style page
 
 ## Known Gaps (honest — not silently dropped)
 
-**Security/correctness, never read line-by-line the way auth/friends/cssScope/pageDocument were:** `asks.ts`, `messages.ts`, `webRings.ts`, `proximityGraph.ts`, `appeals.ts`. Given two real selector-regex bugs were only found by actually reading code, an unread file is a real unknown.
-
-**Zero test coverage:** `notifications.ts`, `activityFeed.ts`, `exportPage.ts`, `collections.ts`, `stamps.ts`.
-
-**3 ring-management actions bypass the network-resilience work**: `reviewRequestAction`/`removeMemberAction`/`deleteRingAction` in `ManageRingControls.tsx` are plain `<form action={bind(...)}>`, not `useActionState` — a network failure there falls back to the root error boundary (safe, no crash) rather than an inline recoverable error like the other 13 forms.
+**Closed this pass (`/plan-ceo-review` + `/plan-eng-review` hardening, 3 commits):**
+`asks.ts`, `messages.ts`, `webRings.ts`, `proximityGraph.ts`, and `appeals.ts` have now
+all been read line-by-line — found and fixed a real authorization gap in `appeals.ts`'s
+`reviewAppeal` (no internal moderator check, relied entirely on the caller). The 3
+ring-management actions (`reviewRequestAction`/`removeMemberAction`/`deleteRingAction`)
+are now wired through `useActionState` + `withNetworkErrorHandling` like the other 15
+forms; `deleteRingAction` no longer silently redirects on an unexpected error.
+`notifications.ts`, `activityFeed.ts`, `exportPage.ts`, `collections.ts`, and `stamps.ts`
+now have test coverage (62 new tests). Also found and fixed along the way: a
+non-deterministic notification-feed ordering bug (`notifications.ts` had no monotonic
+timestamp, same class of bug `messages.ts` already fixed once — extracted a shared
+`monotonicTime.ts` helper); dead code in `collections.ts` (`ensureSeedCollections()`
+was never called — `db.ts`'s own `seedCollections()` already runs automatically on
+migration, same shape as the `ensureSeedSharedThemes()` dead code removed in Pass 2);
+`exportPage.ts` now has a typed `ExportError` matching every other lib file's
+error-class convention.
 
 **Mobile:** no real-device or throttled-network testing (everything is Chromium desktop emulating a viewport); gallery/shrine `<img>` tags have no lazy-loading/`srcset`/`next/image`; no iOS Safari-specific testing; Studio's touch-editing ergonomics (not just no-overflow) never exercised end-to-end.
 
@@ -63,9 +74,9 @@ iofus (`app/`) is a Next.js 16 personal-webspace platform — MySpace-style page
 
 **Visual regression:** 14 curated baselines, not exhaustive — no coverage of tag/collection/ring pages, moderation UI, settings, messages, or asks screens.
 
-**Docs:** top-level `README.md` still doesn't reflect the Messages/Ask Us phases the way `PLAN.md` does (pre-existing staleness, flagged, not fixed).
+**Observability:** the 3 new error-rescue points this pass introduced (`reviewAppeal`'s authz rejection, `deleteRingAction`'s caught error, `exportPageAsHtml`'s `ExportError`) have no server-side log lines yet — tracked in `TODOS.md`.
 
-**Process:** not a git repository yet — nothing from any of these three passes is committed. No CI config exists; `test:e2e`/`test:concurrency`/`test:e2e:visual` only run because they're run by hand.
+**Process:** this is a git repository with an active commit history on `main`; this claim was previously stale here (said "not a git repository yet"). CI config still doesn't exist; `test:e2e`/`test:concurrency`/`test:e2e:visual` only run because they're run by hand.
 
 ## Verification (last full run, this session)
 

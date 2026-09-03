@@ -1,4 +1,3 @@
-import { randomUUID } from "node:crypto";
 import { getDb } from "./db";
 
 export interface Collection {
@@ -51,21 +50,4 @@ export function listCollectionPages(collectionId: string): CollectionPage[] {
     } catch { /* fall back */ }
     return { handle: r.handle, displayName, position: r.position };
   });
-}
-
-export function ensureSeedCollections(): void {
-  const db = getDb();
-  const count = db.prepare("SELECT COUNT(*) as c FROM collections").get() as { c: number };
-  if (count.c > 0) return;
-
-  const collections = [
-    { slug: "freshly-painted", title: "Freshly Painted", description: "Pages recently redecorated and worth a look." },
-    { slug: "quiet-corners", title: "Quiet Corners", description: "Small, personal spaces with a calm mood." },
-  ];
-  const now = new Date().toISOString();
-  for (const c of collections) {
-    db.prepare("INSERT INTO collections (id, slug, title, description, created_at) VALUES (?, ?, ?, ?, ?)").run(
-      randomUUID(), c.slug, c.title, c.description, now,
-    );
-  }
 }
