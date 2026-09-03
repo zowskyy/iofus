@@ -17,7 +17,11 @@ const hexColorArb = fc
 const httpUrlArb = fc
   .tuple(
     fc.constantFrom("http", "https"),
-    fc.stringMatching(/^[a-z][a-z0-9-]{1,10}$/),
+    // "xn--"-prefixed labels are excluded: the regex can produce one (e.g.
+    // "xn--a") that isn't valid punycode/IDNA, which the WHATWG URL parser
+    // (correctly) rejects as an invalid URL — a real generator bug caught
+    // by CI, not a production validation bug.
+    fc.stringMatching(/^[a-z][a-z0-9-]{1,10}$/).filter((h) => !h.startsWith("xn--")),
     fc.constantFrom("com", "net", "org", "example"),
   )
   .map(([scheme, host, tld]) => `${scheme}://${host}.${tld}`);
