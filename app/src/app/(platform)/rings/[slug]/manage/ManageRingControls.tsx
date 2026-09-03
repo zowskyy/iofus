@@ -23,6 +23,11 @@ export function ManageRingControls({ ring, members, requests }: Props) {
     withNetworkErrorHandling(updateBound),
     {},
   );
+  const deleteBound = deleteRingAction.bind(null, ring.slug);
+  const [deleteState, deleteAction, deletePending] = useActionState<ManageRingState, FormData>(
+    withNetworkErrorHandling(deleteBound),
+    {},
+  );
   // Controlled so a handled network failure doesn't wipe out edits in
   // progress — see PublishThemeForm.tsx for the full reasoning.
   const [name, setName] = useState(ring.name);
@@ -102,10 +107,11 @@ export function ManageRingControls({ ring, members, requests }: Props) {
 
       <section className="settings-section" style={{ borderTop: "1px solid var(--border)", paddingTop: "1.5rem" }}>
         <h2 style={{ color: "var(--danger)" }}>Danger zone</h2>
-        <form action={deleteRingAction.bind(null, ring.slug)}
+        {deleteState.error && <p role="alert" style={{ color: "var(--danger)" }}>{deleteState.error}</p>}
+        <form action={deleteAction}
           onSubmit={(e: React.FormEvent) => { if (!confirm(`Delete "${ring.name}"? This cannot be undone.`)) e.preventDefault(); }}>
-          <button type="submit" className="btn" style={{ background: "var(--danger)", borderColor: "var(--danger)" }}>
-            Delete ring
+          <button type="submit" className="btn" disabled={deletePending} style={{ background: "var(--danger)", borderColor: "var(--danger)" }}>
+            {deletePending ? "Deleting…" : "Delete ring"}
           </button>
         </form>
       </section>

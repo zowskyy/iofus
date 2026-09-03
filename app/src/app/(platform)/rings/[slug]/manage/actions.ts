@@ -44,7 +44,11 @@ export async function updateRingAction(
   return { success: "Ring updated." };
 }
 
-export async function deleteRingAction(slug: string): Promise<void> {
+export async function deleteRingAction(
+  slug: string,
+  _prevState: ManageRingState,
+  _formData: FormData,
+): Promise<ManageRingState> {
   const viewer = await getCurrentUser();
   if (!viewer) redirect("/login");
 
@@ -53,8 +57,12 @@ export async function deleteRingAction(slug: string): Promise<void> {
 
   try {
     deleteWebRing(ring.id, viewer.id);
-  } catch {
-    redirect("/rings");
+  } catch (e) {
+    // Only a WebRingError (not authorized / already gone) is expected here —
+    // an unexpected error must surface to the user, not silently redirect as
+    // if the deletion succeeded when the ring may still exist.
+    if (e instanceof WebRingError) return { error: e.message };
+    throw e;
   }
 
   redirect("/rings");
