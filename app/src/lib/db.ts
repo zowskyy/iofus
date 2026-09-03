@@ -297,19 +297,28 @@ function openAndMigrate(path: string): DatabaseSync {
   mkdirSync(dirname(path), { recursive: true });
   const db = new DatabaseSync(path);
   try {
-    db.exec("PRAGMA foreign_keys = ON;");
-    db.exec("PRAGMA journal_mode = WAL;");
-    // Without this, SQLite raises SQLITE_BUSY ("database is locked")
-    // immediately whenever a second connection's write overlaps the first —
-    // confirmed with a real multi-process test (tests/concurrency), not
-    // assumed from documentation. A busy_timeout makes SQLite itself block
-    // and retry internally for up to this many ms before giving up — a
-    // bounded, deterministic wait, not an application-level retry loop —
-    // so ordinary transient contention (two requests touching the same row
+    // busy_timeout MUST be set before any other statement that can
+    // contend for a lock — including journal_mode below. Confirmed via a
+    // real CI failure: the migration-race concurrency test failed with a
+    // raw "database is locked" after only ~900ms total (5 processes, 20
+    // signups) — far too fast to be busy_timeout's 5000ms wait actually
+    // elapsing. Root cause: PRAGMA journal_mode = WAL requires an
+    // exclusive lock to rewrite a brand-new file's header, and with 5
+    // processes racing to be first, busy_timeout was being set *after*
+    // that statement — so whichever connections lost the race hit
+    // SQLite's default busy_timeout (0ms, fail instantly) instead of
+    // ours. Without this, SQLite raises SQLITE_BUSY ("database is
+    // locked") immediately whenever a second connection's write overlaps
+    // the first; a busy_timeout makes SQLite itself block and retry
+    // internally for up to this many ms before giving up — a bounded,
+    // deterministic wait, not an application-level retry loop — so
+    // ordinary transient contention (two requests touching the same row
     // a few milliseconds apart) resolves on its own instead of failing a
     // real user's request. Callers (e.g. rateLimit.ts's BEGIN IMMEDIATE)
     // still see a real thrown error if contention outlasts this window.
     db.exec("PRAGMA busy_timeout = 5000;");
+    db.exec("PRAGMA foreign_keys = ON;");
+    db.exec("PRAGMA journal_mode = WAL;");
     migrate(db);
     return db;
   } catch (err) {
