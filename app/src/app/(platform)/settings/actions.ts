@@ -11,7 +11,7 @@ import {
   unblockUser,
 } from "@/lib/friends";
 import { GuestbookError, moderateGuestbookEntry } from "@/lib/guestbook";
-import { activatePanicMode, getPageDocument } from "@/lib/pageDocument";
+import { activatePanicMode, deactivatePanicMode, getPageDocument } from "@/lib/pageDocument";
 import { checkRateLimit, RateLimitError, rateLimitActorKey } from "@/lib/rateLimit";
 import { getCurrentUser } from "@/lib/session";
 
@@ -96,6 +96,7 @@ export async function rejectGuestbookAction(entryId: string): Promise<void> {
   }
 }
 
+/** Toggles panic mode based on the page's current state — a single button flips it on or off. */
 export async function panicModeAction(): Promise<void> {
   const viewer = await getCurrentUser();
   if (!viewer) redirect("/login?next=/settings");
@@ -103,7 +104,12 @@ export async function panicModeAction(): Promise<void> {
   const stored = getPageDocument(viewer.id);
   if (!stored) redirect("/make");
 
-  activatePanicMode(viewer.id);
+  const panicActive = stored.hiddenFromDiscovery && stored.visibility === "unlisted";
+  if (panicActive) {
+    deactivatePanicMode(viewer.id);
+  } else {
+    activatePanicMode(viewer.id);
+  }
   revalidatePath("/settings");
   revalidatePath(`/@${viewer.handle}`);
 }

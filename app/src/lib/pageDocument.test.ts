@@ -1,6 +1,7 @@
 import { beforeEach, describe, expect, it } from "vitest";
 import {
   activatePanicMode,
+  deactivatePanicMode,
   canViewPage,
   defaultPageDocument,
   getPageDocument,
@@ -411,5 +412,28 @@ describe("activatePanicMode", () => {
 
     const panicActive = stored.hiddenFromDiscovery && stored.visibility === "unlisted";
     expect(panicActive).toBe(true);
+  });
+});
+
+describe("deactivatePanicMode", () => {
+  it("restores the page to public, discoverable, and guestbook-enabled", () => {
+    const owner = createUser("panicuser4", "correct-horse-battery");
+    savePageDocument(owner.id, defaultPageDocument("Panic Test 4"));
+    setPublished(owner.id, true);
+    setVisibility(owner.id, "public");
+    activatePanicMode(owner.id);
+
+    deactivatePanicMode(owner.id);
+    const stored = getPageDocument(owner.id)!;
+
+    expect(stored.visibility).toBe("public");
+    expect(stored.hiddenFromDiscovery).toBe(false);
+    expect(stored.guestbookDisabled).toBe(false);
+    expect(stored.isPublished).toBe(true);
+
+    // The settings page's panicActive check must now read false — the
+    // toggle button flips back to "Activate panic mode".
+    const panicActive = stored.hiddenFromDiscovery && stored.visibility === "unlisted";
+    expect(panicActive).toBe(false);
   });
 });

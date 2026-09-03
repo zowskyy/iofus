@@ -362,6 +362,21 @@ export function activatePanicMode(userId: string): void {
   ).run(new Date().toISOString(), userId);
 }
 
+/**
+ * Undo panic mode: restore the page to public, back in discovery, with the
+ * guestbook re-enabled. There's no stored "state before panic mode" to
+ * return to — this resets to the platform's normal defaults rather than
+ * attempting to remember whatever the owner had configured before, which
+ * keeps the toggle simple and predictable (same reasoning as why panic mode
+ * itself doesn't try to be reversible in a fancier way).
+ */
+export function deactivatePanicMode(userId: string): void {
+  const db = getDb();
+  db.prepare(
+    "UPDATE page_documents SET visibility = 'public', hidden_from_discovery = 0, guestbook_disabled = 0, updated_at = ? WHERE user_id = ?",
+  ).run(new Date().toISOString(), userId);
+}
+
 /** Serialize the full page record for *userId* to a portable JSON string for export/backup. */
 export function exportPageData(userId: string): string {
   const stored = getPageDocument(userId);
