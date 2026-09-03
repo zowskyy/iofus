@@ -1,6 +1,15 @@
+<div align="center">
+
 # iofus
 
 **Get lost in decorating, not in menus.**
+
+[![tests](https://img.shields.io/badge/tests-335%20passing-2ea043?style=flat-square)](#quick-start)
+[![node](https://img.shields.io/badge/node-22.5%2B-339933?style=flat-square&logo=node.js&logoColor=white)](#quick-start)
+[![next.js](https://img.shields.io/badge/Next.js-16-000000?style=flat-square&logo=next.js&logoColor=white)](https://nextjs.org)
+[![no tracking](https://img.shields.io/badge/tracking-none-blueviolet?style=flat-square)](#privacy)
+
+</div>
 
 iofus is a modern, safer MySpace-style home on the web. Every person gets a profile page they can radically customize — colors, layout, guestbooks, shrines, pixel art, playlists, blogs, and more — and share at a simple URL like `@yourname`. There is no infinite feed, no engagement scores, and no algorithm deciding what you see next. People find each other by wandering, tags, web rings, and friend links: a real social graph you browse on your own terms.
 
@@ -10,9 +19,13 @@ The core question is never *"what are you posting today?"* It's:
 
 > **What does your corner of the internet feel like?**
 
+<div align="center">
+
 ```text
-Make → Shape → Publish → Wander
+Make  →  Shape  →  Publish  →  Wander
 ```
+
+</div>
 
 ---
 
@@ -51,28 +64,77 @@ For local development with hot reload:
 npm run dev
 ```
 
+<details>
+<summary>Full test suite (unit, E2E, visual regression, concurrency)</summary>
+<br>
+
+| Command | What it runs |
+|---|---|
+| `npm test` | Unit + property tests (335 tests, `src/**/*.test.ts`) |
+| `npm run test:e2e` | Functional, accessibility, and network-resilience E2E (Playwright) |
+| `npm run test:e2e:visual` | Visual regression against curated screenshot baselines |
+| `npm run test:concurrency` | Multi-process SQLite contention and crash-recovery tests |
+
+</details>
+
 ---
 
 ## What's shipped
 
-Phases 1–5 are **complete** and the release build is **hardened** — schema-validated page documents, adversarial tests, and graceful failure paths are in place throughout.
+Phases 1–7 are **complete or shipped** and the release build is **hardened** — schema-validated page documents, adversarial tests, and graceful failure paths are in place throughout.
 
-**Phase 1 — Make a page**
-- Accounts and handles · identity, links, now, and friends page parts · mutual-accept friend requests · six starter templates · public profile URL · mobile renderer · Reader Mode · publish/unpublish
+<details open>
+<summary><b>Phase 1 — Make a page</b></summary>
+<br>
 
-**Phase 2 — Shape a page**
-- Full five-tab Studio (Look, Layout, Content, Access, Publish) · theme controls · colors, fonts, panels, density · page-part ordering · desktop/mobile preview · undo · save and restore versions · gallery, blog, devlog, badges, and Top 8 page parts
+Accounts and handles · identity, links, now, and friends page parts · mutual-accept friend requests · six starter templates · public profile URL · mobile renderer · Reader Mode · publish/unpublish
+</details>
 
-**Phase 3 — Keep it safe**
-- Image descriptions · contrast warnings · reduced-motion support · Safe Preview · export/import · hide from discovery · private/unlisted/public visibility · block and report · guestbook approval · rate limits · moderator queue · community policy · appeals · panic mode
+<details open>
+<summary><b>Phase 2 — Shape a page</b></summary>
+<br>
 
-**Phase 4 — Wander**
-- Recently decorated pages · tags · curated collections · random page · web rings · friend-link graph browsing · guestbooks with approval
+Full five-tab Studio (Look, Layout, Content, Access, Publish) · theme controls · colors, fonts, panels, density · page-part ordering · desktop/mobile preview · undo · save and restore versions · gallery, blog, devlog, badges, and Top 8 page parts
+</details>
 
-**Phase 5 — Rich modules and shared themes**
-- Shrine, Playlist (outbound links — no autoplay embeds), Pixel Art, and Mini-page modules · theme gallery · install and fork a theme · attribution · theme version history · theme reporting · scoped custom CSS · Wonder sparks for one-click creative surprises
+<details open>
+<summary><b>Phase 3 — Keep it safe</b></summary>
+<br>
 
-The test suite currently covers **114 tests** across validation, moderation, discovery, themes, and adversarial edge cases.
+Image descriptions · contrast warnings · reduced-motion support · Safe Preview · export/import · hide from discovery · private/unlisted/public visibility · block and report · guestbook approval · rate limits · moderator queue · community policy · appeals · **panic mode** (a real on/off toggle — instantly hide from discovery, reachable by direct link, undo any time)
+</details>
+
+<details open>
+<summary><b>Phase 4 — Wander</b></summary>
+<br>
+
+Recently decorated pages · tags · curated collections · random page · web rings · friend-link graph browsing · guestbooks with approval
+</details>
+
+<details open>
+<summary><b>Phase 5 — Rich modules and shared themes</b></summary>
+<br>
+
+Shrine, Playlist (outbound links — no autoplay embeds), Pixel Art, and Mini-page modules · theme gallery · install and fork a theme · attribution · theme version history · theme reporting · scoped custom CSS · Wonder sparks for one-click creative surprises
+</details>
+
+<details>
+<summary><b>Phase 6 — Ask Us</b> (reach people outside your friend graph, safely)</summary>
+<br>
+
+An opt-in way to post a question and be answered by people outside your existing network — never a DM, never algorithmic matching. Reachability is off by default; sensitive asks are visible only to your accepted friends; a daily rate limit caps volume per asker. See [`PLAN.md`](PLAN.md#phase-6--ask-us-shipped-data-layer--ui) for the full safety model.
+</details>
+
+<details>
+<summary><b>Phase 7 — Messages</b> (a deliberate, guarded exception to "no DMs")</summary>
+<br>
+
+Real 1:1 threads between two handles, styled after old-school AIM windows. A block relationship always wins; starting a conversation with someone new is rate-limited; no read receipts are ever shown to the sender. See [`PLAN.md`](PLAN.md#phase-7--messages-shipped-real-11-dms-a-deliberate-reversal) for the guardrails.
+</details>
+
+<br>
+
+The test suite currently covers **335 tests** across validation, moderation, discovery, themes, and adversarial edge cases, plus dedicated E2E, visual-regression, accessibility, and multi-process concurrency suites (see [Quick start](#quick-start)).
 
 **Every public page stays readable** through Reader Mode — decoration can be loud, but visitors are never trapped in chaos. Block, Report, and Reader controls are always visible and cannot be hidden by a theme.
 
