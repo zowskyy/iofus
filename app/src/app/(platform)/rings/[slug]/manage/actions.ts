@@ -68,39 +68,50 @@ export async function deleteRingAction(
   redirect("/rings");
 }
 
-export async function removeMemberAction(slug: string, memberHandle: string): Promise<void> {
+export async function removeMemberAction(
+  slug: string,
+  memberHandle: string,
+  _prevState: ManageRingState,
+  _formData: FormData,
+): Promise<ManageRingState> {
   const viewer = await getCurrentUser();
   if (!viewer) redirect("/login");
 
   const ring = getWebRingBySlug(slug);
-  if (!ring || ring.creatorUserId !== viewer!.id) return;
+  if (!ring || ring.creatorUserId !== viewer.id) return { error: "Not authorized." };
 
   const user = findUserByHandle(memberHandle);
-  if (user) leaveWebRing(ring.id, user.id);
+  if (!user) return { error: "Member not found." };
+
+  leaveWebRing(ring.id, user.id);
   revalidatePath(`/rings/${slug}/manage`);
+  return { success: "Member removed." };
 }
 
 export async function reviewRequestAction(
   slug: string,
   requestUserId: string,
   accept: boolean,
-): Promise<void> {
+  _prevState: ManageRingState,
+  _formData: FormData,
+): Promise<ManageRingState> {
   const viewer = await getCurrentUser();
   if (!viewer) redirect("/login");
 
   const ring = getWebRingBySlug(slug);
-  if (!ring) return;
+  if (!ring) return { error: "Ring not found." };
 
   try {
-    reviewJoinRequest(ring.id, requestUserId, viewer!.id, accept);
+    reviewJoinRequest(ring.id, requestUserId, viewer.id, accept);
   } catch (e) {
-    if (e instanceof WebRingError) return;
+    if (e instanceof WebRingError) return { error: e.message };
     throw e;
   }
 
   if (accept) {
-    createNotification(requestUserId, "ring_join_accepted", viewer!.handle, { ringName: ring.name, ringSlug: ring.slug });
+    createNotification(requestUserId, "ring_join_accepted", viewer.handle, { ringName: ring.name, ringSlug: ring.slug });
   }
 
   revalidatePath(`/rings/${slug}/manage`);
+  return { success: accept ? "Request accepted." : "Request rejected." };
 }

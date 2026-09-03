@@ -74,15 +74,7 @@ export function ManageRingControls({ ring, members, requests }: Props) {
           <h2>Join requests ({requests.length})</h2>
           <ul style={{ listStyle: "none", padding: 0, margin: 0, display: "flex", flexDirection: "column", gap: "0.5rem" }}>
             {requests.map((req) => (
-              <li key={req.userId} style={{ display: "flex", alignItems: "center", gap: "0.75rem", flexWrap: "wrap" }}>
-                <span className="mono">@{req.handle}</span>
-                <form action={reviewRequestAction.bind(null, ring.slug, req.userId, true)}>
-                  <button type="submit" className="btn" style={{ fontSize: "0.75rem", padding: "0.2rem 0.6rem" }}>Accept</button>
-                </form>
-                <form action={reviewRequestAction.bind(null, ring.slug, req.userId, false)}>
-                  <button type="submit" className="btn secondary" style={{ fontSize: "0.75rem", padding: "0.2rem 0.6rem" }}>Reject</button>
-                </form>
-              </li>
+              <RingRequestRow key={req.userId} slug={ring.slug} req={req} />
             ))}
           </ul>
         </section>
@@ -93,13 +85,7 @@ export function ManageRingControls({ ring, members, requests }: Props) {
           <h2>Members ({members.length})</h2>
           <ul style={{ listStyle: "none", padding: 0, margin: 0, display: "flex", flexDirection: "column", gap: "0.5rem" }}>
             {members.map((m) => (
-              <li key={m.handle} style={{ display: "flex", alignItems: "center", gap: "0.75rem" }}>
-                <span>{m.displayName}</span>
-                <span className="mono" style={{ color: "var(--ink-soft)", fontSize: "0.75rem" }}>@{m.handle}</span>
-                <form action={removeMemberAction.bind(null, ring.slug, m.handle)}>
-                  <button type="submit" className="btn secondary" style={{ fontSize: "0.75rem", padding: "0.2rem 0.6rem" }}>Remove</button>
-                </form>
-              </li>
+              <RingMemberRow key={m.handle} slug={ring.slug} member={m} />
             ))}
           </ul>
         </section>
@@ -116,5 +102,61 @@ export function ManageRingControls({ ring, members, requests }: Props) {
         </form>
       </section>
     </>
+  );
+}
+
+function RingRequestRow({ slug, req }: { slug: string; req: WebRingJoinRequest }) {
+  const acceptBound = reviewRequestAction.bind(null, slug, req.userId, true);
+  const [acceptState, acceptAction, acceptPending] = useActionState<ManageRingState, FormData>(
+    withNetworkErrorHandling(acceptBound),
+    {},
+  );
+  const rejectBound = reviewRequestAction.bind(null, slug, req.userId, false);
+  const [rejectState, rejectAction, rejectPending] = useActionState<ManageRingState, FormData>(
+    withNetworkErrorHandling(rejectBound),
+    {},
+  );
+  // Only one of accept/reject can ever be in flight or have errored for a
+  // given row — the request disappears from the list (revalidatePath) the
+  // moment either one succeeds — so surfacing whichever fired is unambiguous.
+  const error = acceptState.error ?? rejectState.error;
+  const pending = acceptPending || rejectPending;
+
+  return (
+    <li style={{ display: "flex", alignItems: "center", gap: "0.75rem", flexWrap: "wrap" }}>
+      <span className="mono">@{req.handle}</span>
+      {error && <span role="alert" style={{ color: "var(--danger)", fontSize: "0.75rem" }}>{error}</span>}
+      <form action={acceptAction}>
+        <button type="submit" className="btn" disabled={pending} style={{ fontSize: "0.75rem", padding: "0.2rem 0.6rem" }}>
+          {acceptPending ? "Accepting…" : "Accept"}
+        </button>
+      </form>
+      <form action={rejectAction}>
+        <button type="submit" className="btn secondary" disabled={pending} style={{ fontSize: "0.75rem", padding: "0.2rem 0.6rem" }}>
+          {rejectPending ? "Rejecting…" : "Reject"}
+        </button>
+      </form>
+    </li>
+  );
+}
+
+function RingMemberRow({ slug, member }: { slug: string; member: WebRingMember }) {
+  const removeBound = removeMemberAction.bind(null, slug, member.handle);
+  const [removeState, removeAction, removePending] = useActionState<ManageRingState, FormData>(
+    withNetworkErrorHandling(removeBound),
+    {},
+  );
+
+  return (
+    <li style={{ display: "flex", alignItems: "center", gap: "0.75rem", flexWrap: "wrap" }}>
+      <span>{member.displayName}</span>
+      <span className="mono" style={{ color: "var(--ink-soft)", fontSize: "0.75rem" }}>@{member.handle}</span>
+      {removeState.error && <span role="alert" style={{ color: "var(--danger)", fontSize: "0.75rem" }}>{removeState.error}</span>}
+      <form action={removeAction}>
+        <button type="submit" className="btn secondary" disabled={removePending} style={{ fontSize: "0.75rem", padding: "0.2rem 0.6rem" }}>
+          {removePending ? "Removing…" : "Remove"}
+        </button>
+      </form>
+    </li>
   );
 }
