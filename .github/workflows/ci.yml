@@ -106,14 +106,23 @@ jobs:
       - name: Boot, serve, and keep data across a restart
         run: |
           set -e
+          # IOFUS_ALLOWED_ORIGIN is the canonical origin used to build links,
+          # not the bind address -- the checks below reach the container on
+          # localhost regardless. It must be https: the boot gate rejects a
+          # cleartext origin, because reset links carry a credential.
+          #
+          # This comment cannot live inside run_container's command below:
+          # bash splices a backslash-continued command into one logical line
+          # before parsing, so a '#' placed between continuation lines does
+          # not comment out just that line -- it comments out everything from
+          # there to the end of the whole spliced command, silently dropping
+          # every flag and the image name after it. That produced exactly
+          # this job's prior failure ("'docker run' requires at least 1
+          # argument"): the image name had been eaten as part of a comment.
           run_container () {
             docker run -d --name "$1" -v iofus-ci-data:/data -p 3000:3000 \
               -e IOFUS_DB_PATH=/data/iofus.db \
               -e IOFUS_SMTP_HOST=smtp.example.com \
-              # Canonical origin for generated links, not the bind address --
-              # the checks below reach the container on localhost regardless.
-              # It must be https: the boot gate rejects a cleartext origin,
-              # because reset links carry a credential.
               -e IOFUS_ALLOWED_ORIGIN=https://iofus.example \
               -e IOFUS_MODERATOR_HANDLE=rootmod \
               -e IOFUS_TRUSTED_PROXY_HOPS=1 \
