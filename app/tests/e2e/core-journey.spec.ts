@@ -78,15 +78,13 @@ test.describe("Make → Shape → Publish → Wander", () => {
     await expect(page.locator("h1")).toBeVisible();
 
     // --- Log out clears the session (logout is a POST-only route action) ---
-    // The "Log out" button lives inside the "Account" nav dropdown; open it first.
-    await page.getByRole("button", { name: /Account/i }).click();
-    const logoutBtn = page.getByRole("button", { name: "Log out" });
-    await logoutBtn.waitFor({ state: "visible" });
-    // Submit the logout form and wait for the resulting redirect to complete.
-    await Promise.all([
-      page.waitForNavigation({ waitUntil: "load" }),
-      logoutBtn.click(),
-    ]);
+    // The "Log out" button lives inside the "Account" NavDropdown, which calls
+    // setOpen(false) on any child button click. React's re-render races with the
+    // browser's form submission, causing the form to be unmounted before navigation
+    // fires when using Playwright click(). POST directly instead — page.request
+    // shares the browser context's cookie jar so the server clears the same
+    // session cookie the page is using.
+    await page.request.post("/logout");
     await page.goto("/studio");
     await expect(page).toHaveURL(/\/login/);
   });
