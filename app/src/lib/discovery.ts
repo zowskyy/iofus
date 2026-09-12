@@ -188,3 +188,17 @@ export function searchPages(query: string, limit = 24): DiscoverablePage[] {
     return { handle: r.handle, displayName: meta.displayName || r.handle, updatedAt: r.updated_at, tags: meta.tags, template: meta.template };
   });
 }
+
+/** All public discoverable handles with their last-updated timestamp, for sitemap generation. */
+export function listAllPublicHandles(): { handle: string; updatedAt: string }[] {
+  const db = getDb();
+  return db
+    .prepare(
+      `SELECT u.handle, pd.updated_at AS updatedAt
+       FROM page_documents pd
+       JOIN users u ON u.id = pd.user_id
+       WHERE ${DISCOVERABLE_WHERE}
+       ORDER BY pd.updated_at DESC`,
+    )
+    .all() as { handle: string; updatedAt: string }[];
+}
