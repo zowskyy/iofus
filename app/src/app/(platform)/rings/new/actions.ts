@@ -2,6 +2,7 @@
 
 import { redirect } from "next/navigation";
 import { createWebRing, WebRingError } from "@/lib/webRings";
+import { checkRateLimit, RateLimitError, rateLimitActorKey } from "@/lib/rateLimit";
 import { getCurrentUser } from "@/lib/session";
 
 export interface CreateRingState {
@@ -18,6 +19,14 @@ export async function createRingAction(
   const name = String(formData.get("name") ?? "");
   const description = String(formData.get("description") ?? "");
   const isOpen = formData.get("is_open") !== "closed";
+
+  try {
+    const key = await rateLimitActorKey("ring:create", viewer.id);
+    checkRateLimit(key, 5);
+  } catch (e) {
+    if (e instanceof RateLimitError) return { error: e.message };
+    throw e;
+  }
 
   let ring;
   try {
