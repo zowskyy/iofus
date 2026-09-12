@@ -4,7 +4,7 @@ import Link from "next/link";
 import { findUserByHandle } from "@/lib/auth";
 import { getCurrentUser } from "@/lib/session";
 import { hasBlockRelationship } from "@/lib/friends";
-import { listConversations, listMessages, markConversationRead } from "@/lib/messages";
+import { getConversationByParticipants, listMessages, markConversationRead } from "@/lib/messages";
 import { parseHandleParam } from "@/lib/handleParam";
 import { ThreadComposer } from "./ThreadComposer";
 
@@ -29,8 +29,7 @@ export default async function MessageThreadPage({ params }: Props) {
 
   const blocked = hasBlockRelationship(viewer.id, other.id);
 
-  const conversations = listConversations(viewer.id);
-  const conversation = conversations.find((c) => c.otherUserId === other.id) ?? null;
+  const conversation = getConversationByParticipants(viewer.id, other.id);
 
   let messages: ReturnType<typeof listMessages> = [];
   if (conversation) {
