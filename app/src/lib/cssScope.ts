@@ -77,8 +77,20 @@ export interface CssScopeResult {
  */
 function isAlreadyScoped(selector: string, scopeClass: string): boolean {
   if (!selector.startsWith(scopeClass)) return false;
+
   const next = selector.charAt(scopeClass.length);
-  return next === "" || !/[A-Za-z0-9_\-\\]/.test(next);
+  if (next !== "" && /[A-Za-z0-9_\-\\]/.test(next)) return false;
+
+  // A sibling combinator immediately after the prefix leaves the container
+  // rather than staying inside it: the page body has real siblings on a
+  // profile page (the friends section, the keep-exploring panel), so
+  // `.profile-scope--bob ~ .their-friends` would reach content that is not the
+  // author's. Treating these as unscoped re-prefixes them, which confines the
+  // match to siblings *within* the page body.
+  const rest = selector.slice(scopeClass.length);
+  if (/^\s*(\+|~|\|\|)/.test(rest)) return false;
+
+  return true;
 }
 
 export function scopeProfileCss(raw: string, scopeClass: string): CssScopeResult {

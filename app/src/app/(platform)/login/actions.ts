@@ -1,7 +1,7 @@
 "use server";
 
 import { redirect } from "next/navigation";
-import { authenticate, InvalidCredentialsError } from "@/lib/auth";
+import { authenticate, HashCapacityError, InvalidCredentialsError } from "@/lib/auth";
 import { checkRateLimit, RateLimitError, rateLimitActorKey } from "@/lib/rateLimit";
 import { logIn } from "@/lib/session";
 
@@ -28,6 +28,11 @@ export async function loginAction(_prevState: LoginState, formData: FormData): P
     }
     if (e instanceof RateLimitError) {
       return { error: "Too many login attempts. Wait a minute and try again." };
+    }
+    // Password hashing is saturated. Surfacing it as a retryable message keeps
+    // the shed request from becoming an error page.
+    if (e instanceof HashCapacityError) {
+      return { error: e.message };
     }
     throw e;
   }

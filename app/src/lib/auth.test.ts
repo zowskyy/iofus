@@ -2,6 +2,8 @@ import { beforeEach, describe, expect, it } from "vitest";
 import {
   authenticate,
   createSession,
+  HashCapacityError,
+  hashPassword,
   createUser,
   destroySession,
   HandleTakenError,
@@ -135,5 +137,35 @@ describe("sessions", () => {
     const token = createSession(user.id);
     destroySession(token);
     expect(() => destroySession(token)).not.toThrow();
+  });
+});
+
+describe("hash queue capacity", () => {
+  it("sheds work instead of queueing without bound", async () => {
+    // MAX_CONCURRENT_HASHES caps memory in flight, but the queue behind it was
+    // unbounded: login is limited per IP and per handle, neither of which stops
+    // one client cycling through distinct handles, so pending requests could
+    // accumulate until the process died. Far more than the queue depth are
+    // started at once; the excess must be rejected rather than accepted.
+    const attempts = 200;
+    const results = await Promise.allSettled(
+      Array.from({ length: attempts }, (_, i) => hashPassword(`password-${i}`)),
+    );
+
+    const shed = results.filter(
+      (r) => r.status === "rejected" && r.reason instanceof HashCapacityError,
+    ).length;
+    const fulfilled = results.filter((r) => r.status === "fulfilled").length;
+
+    expect(shed).toBeGreaterThan(0);
+    expect(shed + fulfilled).toBe(attempts);
+    // Nothing failed for any other reason.
+    expect(results.filter((r) => r.status === "rejected").length).toBe(shed);
+  });
+
+  it("still completes work that fits within capacity", async () => {
+    const hashes = await Promise.all([hashPassword("one-password"), hashPassword("two-password")]);
+    expect(hashes).toHaveLength(2);
+    for (const h of hashes) expect(h.startsWith("scrypt$")).toBe(true);
   });
 });

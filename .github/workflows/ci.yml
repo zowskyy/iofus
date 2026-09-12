@@ -127,6 +127,20 @@ jobs:
           wait_healthy iofus-first
           curl -fsS -o /dev/null http://localhost:3000/explore
 
+          # Booting twice proves nothing about persistence on its own: a
+          # container writing to its own ephemeral layer would create a fresh
+          # database on restart and still pass every health check. So write a
+          # marker into the real database file on the volume, and require it
+          # back afterwards.
+          MARKER="ci-marker-${GITHUB_RUN_ID}-${GITHUB_RUN_ATTEMPT}"
+          docker exec iofus-first node -e "
+            const { DatabaseSync } = require('node:sqlite');
+            const db = new DatabaseSync(process.env.IOFUS_DB_PATH);
+            db.prepare('INSERT INTO users (id, handle, handle_lower, password_hash, created_at) VALUES (?, ?, ?, ?, ?)')
+              .run('$MARKER', '$MARKER', '$MARKER', 'x', new Date().toISOString());
+            db.close();
+          "
+
           # SIGTERM, not SIGKILL: Render stops the old instance this way, and
           # the handler checkpoints the WAL on the way out.
           docker stop iofus-first
@@ -135,6 +149,18 @@ jobs:
           run_container iofus-second
           wait_healthy iofus-second
           curl -fsS -o /dev/null http://localhost:3000/explore
+
+          docker exec iofus-second node -e "
+            const { DatabaseSync } = require('node:sqlite');
+            const db = new DatabaseSync(process.env.IOFUS_DB_PATH);
+            const row = db.prepare('SELECT handle FROM users WHERE id = ?').get('$MARKER');
+            db.close();
+            if (!row) {
+              console.error('marker row is gone: the database did not survive the restart');
+              process.exit(1);
+            }
+            console.log('marker survived the restart:', row.handle);
+          "
           docker rm -f iofus-second
 
       - name: Clean up volume

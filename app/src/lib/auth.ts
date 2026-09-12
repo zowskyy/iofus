@@ -66,11 +66,32 @@ function scryptOptions(logN: number) {
  * latency under load; running out of memory costs the process.
  */
 const MAX_CONCURRENT_HASHES = 2;
+
+/**
+ * Cap on requests waiting for a hash slot.
+ *
+ * MAX_CONCURRENT_HASHES bounds the memory in flight but not the queue behind
+ * it. Login is rate-limited per IP and per handle, and neither bounds one
+ * client cycling through distinct handles, so an unbounded queue would let
+ * pending requests accumulate until the process died. Shedding at a known
+ * depth keeps it answering; an unbounded queue only defers the failure and
+ * takes every in-flight request down with it.
+ */
+const MAX_QUEUED_HASHES = 32;
+
 let activeHashes = 0;
 const hashQueue: (() => void)[] = [];
 
+/** Thrown when password hashing is saturated and the request was shed rather than queued. */
+export class HashCapacityError extends Error {
+  constructor() {
+    super("The server is busy verifying credentials. Please try again in a moment.");
+  }
+}
+
 async function withHashSlot<T>(fn: () => Promise<T>): Promise<T> {
   if (activeHashes >= MAX_CONCURRENT_HASHES) {
+    if (hashQueue.length >= MAX_QUEUED_HASHES) throw new HashCapacityError();
     await new Promise<void>((resolve) => hashQueue.push(resolve));
   }
   activeHashes++;
@@ -368,6 +389,24 @@ function hashToken(rawToken: string): string {
   // runs on every getCurrentUser() call (i.e. every authenticated page
   // load), so an actual slow KDF here would be a self-inflicted cost.
   return createHash("sha256").update("iofus-session-salt-v1").update(rawToken).digest("hex");
+}
+
+/**
+ * Resolves a session only when it was issued before *cutoff*.
+ *
+ * Used for the unprefixed legacy cookie during the `__Host-` migration. A
+ * subdomain that injects a cookie can only inject a session it created, which
+ * is necessarily newer than the cutoff, so bounding acceptance by issue time
+ * keeps existing sign-ins working without reopening the door the `__Host-`
+ * prefix exists to close.
+ */
+export function resolveSessionIssuedBefore(rawToken: string | undefined, cutoff: Date): User | null {
+  if (!rawToken) return null;
+  const row = getDb()
+    .prepare("SELECT created_at FROM sessions WHERE token_hash = ?")
+    .get(hashToken(rawToken)) as { created_at: string } | undefined;
+  if (!row || new Date(row.created_at).getTime() >= cutoff.getTime()) return null;
+  return resolveSession(rawToken);
 }
 
 export function resolveSession(rawToken: string | undefined): User | null {

@@ -105,9 +105,19 @@ describe("getCurrentUser", () => {
   });
 
   it("still accepts a session issued under the pre-prefix cookie name", async () => {
-    // A deploy that introduced the prefix must not sign everybody out.
+    // A deploy that introduced the prefix must not sign everybody out. Only
+    // sessions predating the migration qualify -- see the cutoff tests below.
     const user = await createUser("voidarcade", PASSWORD);
-    jar.set("iofus_session", createSession(user.id));
+    const token = createSession(user.id);
+    const { createHash } = await import("node:crypto");
+    const { getDb } = await import("./db");
+    getDb()
+      .prepare("UPDATE sessions SET created_at = ? WHERE token_hash = ?")
+      .run(
+        "2026-01-01T00:00:00.000Z",
+        createHash("sha256").update("iofus-session-salt-v1").update(token).digest("hex"),
+      );
+    jar.set("iofus_session", token);
     vi.stubEnv("NODE_ENV", "production");
     expect((await getCurrentUser())?.id).toBe(user.id);
   });
@@ -129,5 +139,48 @@ describe("logOut", () => {
 
   it("is safe to call when nobody is signed in", async () => {
     await expect(logOut()).resolves.toBeUndefined();
+  });
+});
+
+describe("legacy cookie migration window", () => {
+  /** Backdates a session so it looks like one issued before the __Host- migration. */
+  async function backdateSession(token: string, iso: string) {
+    const { createHash } = await import("node:crypto");
+    const { getDb } = await import("./db");
+    const hash = createHash("sha256").update("iofus-session-salt-v1").update(token).digest("hex");
+    getDb().prepare("UPDATE sessions SET created_at = ? WHERE token_hash = ?").run(iso, hash);
+  }
+
+  it("rejects a legacy cookie naming a session created after the cutoff", async () => {
+    // The attack the __Host- prefix exists to stop: a sibling subdomain sets a
+    // parent-domain iofus_session cookie. It can only name a session it just
+    // created, so anything newer than the cutoff must not be honoured.
+    const user = await createUser("voidarcade", PASSWORD);
+    const token = createSession(user.id); // created now, i.e. after the cutoff
+    jar.set("iofus_session", token);
+    vi.stubEnv("NODE_ENV", "production");
+
+    expect(await getCurrentUser()).toBeNull();
+  });
+
+  it("still accepts a legacy cookie for a session issued before the cutoff", async () => {
+    const user = await createUser("voidarcade", PASSWORD);
+    const token = createSession(user.id);
+    await backdateSession(token, "2026-01-01T00:00:00.000Z");
+    jar.set("iofus_session", token);
+    vi.stubEnv("NODE_ENV", "production");
+
+    expect((await getCurrentUser())?.id).toBe(user.id);
+  });
+
+  it("prefers the prefixed cookie and never falls back when it is present", async () => {
+    const victim = await createUser("victim", PASSWORD);
+    const attacker = await createUser("attacker", PASSWORD);
+    vi.stubEnv("NODE_ENV", "production");
+
+    jar.set("__Host-iofus_session", createSession(victim.id));
+    jar.set("iofus_session", createSession(attacker.id));
+
+    expect((await getCurrentUser())?.id).toBe(victim.id);
   });
 });

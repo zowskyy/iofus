@@ -137,3 +137,31 @@ describe("validateProductionConfig", () => {
     expect(() => validateProductionConfig({ NODE_ENV: "test" }, ephemeralLayer)).not.toThrow();
   });
 });
+
+describe("cleartext origins", () => {
+  it("rejects an http:// canonical origin in production", () => {
+    // Reset links carry a credential, and the session cookie is Secure, so an
+    // http origin is both an interception risk and simply broken.
+    const env = { ...validEnv(), IOFUS_ALLOWED_ORIGIN: "http://iofus.example" };
+    const problems = productionConfigProblems(env, mountedDisk);
+    expect(problems).toHaveLength(1);
+    expect(problems[0]).toContain("cleartext");
+  });
+
+  it("rejects it case-insensitively", () => {
+    const env = { ...validEnv(), IOFUS_ALLOWED_ORIGIN: "HTTP://iofus.example" };
+    expect(productionConfigProblems(env, mountedDisk)).toHaveLength(1);
+  });
+
+  it("accepts https:// and a bare host", () => {
+    for (const origin of ["https://iofus.example", "iofus.example"]) {
+      const env = { ...validEnv(), IOFUS_ALLOWED_ORIGIN: origin };
+      expect(productionConfigProblems(env, mountedDisk)).toEqual([]);
+    }
+  });
+
+  it("does not mistake a host starting with 'http' for a cleartext origin", () => {
+    const env = { ...validEnv(), IOFUS_ALLOWED_ORIGIN: "httpbin.example" };
+    expect(productionConfigProblems(env, mountedDisk)).toEqual([]);
+  });
+});

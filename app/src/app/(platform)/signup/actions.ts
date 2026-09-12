@@ -5,6 +5,7 @@ import {
   createUserWithPasswordHash,
   hashPassword,
   HandleTakenError,
+  HashCapacityError,
   validateHandle,
   validatePassword,
   ValidationError,
@@ -49,6 +50,7 @@ export async function signupAction(_prevState: SignupState, formData: FormData):
     passwordHash = await hashPassword(password);
   } catch (e) {
     if (e instanceof ValidationError) return { error: e.message };
+    if (e instanceof HashCapacityError) return { error: e.message };
     throw e;
   }
 

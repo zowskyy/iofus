@@ -61,9 +61,14 @@ export function productionConfigProblems(env: EnvLike, deps: ConfigDeps = realDe
     );
   }
 
-  if (!env.IOFUS_ALLOWED_ORIGIN?.trim()) {
+  const allowedOrigin = env.IOFUS_ALLOWED_ORIGIN?.trim();
+  if (!allowedOrigin) {
     problems.push(
       "IOFUS_ALLOWED_ORIGIN is not set. Password-reset links and sitemap URLs would be generated against http://localhost:3000.",
+    );
+  } else if (/^http:\/\//i.test(allowedOrigin)) {
+    problems.push(
+      `IOFUS_ALLOWED_ORIGIN (${allowedOrigin}) is a cleartext http:// origin. Password-reset links carry a credential and would be sent over an unencrypted connection, and the session cookie's Secure attribute would make it unusable. Use https://, or a bare host, which is treated as https.`,
     );
   }
 
