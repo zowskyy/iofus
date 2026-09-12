@@ -57,7 +57,7 @@ export function getFriendActivityFeed(viewerId: string, limit = 40): FeedItem[] 
               pd.visibility, pd.hidden_from_discovery
        FROM page_documents pd
        JOIN users u ON u.id = pd.user_id
-       WHERE pd.user_id IN (${placeholders}) AND pd.is_published = 1`,
+       WHERE pd.user_id IN (${placeholders}) AND pd.is_published = 1 AND u.is_blocked_platform = 0`,
     )
     .all(...friendIds) as unknown as PageDocRow[];
   const pageRows = allPageRows.filter(
@@ -76,10 +76,12 @@ export function getFriendActivityFeed(viewerId: string, limit = 40): FeedItem[] 
       `SELECT ge.author_handle, u2.handle as page_owner_handle, ge.page_owner_id as page_owner_id,
               ge.created_at, pd2.visibility as target_visibility, pd2.hidden_from_discovery as target_hidden
        FROM guestbook_entries ge
+       JOIN users u1 ON u1.id = ge.author_id
        JOIN users u2 ON u2.id = ge.page_owner_id
        JOIN page_documents pd2 ON pd2.user_id = ge.page_owner_id
        WHERE ge.author_id IN (${placeholders}) AND ge.status = 'approved' AND pd2.is_published = 1
          AND pd2.visibility = 'public' AND pd2.hidden_from_discovery = 0
+         AND u1.is_blocked_platform = 0 AND u2.is_blocked_platform = 0
          AND NOT EXISTS (
            SELECT 1 FROM blocks b
            WHERE (b.blocker_id = ? AND b.blocked_id = ge.page_owner_id)

@@ -12,6 +12,7 @@ interface Props {
 export function NavDropdown({ label, children, badgeCount = 0 }: Props) {
   const [open, setOpen] = useState(false);
   const wrapRef = useRef<HTMLDivElement>(null);
+  const triggerRef = useRef<HTMLButtonElement>(null);
   const menuId = useId();
 
   useEffect(() => {
@@ -20,7 +21,10 @@ export function NavDropdown({ label, children, badgeCount = 0 }: Props) {
       if (wrapRef.current && !wrapRef.current.contains(e.target as Node)) setOpen(false);
     }
     function onKeyDown(e: KeyboardEvent) {
-      if (e.key === "Escape") setOpen(false);
+      if (e.key === "Escape") {
+        triggerRef.current?.focus();
+        setOpen(false);
+      }
     }
     document.addEventListener("pointerdown", onPointerDown);
     document.addEventListener("keydown", onKeyDown);
@@ -33,6 +37,7 @@ export function NavDropdown({ label, children, badgeCount = 0 }: Props) {
   return (
     <div className="nav-dropdown" ref={wrapRef}>
       <button
+        ref={triggerRef}
         type="button"
         className="nav-dropdown-trigger"
         aria-haspopup="menu"

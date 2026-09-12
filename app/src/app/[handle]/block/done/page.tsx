@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { notFound } from "next/navigation";
 import { parseHandleParam } from "@/lib/handleParam";
 
 interface Props {
@@ -7,7 +8,8 @@ interface Props {
 
 export default async function BlockDonePage({ params }: Props) {
   const { handle: rawParam } = await params;
-  const handle = parseHandleParam(rawParam) ?? rawParam;
+  const handle = parseHandleParam(rawParam);
+  if (!handle) notFound();
 
   return (
     <main className="container">

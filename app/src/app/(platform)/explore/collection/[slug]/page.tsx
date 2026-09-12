@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { getCollectionBySlug, listCollectionPages } from "@/lib/collections";
+import { getCurrentUser } from "@/lib/session";
 
 interface Props {
   params: Promise<{ slug: string }>;
@@ -11,7 +12,8 @@ export default async function ExploreCollectionPage({ params }: Props) {
   const collection = getCollectionBySlug(slug);
   if (!collection) notFound();
 
-  const pages = listCollectionPages(collection.id);
+  const viewer = await getCurrentUser();
+  const pages = listCollectionPages(collection.id, viewer?.id);
 
   return (
     <main className="container explore-container">
