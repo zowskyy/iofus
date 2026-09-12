@@ -107,6 +107,25 @@ export async function consumeResetToken(token: string, newPassword: string): Pro
   const tokenHash = hashToken(token);
   const db = getDb();
 
+  // Reject a token that is already known bad before doing any hashing. Hashing
+  // is deliberately slow and runs in a small queue shared with login and
+  // signup, so letting invalid, expired or already-used tokens reach it would
+  // let stale reset forms -- or deliberate submissions, which the per-IP limit
+  // does not stop when spread across addresses -- occupy those slots and stall
+  // real sign-ins. This is only an early-out: the authoritative check is still
+  // the one inside the transaction below, which is what makes reuse racing
+  // safe.
+  const preliminary = db
+    .prepare("SELECT expires_at FROM password_reset_tokens WHERE token_hash = ?")
+    .get(tokenHash) as { expires_at: string } | undefined;
+  if (!preliminary) {
+    throw new PasswordResetError("This reset link is invalid or has already been used.");
+  }
+  if (new Date(preliminary.expires_at) < new Date()) {
+    db.prepare("DELETE FROM password_reset_tokens WHERE token_hash = ?").run(tokenHash);
+    throw new PasswordResetError("This reset link has expired. Request a new one.");
+  }
+
   // Hashed before the transaction opens. BEGIN IMMEDIATE takes the write lock,
   // and a deliberately slow KDF must not be run while holding it.
   const passwordHash = await hashPassword(newPassword);

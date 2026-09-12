@@ -40,6 +40,47 @@ function addColumnIfMissing(db: DatabaseSync, table: string, definition: string)
   }
 }
 
+/**
+ * Clears the email on every account that shares an address with an older one,
+ * so a unique index can be added to a database that predates the constraint.
+ *
+ * The earliest account (by `created_at`, then `id` for a deterministic
+ * tie-break) keeps the address; the others are left with no recovery email and
+ * can set one again, which the unique index will then enforce properly. That
+ * is a real if small loss for those accounts, and it is the mild option: the
+ * alternative is a database the application refuses to open at all.
+ *
+ * Exported for tests; callers other than `migrate` have no reason to use it.
+ */
+export function clearDuplicateEmails(db: DatabaseSync): number {
+  const duplicates = db
+    .prepare(
+      `SELECT u.id, u.email FROM users u
+       WHERE u.email IS NOT NULL
+         AND EXISTS (
+           SELECT 1 FROM users o
+           WHERE o.email IS NOT NULL
+             AND LOWER(o.email) = LOWER(u.email)
+             AND (o.created_at < u.created_at
+                  OR (o.created_at = u.created_at AND o.id < u.id))
+         )`,
+    )
+    .all() as { id: string; email: string }[];
+
+  if (duplicates.length === 0) return 0;
+
+  const clear = db.prepare("UPDATE users SET email = NULL WHERE id = ?");
+  for (const row of duplicates) {
+    clear.run(row.id);
+  }
+  console.error(
+    `[migration] cleared ${duplicates.length} duplicate recovery email(s) so a unique index could be added; affected account ids: ${duplicates
+      .map((r) => r.id)
+      .join(", ")}`,
+  );
+  return duplicates.length;
+}
+
 /** Applies the base schema and any incremental column/index migrations to *db*. Safe to call on an already-migrated database. */
 function migrate(db: DatabaseSync): void {
   db.exec(SCHEMA_SQL);
@@ -68,6 +109,12 @@ function migrate(db: DatabaseSync): void {
   addColumnIfMissing(db, "web_rings", "is_open INTEGER NOT NULL DEFAULT 1");
   addColumnIfMissing(db, "users", "email TEXT");
   if (!indexExists(db, "idx_users_email_unique")) {
+    // A database written before this constraint existed can already contain
+    // duplicates -- setUserEmail's check-then-act is exactly what could
+    // produce them. CREATE UNIQUE INDEX throws on such a database, and since
+    // migrate() runs from getDb(), that failure would fail every request and
+    // the deploy would never come up. Clear the duplicates first.
+    clearDuplicateEmails(db);
     // setUserEmail's conflict check is check-then-act: two requests claiming
     // the same address can both find it free and both write it, leaving a
     // reset request able to match two accounts. The index is the real guard.
