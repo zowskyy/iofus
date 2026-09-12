@@ -1,30 +1,54 @@
 import { headers } from "next/headers";
 import { getDb } from "./db";
+import { parseProxyHops } from "./productionConfig";
 
 const DEFAULT_WINDOW_MS = 60_000;
 export const DAY_MS = 24 * 60 * 60 * 1000;
 
 /**
- * Builds a stable rate-limit key scoped to *prefix*.
- * Uses *userId* when the caller is authenticated; falls back to the
- * request IP for anonymous callers.
+ * Resolves the client IP from an `X-Forwarded-For` value, given how many
+ * trusted proxies append to it (`IOFUS_TRUSTED_PROXY_HOPS`).
  *
- * IP resolution: prefer X-Real-IP (set by our own reverse proxy and
- * therefore not forgeable by the client), then the *rightmost* entry in
- * X-Forwarded-For (also added by our proxy), then "anonymous". The
- * leftmost X-Forwarded-For value is client-supplied and must not be
- * trusted — using it allows an attacker to supply an arbitrary string
- * and bypass IP-based rate limits entirely.
+ * Proxies only ever *append* to X-Forwarded-For — Render explicitly does not
+ * reset a client-supplied header — so the list is `<client-controlled...>,
+ * <client>, <proxy1>, ... <proxyN>`. Counting from the *left* reads a value
+ * the attacker chose. Counting from the far *right* reads our own edge, which
+ * is identical for every visitor and collapses the whole internet into one
+ * shared bucket. The real client sits exactly `hops` entries in from the right,
+ * and that position is unaffected by however many entries an attacker prepends.
+ *
+ * Returns null when the header is absent or has fewer entries than the
+ * configured hop count, which means the request did not arrive through the
+ * expected proxy chain and no entry in it can be trusted.
+ */
+export function resolveClientIp(forwardedFor: string | null | undefined, hops: number): string | null {
+  if (!forwardedFor) return null;
+  const parts = forwardedFor
+    .split(",")
+    .map((s) => s.trim())
+    .filter(Boolean);
+  const index = parts.length - 1 - hops;
+  if (index < 0) return null;
+  return parts[index] ?? null;
+}
+
+/**
+ * Builds a stable rate-limit key scoped to *prefix*, using *userId* when the
+ * caller is authenticated and the resolved client IP otherwise.
+ *
+ * Anonymous callers whose IP cannot be resolved share one `unresolved` bucket.
+ * That is deliberately conservative: such requests did not come through the
+ * expected proxy chain, so throttling them together is safer than keying off a
+ * value the client supplied.
  */
 export async function rateLimitActorKey(prefix: string, userId: string | null): Promise<string> {
   if (userId) return `${prefix}:${userId}`;
   const h = await headers();
-  const realIp = h.get("x-real-ip")?.trim();
-  const forwarded = h.get("x-forwarded-for");
-  // Rightmost entry is the one appended by our own proxy — not forgeable.
-  const forwardedIp = forwarded?.split(",").at(-1)?.trim();
-  const ip = realIp || forwardedIp || "anonymous";
-  return `${prefix}:${ip}`;
+  // Outside production the boot gate does not run and there is normally no
+  // proxy in front of the app, so zero hops is the correct local default.
+  const hops = parseProxyHops(process.env.IOFUS_TRUSTED_PROXY_HOPS) ?? 0;
+  const ip = resolveClientIp(h.get("x-forwarded-for"), hops);
+  return `${prefix}:${ip ?? "unresolved"}`;
 }
 
 export class RateLimitError extends Error {

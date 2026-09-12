@@ -13,8 +13,9 @@ const nextConfig: NextConfig = {
   experimental: {
     serverActions: {
       allowedOrigins: [
-        "localhost:3000",
-        ...(process.env.NODE_ENV === "development" ? ["*.trycloudflare.com"] : []),
+        // Development-only. Leaving localhost trusted in production widens the
+        // Server Action origin check beyond the real deploy host.
+        ...(process.env.NODE_ENV === "development" ? ["localhost:3000", "*.trycloudflare.com"] : []),
         ...(process.env.IOFUS_ALLOWED_ORIGIN ? [process.env.IOFUS_ALLOWED_ORIGIN] : []),
       ],
     },

@@ -7,10 +7,23 @@ interface MailOptions {
   html: string;
 }
 
+/** Thrown when mail is requested but no transport is configured to deliver it. */
+export class MailConfigurationError extends Error {}
+
 export async function sendMail(opts: MailOptions): Promise<void> {
   const host = process.env.IOFUS_SMTP_HOST;
 
   if (!host) {
+    if (process.env.NODE_ENV === "production") {
+      // These bodies carry live password-reset tokens. Printing them to the
+      // container log would put working credentials into log aggregation while
+      // the UI told the user their mail was on its way, so fail instead of
+      // reporting a delivery that did not happen. The boot gate normally stops
+      // the server long before this; this is the second line of defence.
+      throw new MailConfigurationError(
+        "IOFUS_SMTP_HOST is not configured — refusing to discard an email containing a credential.",
+      );
+    }
     console.log("[mailer] IOFUS_SMTP_HOST not set — printing email to console instead");
     console.log(`[mailer] TO: ${opts.to}`);
     console.log(`[mailer] SUBJECT: ${opts.subject}`);

@@ -4,6 +4,7 @@ import { getPageDocument } from "./pageDocument";
 import { listApprovedGuestbookEntries, type GuestbookEntry } from "./guestbook";
 import { listPublicFriends } from "./friends";
 import { getDb } from "./db";
+import { canonicalOrigin } from "./canonicalOrigin";
 import type { PageDocument } from "./pageDocumentTypes";
 
 export class ExportError extends Error {}
@@ -273,7 +274,7 @@ body {
 <div class="page-body" style="${themeVars}">
 ${parts}
 <footer class="page-export-footer">
-  Exported from <a href="https://iofus.xyz" style="color:inherit">iofus</a> on ${esc(new Date(exportedAt).toLocaleDateString("en-US", { year: "numeric", month: "long", day: "numeric" }))}
+  Exported from <a href="${esc(canonicalOrigin())}" style="color:inherit">iofus</a> on ${esc(new Date(exportedAt).toLocaleDateString("en-US", { year: "numeric", month: "long", day: "numeric" }))}
 </footer>
 </div>
 </body>
