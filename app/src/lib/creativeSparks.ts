@@ -9,13 +9,17 @@ export interface TemplateMood {
   background: string;
 }
 
+// Swatch preview colors — kept in sync with pageDocumentTheme.ts's
+// TEMPLATE_PRESETS (the values actually applied by applyTemplateMood()),
+// including its WCAG-AA contrast fix, so the picker preview never shows a
+// color the applied theme won't actually use.
 export const TEMPLATE_MOODS: TemplateMood[] = [
-  { id: "soft-web", label: "Soft Web", tagline: "Warm parchment, gentle serif", accent: "#e0526b", background: "#f6ecec" },
-  { id: "pixel-tavern", label: "Pixel Tavern", tagline: "Retro dungeon, monospace glow", accent: "#c7314b", background: "#241b2e" },
+  { id: "soft-web", label: "Soft Web", tagline: "Warm parchment, gentle serif", accent: "#cf2543", background: "#f6ecec" },
+  { id: "pixel-tavern", label: "Pixel Tavern", tagline: "Retro dungeon, monospace glow", accent: "#d75e73", background: "#241b2e" },
   { id: "chrome-angel", label: "Chrome Angel", tagline: "Neon chrome, midnight glam", accent: "#ff4db8", background: "#160a23" },
   { id: "dark-zine", label: "Dark Zine", tagline: "Cut-and-paste, high contrast", accent: "#f1eaee", background: "#0e0e0e" },
   { id: "clean-portfolio", label: "Clean Portfolio", tagline: "Crisp, calm, maker-ready", accent: "#2563eb", background: "#ffffff" },
-  { id: "start-simple", label: "Start Simple", tagline: "Blank canvas, your rules", accent: "#e0526b", background: "#f1ede9" },
+  { id: "start-simple", label: "Start Simple", tagline: "Blank canvas, your rules", accent: "#cf2543", background: "#f1ede9" },
 ];
 
 const SHRINE_PROMPTS = [
@@ -44,14 +48,19 @@ const BADGE_PACKS: { emoji: string; label: string }[][] = [
   ],
 ];
 
+// "Surprise me" applies one of these directly to the live page with no
+// review step, so every pair here must independently clear the same
+// 4.5:1 WCAG AA bar Studio's own getContrastWarnings() holds a creator's
+// manual color choice to — three originally didn't (accent/background
+// pairs 1, 5, and 7 below, now #cf2543, #d75e73, and #7740f4).
 const COLOR_PALETTES = [
-  { accent: "#e0526b", background: "#f6ecec" },
+  { accent: "#cf2543", background: "#f6ecec" },
   { accent: "#ff4db8", background: "#160a23" },
   { accent: "#7fbe95", background: "#0e0e0e" },
   { accent: "#2563eb", background: "#ffffff" },
-  { accent: "#c7314b", background: "#241b2e" },
+  { accent: "#d75e73", background: "#241b2e" },
   { accent: "#f5a623", background: "#1a1420" },
-  { accent: "#8b5cf6", background: "#dbeafe" },
+  { accent: "#7740f4", background: "#dbeafe" },
   { accent: "#f1eaee", background: "#2d1b2e" },
 ];
 

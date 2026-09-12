@@ -5,6 +5,7 @@ import { getCurrentUser } from "@/lib/session";
 import {
   CURRENT_SCHEMA_VERSION,
   PageDocumentValidationError,
+  getPageDocument,
   savePageDocument,
   setPublished,
   setVisibility,
@@ -23,6 +24,13 @@ export interface MakeState {
 export async function makeFlowAction(_prevState: MakeState, formData: FormData): Promise<MakeState> {
   const viewer = await getCurrentUser();
   if (!viewer) redirect("/login?next=/make");
+
+  // This action always builds a brand-new document from scratch and
+  // overwrites whatever's there — it's a one-time create flow, not an
+  // editor. The page itself redirects an already-published user to Studio,
+  // but this action is independently reachable, so it needs its own guard
+  // against silently wiping an existing page's bio, theme, and links.
+  if (getPageDocument(viewer.id)?.isPublished) redirect("/studio");
 
   checkRateLimit(await rateLimitActorKey("make", viewer.id), 20);
 

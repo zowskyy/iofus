@@ -25,7 +25,7 @@ export default async function MessagesPage() {
           {conversations.map((c) => (
             <li key={c.id} className="msg-list-item">
               {c.unreadCount > 0 && <span className="msg-unread-dot" aria-hidden="true" />}
-              <Link href={`/messages/${c.otherHandle}`}>
+              <Link href={`/messages/@${c.otherHandle}`}>
                 {c.otherHandle}
                 {c.unreadCount > 0 && <span className="nav-badge">{c.unreadCount}</span>}
               </Link>

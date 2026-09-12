@@ -10,3 +10,6 @@ out/
 coverage/
 next-env.d.ts
 tsconfig.tsbuildinfo
+.e2e-data/
+playwright-report/
+test-results/

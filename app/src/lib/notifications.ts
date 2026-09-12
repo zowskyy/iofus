@@ -1,5 +1,8 @@
 import { randomUUID } from "node:crypto";
 import { getDb } from "./db";
+import { createMonotonicClock } from "./monotonicTime";
+
+const monotonicNow = createMonotonicClock();
 
 export type NotificationKind =
   | "guestbook_signed"
@@ -51,7 +54,7 @@ export function createNotification(
   db.prepare(
     `INSERT INTO notifications (id, user_id, kind, actor_handle, payload_json, created_at)
      VALUES (?, ?, ?, ?, ?, ?)`,
-  ).run(randomUUID(), userId, kind, actorHandle, JSON.stringify(payload), new Date().toISOString());
+  ).run(randomUUID(), userId, kind, actorHandle, JSON.stringify(payload), monotonicNow());
 }
 
 export function listNotifications(userId: string, limit = 50): Notification[] {

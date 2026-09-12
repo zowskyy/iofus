@@ -237,6 +237,19 @@ select {
   opacity: 0.85;
 }
 
+/* Disabled buttons (e.g. Studio's "Publish theme to gallery" before a
+   theme name is entered) rendered fully opaque with no visual cue,
+   reading as a plain dead click to the user. Matches the .stamp-btn:disabled
+   treatment already used elsewhere. */
+.btn:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
+.btn:disabled:hover {
+  opacity: 0.45;
+}
+
 .btn.secondary {
   background: transparent;
   border: 2px solid var(--ink);
@@ -244,7 +257,7 @@ select {
   -webkit-text-stroke: 0;
 }
 
-.btn.secondary:hover {
+.btn.secondary:hover:not(:disabled) {
   background: var(--ink);
   color: var(--paper);
   opacity: 1;
@@ -3026,36 +3039,6 @@ kbd {
   to { transform: translateY(0); opacity: 1; }
 }
 .ping-indicator a { color: var(--paper); font-weight: 700; }
-
-/* ── Visitor counter ── */
-.visitor-counter {
-  display: inline-flex;
-  align-items: center;
-  gap: 0.4rem;
-  margin: 0.75rem 0;
-  padding: 0.25rem 0.5rem;
-  border: 1px solid color-mix(in srgb, var(--page-accent, #111) 40%, transparent);
-  border-radius: 3px;
-  background: color-mix(in srgb, var(--page-ink, #111) 5%, transparent);
-}
-.visitor-counter-label {
-  font-size: 0.65rem;
-  text-transform: uppercase;
-  letter-spacing: 0.08em;
-  color: var(--page-ink-soft, #666);
-}
-.visitor-counter-digits {
-  font-size: 1rem;
-  letter-spacing: 0.12em;
-  color: var(--page-accent, #111);
-}
-
-/* ── Presence indicator ── */
-.presence-indicator {
-  font-size: 0.75rem;
-  opacity: 0.7;
-  margin: 0.25rem 0;
-}
 
 /* ── Ambient status ── */
 .ambient-status {

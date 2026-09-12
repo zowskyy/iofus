@@ -1,5 +1,6 @@
 import { randomUUID } from "node:crypto";
 import { getDb } from "./db";
+import { isModerator } from "./moderation";
 
 export class AppealError extends Error {}
 
@@ -88,6 +89,10 @@ export function reviewAppeal(
   status: "granted" | "dismissed",
   note: string,
 ): void {
+  if (!isModerator(moderatorId)) {
+    throw new AppealError("Only moderators can review appeals.");
+  }
+
   const db = getDb();
   const now = new Date().toISOString();
   const appeal = db

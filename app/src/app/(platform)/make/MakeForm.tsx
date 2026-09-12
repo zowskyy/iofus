@@ -3,6 +3,7 @@
 import { useActionState } from "react";
 import { TemplateMoodPicker } from "@/components/studio/TemplateMoodPicker";
 import { makeFlowAction, type MakeState } from "./actions";
+import { withNetworkErrorHandling } from "@/lib/actionResilience";
 
 const initialState: MakeState = {};
 
@@ -21,7 +22,7 @@ const PARTS: { id: string; label: string; hint: string; defaultOn: boolean }[] =
 ];
 
 export function MakeForm({ initialDisplayName }: { initialDisplayName: string }) {
-  const [state, formAction, pending] = useActionState(makeFlowAction, initialState);
+  const [state, formAction, pending] = useActionState(withNetworkErrorHandling(makeFlowAction), initialState);
 
   return (
     <form action={formAction} className="make-form">

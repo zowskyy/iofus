@@ -2,13 +2,14 @@
 
 import { useActionState } from "react";
 import { answerAskAction, type AskActionState } from "./actions";
+import { withNetworkErrorHandling } from "@/lib/actionResilience";
 
 const initialState: AskActionState = {};
 
 /** Form that lets the page owner submit an answer to a specific ask. */
 export function AnswerForm({ askId }: { askId: string }) {
   const boundAction = answerAskAction.bind(null, askId);
-  const [state, formAction, pending] = useActionState(boundAction, initialState);
+  const [state, formAction, pending] = useActionState(withNetworkErrorHandling(boundAction), initialState);
 
   if (state.success) {
     return <p className="success-banner" role="status">{state.success}</p>;

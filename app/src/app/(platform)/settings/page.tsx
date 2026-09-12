@@ -48,17 +48,24 @@ export default async function SettingsPage() {
         <h2>Panic mode</h2>
         <p className="settings-empty" style={{ marginBottom: "0.75rem" }}>
           Instantly hide your page from Explore and discovery, and switch visibility to unlisted. People with the direct
-          link can still visit.
+          link can still visit. Toggle it off any time to go back to normal.
         </p>
-        {panicActive ? (
-          <p style={{ color: "var(--moss)", margin: 0 }}>Panic mode is on — your page is hidden from discovery and unlisted.</p>
-        ) : (
-          <form action={panicModeAction}>
-            <button type="submit" className="btn" style={{ background: "var(--danger)", borderColor: "var(--danger)" }}>
-              Activate panic mode
-            </button>
-          </form>
+        {panicActive && (
+          <p style={{ color: "#2563eb", margin: "0 0 0.75rem" }}>Panic mode is on — your page is hidden from discovery and unlisted.</p>
         )}
+        <form action={panicModeAction}>
+          <button
+            type="submit"
+            className="btn"
+            style={
+              panicActive
+                ? { background: "#2563eb", borderColor: "#2563eb" }
+                : { background: "var(--danger)", borderColor: "var(--danger)" }
+            }
+          >
+            {panicActive ? "Deactivate panic mode" : "Activate panic mode"}
+          </button>
+        </form>
       </section>
 
       <section className="settings-section">

@@ -31,7 +31,25 @@ function blockedBodyPattern(body: string): string | null {
   return null;
 }
 
-const BLOCKED_SELECTORS = /\b(html|body|:root|iframe|dialog|script|\.top-bar|\.studio-|#studio)\b/i;
+// `\b` only fires between a word char and a non-word char. `.`, `#`, and
+// `:` are all non-word characters, so `\b\.top-bar\b` / `\b:root\b` never
+// match unless the punctuation is itself preceded by a word character
+// (e.g. "div.top-bar") — the far more common forms a selector actually
+// takes (a bare leading token, or one preceded by whitespace/a combinator
+// like "~ :root") sit at a non-word/non-word boundary and silently slip
+// through. A property-based test caught `:root` making the same mistake
+// `.top-bar` originally did — every selector that starts with punctuation
+// belongs in this list, not the `\b`-bounded one. Bare-word tag names
+// (html, body, iframe, dialog, script) are real identifiers where `\b` is
+// correct.
+const BLOCKED_KEYWORD_SELECTORS = /\b(html|body|iframe|dialog|script)\b/i;
+const BLOCKED_SELECTOR_SUBSTRINGS = [".top-bar", ".studio-", "#studio", ":root"];
+
+function isBlockedSelector(selector: string): boolean {
+  if (BLOCKED_KEYWORD_SELECTORS.test(selector)) return true;
+  const lower = selector.toLowerCase();
+  return BLOCKED_SELECTOR_SUBSTRINGS.some((s) => lower.includes(s));
+}
 
 const MAX_CSS_LENGTH = 8000;
 const MAX_RULE_COUNT = 80;
@@ -103,7 +121,7 @@ export function scopeProfileCss(raw: string, scopeClass: string): CssScopeResult
     const selector = ruleMatch[1]!.trim();
     const body = ruleMatch[2]!.trim();
 
-    if (BLOCKED_SELECTORS.test(selector)) {
+    if (isBlockedSelector(selector)) {
       rejected.push(`Blocked selector: ${selector}`);
       continue;
     }
@@ -154,7 +172,7 @@ function scopeSelectors(block: string, scopeClass: string, rejected: string[]): 
     const ruleMatch = rule.trim().match(/^([^{]+)\{([^}]*)\}$/);
     if (!ruleMatch) continue;
     const selector = ruleMatch[1]!.trim();
-    if (BLOCKED_SELECTORS.test(selector)) {
+    if (isBlockedSelector(selector)) {
       rejected.push(`Blocked selector: ${selector}`);
       continue;
     }

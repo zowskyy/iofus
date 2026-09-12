@@ -1,5 +1,7 @@
 import { beforeEach, describe, expect, it } from "vitest";
 import {
+  activatePanicMode,
+  deactivatePanicMode,
   canViewPage,
   defaultPageDocument,
   getPageDocument,
@@ -359,5 +361,79 @@ describe("canViewPage", () => {
 
     expect(canViewPage(stored, owner.id, owner.id)).toBe(true);
     expect(canViewPage(stored, owner.id, null)).toBe(false);
+  });
+});
+
+describe("activatePanicMode", () => {
+  it("keeps the page reachable by direct link, per its own documented promise", () => {
+    const owner = createUser("panicuser", "correct-horse-battery");
+    savePageDocument(owner.id, defaultPageDocument("Panic Test"));
+    setPublished(owner.id, true);
+    setVisibility(owner.id, "public");
+
+    activatePanicMode(owner.id);
+    const stored = getPageDocument(owner.id)!;
+
+    // Regression: activatePanicMode previously set is_published=0 and
+    // visibility='private', both of which independently block a non-owner
+    // even with the direct link — contradicting the settings page's own
+    // "People with the direct link can still visit" copy.
+    expect(canViewPage(stored, owner.id, null)).toBe(true);
+  });
+
+  it("hides the page from discovery and disables the guestbook", () => {
+    const owner = createUser("panicuser2", "correct-horse-battery");
+    savePageDocument(owner.id, defaultPageDocument("Panic Test 2"));
+    setPublished(owner.id, true);
+    setVisibility(owner.id, "public");
+
+    activatePanicMode(owner.id);
+    const stored = getPageDocument(owner.id)!;
+
+    expect(stored.visibility).toBe("unlisted");
+    expect(stored.hiddenFromDiscovery).toBe(true);
+    expect(stored.guestbookDisabled).toBe(true);
+    expect(stored.isPublished).toBe(true);
+  });
+
+  it("sets visibility to the exact state the settings page checks for its confirmation UI", () => {
+    // Regression for the specific bug reported: settings/page.tsx's
+    // confirmation text only renders when hiddenFromDiscovery && visibility
+    // === "unlisted" — activatePanicMode previously set visibility to
+    // 'private', so that condition never matched and the confirmation UI
+    // never appeared even though the underlying update succeeded.
+    const owner = createUser("panicuser3", "correct-horse-battery");
+    savePageDocument(owner.id, defaultPageDocument("Panic Test 3"));
+    setPublished(owner.id, true);
+    setVisibility(owner.id, "public");
+
+    activatePanicMode(owner.id);
+    const stored = getPageDocument(owner.id)!;
+
+    const panicActive = stored.hiddenFromDiscovery && stored.visibility === "unlisted";
+    expect(panicActive).toBe(true);
+  });
+});
+
+describe("deactivatePanicMode", () => {
+  it("restores the page to public, discoverable, and guestbook-enabled", () => {
+    const owner = createUser("panicuser4", "correct-horse-battery");
+    savePageDocument(owner.id, defaultPageDocument("Panic Test 4"));
+    setPublished(owner.id, true);
+    setVisibility(owner.id, "public");
+    activatePanicMode(owner.id);
+
+    deactivatePanicMode(owner.id);
+    const stored = getPageDocument(owner.id)!;
+
+    expect(stored.visibility).toBe("public");
+    expect(stored.hiddenFromDiscovery).toBe(false);
+    expect(stored.guestbookDisabled).toBe(false);
+    expect(stored.isPublished).toBe(true);
+
+    // The settings page's panicActive check must now read false — the
+    // toggle button flips back to "Activate panic mode".
+    const panicActive = stored.hiddenFromDiscovery && stored.visibility === "unlisted";
+    expect(panicActive).toBe(false);
   });
 });

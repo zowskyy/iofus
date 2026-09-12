@@ -9,6 +9,12 @@ export default async function MakePage() {
   if (!viewer) redirect("/login?next=/make");
 
   const stored = getPageDocument(viewer.id);
+  // The Make wizard always builds a brand-new document from scratch (see
+  // actions.ts's makeFlowAction) — visiting it again after publishing and
+  // hitting "Publish your corner" silently wiped an existing page's bio,
+  // theme, links, and every other field back to defaults. Once a page is
+  // published, editing happens in Studio; Make is a one-time create flow.
+  if (stored?.isPublished) redirect("/studio");
 
   return (
     <main className="container">

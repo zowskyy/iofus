@@ -2,12 +2,13 @@
 
 import { useActionState } from "react";
 import { createAskAction, type AskActionState } from "./actions";
+import { withNetworkErrorHandling } from "@/lib/actionResilience";
 
 const initialState: AskActionState = {};
 
 /** Form that lets a viewer submit a new ask to the current page owner. */
 export function AskForm() {
-  const [state, formAction, pending] = useActionState(createAskAction, initialState);
+  const [state, formAction, pending] = useActionState(withNetworkErrorHandling(createAskAction), initialState);
 
   return (
     <section className="settings-section" aria-label="Post an ask">

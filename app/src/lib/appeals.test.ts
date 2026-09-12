@@ -29,6 +29,7 @@ describe("appeals", () => {
 
   it("granting an appeal unblocks the user", () => {
     const mod = createUser("moduser", "correct-horse-battery");
+    getDb().prepare("UPDATE users SET is_moderator = 1 WHERE id = ?").run(mod.id);
     const user = createUser("blockeduser", "correct-horse-battery");
     setPlatformBlock(user.id, true, mod.id);
     fileAppeal(user.id, "sorry");
@@ -43,6 +44,22 @@ describe("appeals", () => {
     createUser("freeuser", "correct-horse-battery");
     expect(() => authenticateBlockedForAppeal("freeuser", "correct-horse-battery")).toThrow(ValidationError);
     expect(() => authenticateBlockedForAppeal("freeuser", "wrong-password")).toThrow(InvalidCredentialsError);
+  });
+
+  it("rejects reviewAppeal from a non-moderator, even one referenced by a caller that forgot to gate it", () => {
+    const mod = createUser("moduser", "correct-horse-battery");
+    getDb().prepare("UPDATE users SET is_moderator = 1 WHERE id = ?").run(mod.id);
+    const notMod = createUser("regularuser", "correct-horse-battery");
+    const user = createUser("blockeduser", "correct-horse-battery");
+    setPlatformBlock(user.id, true, mod.id);
+    fileAppeal(user.id, "sorry");
+
+    const [appeal] = listOpenAppeals();
+    expect(() => reviewAppeal(appeal!.id, notMod.id, "granted", "ok")).toThrow(AppealError);
+    // The appeal must stay open and the user must stay blocked — a rejected
+    // review must not have side effects.
+    expect(listOpenAppeals()).toHaveLength(1);
+    expect(listOpenAppeals()[0]!.status).toBe("open");
   });
 
   it("concurrent open appeals leave exactly one row for the same user", async () => {

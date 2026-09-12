@@ -134,7 +134,20 @@ export function StudioClient({
       startTransition(async () => {
         setMessage(null);
         setError(null);
-        const result = await fn();
+        // A genuine network failure (dropped connection, aborted request)
+        // rejects the server-action call itself rather than resolving with
+        // a { error } result — without this catch that rejection was
+        // uncaught, leaving the user with no feedback at all (not even a
+        // false success, just silence) while the edit itself was never
+        // lost since `document` state is untouched either way. Matches how
+        // StampsModule/AmbientStatusEditor already handle this.
+        let result: { ok?: boolean; error?: string; document?: PageDocument; exportJson?: string };
+        try {
+          result = await fn();
+        } catch {
+          setError("Network error — your changes are safe, try again.");
+          return;
+        }
         if (result.error) {
           setError(result.error);
           return;
@@ -189,7 +202,13 @@ export function StudioClient({
     startTransition(async () => {
       setMessage(null);
       setError(null);
-      const result = await exportPageAction();
+      let result: Awaited<ReturnType<typeof exportPageAction>>;
+      try {
+        result = await exportPageAction();
+      } catch {
+        setError("Network error — try again.");
+        return;
+      }
       if (result.error) {
         setError(result.error);
         return;
@@ -212,7 +231,13 @@ export function StudioClient({
       setMessage(null);
       setError(null);
       const text = await file.text();
-      const result = await importPageAction(text);
+      let result: Awaited<ReturnType<typeof importPageAction>>;
+      try {
+        result = await importPageAction(text);
+      } catch {
+        setError("Network error — the file was not imported, try again.");
+        return;
+      }
       if (result.error) {
         setError(result.error);
         return;

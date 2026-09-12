@@ -1,10 +1,10 @@
-import { beforeEach, describe, expect, it } from "vitest";
 import { randomUUID } from "node:crypto";
-import { listCollectionPages } from "./collections";
+import { beforeEach, describe, expect, it } from "vitest";
 import { createUser } from "./auth";
-import { defaultPageDocument, savePageDocument, setHiddenFromDiscovery, setPublished, setVisibility } from "./pageDocument";
 import { getDb, resetDbForTests } from "./db";
-import { setPlatformBlock, ensureModeratorSeed } from "./moderation";
+import { getCollectionBySlug, listCollectionPages, listCollections } from "./collections";
+import { defaultPageDocument, savePageDocument, setHiddenFromDiscovery, setPublished, setVisibility } from "./pageDocument";
+import { ensureModeratorSeed, setPlatformBlock } from "./moderation";
 
 process.env.IOFUS_DB_PATH = ":memory:";
 process.env.IOFUS_AUTO_MODERATOR_SEED = "true";
@@ -13,55 +13,113 @@ beforeEach(() => {
   resetDbForTests();
 });
 
-function makeCollection(): string {
-  const id = randomUUID();
-  getDb()
-    .prepare("INSERT INTO collections (id, slug, title, description, created_at) VALUES (?, ?, ?, ?, ?)")
-    .run(id, "test-collection", "Test Collection", "", new Date().toISOString());
-  return id;
+function publishPublicPage(handle: string, displayName: string) {
+  const user = createUser(handle, "correct-horse-battery");
+  savePageDocument(user.id, defaultPageDocument(displayName));
+  setPublished(user.id, true);
+  setVisibility(user.id, "public");
+  return user;
 }
 
-function addToCollection(collectionId: string, userId: string): void {
-  getDb()
-    .prepare("INSERT INTO collection_pages (collection_id, user_id, position, added_at) VALUES (?, ?, 0, ?)")
-    .run(collectionId, userId, new Date().toISOString());
-}
+describe("collections", () => {
+  it("a fresh database is seeded with the two default collections on first open", () => {
+    const list = listCollections();
+    expect(list.map((c) => c.slug).sort()).toEqual(["freshly-painted", "quiet-corners"]);
+  });
 
-describe("listCollectionPages", () => {
-  it("includes a published public page", () => {
-    const collectionId = makeCollection();
-    const user = createUser("voidarcade", "correct-horse-battery");
-    savePageDocument(user.id, defaultPageDocument("Void Arcade"));
-    setPublished(user.id, true);
-    setVisibility(user.id, "public");
-    addToCollection(collectionId, user.id);
+  it("getCollectionBySlug returns null for an unknown slug", () => {
+    expect(getCollectionBySlug("does-not-exist")).toBeNull();
+  });
 
-    expect(listCollectionPages(collectionId).map((p) => p.handle)).toContain("voidarcade");
+  it("getCollectionBySlug returns a seeded collection by slug", () => {
+    const found = getCollectionBySlug("freshly-painted");
+    expect(found).not.toBeNull();
+    expect(found!.title).toBe("Freshly Painted");
+  });
+
+  it("listCollectionPages returns an empty array for a collection with no pages", () => {
+    const collection = getCollectionBySlug("freshly-painted")!;
+    expect(listCollectionPages(collection.id)).toEqual([]);
+  });
+
+  it("listCollectionPages only returns published, public pages", () => {
+    const collection = getCollectionBySlug("freshly-painted")!;
+    const db = getDb();
+
+    const published = publishPublicPage("published-user", "Published User");
+
+    const draftUser = createUser("draft-user", "correct-horse-battery");
+    savePageDocument(draftUser.id, defaultPageDocument("Draft User"));
+
+    const now = new Date().toISOString();
+    db.prepare(
+      "INSERT INTO collection_pages (collection_id, user_id, position, added_at) VALUES (?, ?, 0, ?)",
+    ).run(collection.id, published.id, now);
+    db.prepare(
+      "INSERT INTO collection_pages (collection_id, user_id, position, added_at) VALUES (?, ?, 1, ?)",
+    ).run(collection.id, draftUser.id, now);
+
+    const pages = listCollectionPages(collection.id);
+    expect(pages).toHaveLength(1);
+    expect(pages[0]!.handle).toBe("published-user");
+  });
+
+  it("listCollectionPages orders by position ascending", () => {
+    const collection = getCollectionBySlug("freshly-painted")!;
+    const db = getDb();
+
+    const userA = publishPublicPage("user-a", "User A");
+    const userB = publishPublicPage("user-b", "User B");
+
+    const now = new Date().toISOString();
+    db.prepare(
+      "INSERT INTO collection_pages (collection_id, user_id, position, added_at) VALUES (?, ?, 1, ?)",
+    ).run(collection.id, userA.id, now);
+    db.prepare(
+      "INSERT INTO collection_pages (collection_id, user_id, position, added_at) VALUES (?, ?, 0, ?)",
+    ).run(collection.id, userB.id, now);
+
+    const pages = listCollectionPages(collection.id);
+    expect(pages.map((p) => p.handle)).toEqual(["user-b", "user-a"]);
+  });
+
+  it("listCollectionPages falls back to the handle when document_json is malformed", () => {
+    const collection = getCollectionBySlug("freshly-painted")!;
+    const db = getDb();
+
+    const user = publishPublicPage("weird-doc-user", "Weird Doc User");
+    db.prepare("UPDATE page_documents SET document_json = ? WHERE user_id = ?").run("{not valid json", user.id);
+
+    db.prepare(
+      "INSERT INTO collection_pages (collection_id, user_id, position, added_at) VALUES (?, ?, 0, ?)",
+    ).run(collection.id, user.id, new Date().toISOString());
+
+    const pages = listCollectionPages(collection.id);
+    expect(pages).toHaveLength(1);
+    expect(pages[0]!.displayName).toBe("weird-doc-user");
   });
 
   it("excludes a page the owner has hidden from discovery", () => {
-    const collectionId = makeCollection();
-    const user = createUser("voidarcade", "correct-horse-battery");
-    savePageDocument(user.id, defaultPageDocument("Void Arcade"));
-    setPublished(user.id, true);
-    setVisibility(user.id, "public");
+    const collection = getCollectionBySlug("freshly-painted")!;
+    const user = publishPublicPage("voidarcade", "Void Arcade");
     setHiddenFromDiscovery(user.id, true);
-    addToCollection(collectionId, user.id);
+    getDb()
+      .prepare("INSERT INTO collection_pages (collection_id, user_id, position, added_at) VALUES (?, ?, 0, ?)")
+      .run(collection.id, user.id, new Date().toISOString());
 
-    expect(listCollectionPages(collectionId).map((p) => p.handle)).not.toContain("voidarcade");
+    expect(listCollectionPages(collection.id).map((p) => p.handle)).not.toContain("voidarcade");
   });
 
   it("excludes a page whose owner has been platform-blocked by a moderator", () => {
+    const collection = getCollectionBySlug("freshly-painted")!;
     const mod = createUser("moduser", "correct-horse-battery");
-    const collectionId = makeCollection();
-    const user = createUser("voidarcade", "correct-horse-battery");
-    savePageDocument(user.id, defaultPageDocument("Void Arcade"));
-    setPublished(user.id, true);
-    setVisibility(user.id, "public");
-    addToCollection(collectionId, user.id);
+    const user = publishPublicPage("voidarcade", "Void Arcade");
+    getDb()
+      .prepare("INSERT INTO collection_pages (collection_id, user_id, position, added_at) VALUES (?, ?, 0, ?)")
+      .run(collection.id, user.id, new Date().toISOString());
     ensureModeratorSeed();
     setPlatformBlock(user.id, true, mod.id);
 
-    expect(listCollectionPages(collectionId).map((p) => p.handle)).not.toContain("voidarcade");
+    expect(listCollectionPages(collection.id).map((p) => p.handle)).not.toContain("voidarcade");
   });
 });

@@ -1,6 +1,7 @@
 "use client";
 
 import type { PageDocument, PagePartId } from "@/lib/pageDocumentTypes";
+import { movePagePart, togglePagePart } from "@/lib/pagePartsOrdering";
 
 const PART_LABELS: Record<PagePartId, string> = {
   identity: "Identity",
@@ -29,22 +30,12 @@ export interface LayoutTabProps {
 export function LayoutTab({ document: doc, onChange }: LayoutTabProps) {
   /** Moves the page part at *index* one step in *direction* (+1 down, -1 up). */
   const movePart = (index: number, direction: -1 | 1) => {
-    const next = [...doc.pageParts];
-    const target = index + direction;
-    if (target < 0 || target >= next.length) return;
-    const [item] = next.splice(index, 1);
-    next.splice(target, 0, item!);
-    onChange({ ...doc, pageParts: next });
+    onChange({ ...doc, pageParts: movePagePart(doc.pageParts, index, direction) });
   };
 
   /** Adds or removes *part* from the active page parts list. */
   const togglePart = (part: PagePartId) => {
-    const has = doc.pageParts.includes(part);
-    if (has) {
-      onChange({ ...doc, pageParts: doc.pageParts.filter((p) => p !== part) });
-    } else {
-      onChange({ ...doc, pageParts: [...doc.pageParts, part] });
-    }
+    onChange({ ...doc, pageParts: togglePagePart(doc.pageParts, part) });
   };
 
   return (

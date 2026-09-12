@@ -86,7 +86,9 @@ export function migrateDocument(input: Record<string, unknown>): PageDocument {
       version: CURRENT_SCHEMA_VERSION,
       theme: {
         template: theme?.template ?? "start-simple",
-        accent: theme?.accent ?? "#e0526b",
+        // Matches the corrected start-simple preset in pageDocumentTheme.ts
+        // (was #e0526b, a 3.2:1 contrast failure against this background).
+        accent: theme?.accent ?? "#cf2543",
         background: theme?.background ?? "#f1ede9",
         density: theme?.density ?? "comfortable",
         fontStyle: "sans",
@@ -342,11 +344,36 @@ export function setGuestbookDisabled(userId: string, disabled: boolean): void {
   );
 }
 
-/** Immediately unpublish the page, set visibility to private, hide from discovery, and disable the guestbook in one atomic step. */
+/**
+ * Immediately hide the page from Explore and discovery and disable the
+ * guestbook, while keeping it published and reachable by direct link — the
+ * page stays published (canViewPage blocks all non-owner access to an
+ * unpublished page) and visibility becomes "unlisted" rather than "private"
+ * (canViewPage blocks non-owner access to a "private" page too; "unlisted"
+ * is the state that means "reachable by direct link, excluded from every
+ * discovery query" — see discovery.ts, which requires visibility = 'public'
+ * for any listing). hidden_from_discovery is set as well for defense in
+ * depth even though visibility != 'public' already excludes it.
+ */
 export function activatePanicMode(userId: string): void {
   const db = getDb();
   db.prepare(
-    "UPDATE page_documents SET is_published = 0, visibility = 'private', hidden_from_discovery = 1, guestbook_disabled = 1, updated_at = ? WHERE user_id = ?",
+    "UPDATE page_documents SET visibility = 'unlisted', hidden_from_discovery = 1, guestbook_disabled = 1, updated_at = ? WHERE user_id = ?",
+  ).run(new Date().toISOString(), userId);
+}
+
+/**
+ * Undo panic mode: restore the page to public, back in discovery, with the
+ * guestbook re-enabled. There's no stored "state before panic mode" to
+ * return to — this resets to the platform's normal defaults rather than
+ * attempting to remember whatever the owner had configured before, which
+ * keeps the toggle simple and predictable (same reasoning as why panic mode
+ * itself doesn't try to be reversible in a fancier way).
+ */
+export function deactivatePanicMode(userId: string): void {
+  const db = getDb();
+  db.prepare(
+    "UPDATE page_documents SET visibility = 'public', hidden_from_discovery = 0, guestbook_disabled = 0, updated_at = ? WHERE user_id = ?",
   ).run(new Date().toISOString(), userId);
 }
 

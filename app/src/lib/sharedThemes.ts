@@ -16,42 +16,6 @@ export interface SharedTheme {
   updatedAt: string;
 }
 
-export function ensureSeedSharedThemes(): void {
-  const db = getDb();
-  const count = db.prepare("SELECT COUNT(*) as c FROM shared_themes").get() as { c: number };
-  if (count.c > 0) return;
-
-  const now = new Date().toISOString();
-  const seeds = [
-    { name: "Y2K Chrome", description: "Glossy panels, cool blues, reflective accents.", tags: ["y2k", "glossy"], template: "chrome-angel" as const, accent: "#0284c7", background: "#dbeafe", fontStyle: "sans" as const },
-    { name: "Scene Neon", description: "Hot pink and electric purple nightlife energy.", tags: ["scene", "neon"], template: "chrome-angel" as const, accent: "#ff4db8", background: "#160a23", fontStyle: "sans" as const },
-    { name: "Pixel RPG Tavern", description: "Retro dungeon menu vibes.", tags: ["pixel", "rpg"], template: "pixel-tavern" as const, accent: "#c7314b", background: "#241b2e", fontStyle: "mono" as const },
-    { name: "Soft Angelcore", description: "Dreamy pastels and gentle serif type.", tags: ["soft", "angelcore"], template: "soft-web" as const, accent: "#e0526b", background: "#f6ecec", fontStyle: "serif" as const },
-    { name: "CRT Terminal", description: "Green phosphor on near-black.", tags: ["crt", "terminal"], template: "dark-zine" as const, accent: "#7fbe95", background: "#0e0e0e", fontStyle: "mono" as const },
-    { name: "Indie Devlog", description: "Clean, readable, maker-focused.", tags: ["devlog", "minimal"], template: "clean-portfolio" as const, accent: "#2563eb", background: "#ffffff", fontStyle: "sans" as const },
-    { name: "Zine Punk", description: "High contrast cut-and-paste energy.", tags: ["zine", "punk"], template: "dark-zine" as const, accent: "#f1eaee", background: "#0e0e0e", fontStyle: "serif" as const },
-    { name: "Minimal Reader", description: "Maximum readability, minimum noise.", tags: ["minimal", "reader"], template: "start-simple" as const, accent: "#241b2e", background: "#f1ede9", fontStyle: "sans" as const },
-  ];
-
-  for (const seed of seeds) {
-    const themeData = {
-      template: seed.template,
-      accent: seed.accent,
-      background: seed.background,
-      density: "comfortable" as const,
-      fontStyle: seed.fontStyle,
-      reduceMotion: false,
-      customCss: "",
-      customCssEnabled: false,
-      attribution: undefined,
-    };
-    db.prepare(
-      `INSERT INTO shared_themes (id, creator_user_id, name, description, tags_json, version, theme_json, created_at, updated_at)
-       VALUES (?, NULL, ?, ?, ?, 1, ?, ?, ?)`,
-    ).run(randomUUID(), seed.name, seed.description, JSON.stringify(seed.tags), JSON.stringify(themeData), now, now);
-  }
-}
-
 export function listSharedThemes(limit = 50): SharedTheme[] {
   const db = getDb();
   const rows = db

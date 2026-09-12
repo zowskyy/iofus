@@ -2,11 +2,12 @@
 
 import { useActionState } from "react";
 import { appealAction, type AppealState } from "./actions";
+import { withNetworkErrorHandling } from "@/lib/actionResilience";
 
 const initialState: AppealState = {};
 
 export function AppealForm() {
-  const [state, formAction, pending] = useActionState(appealAction, initialState);
+  const [state, formAction, pending] = useActionState(withNetworkErrorHandling(appealAction), initialState);
 
   return (
     <form action={formAction} style={{ marginTop: "1.5rem", display: "grid", gap: "1rem" }}>
