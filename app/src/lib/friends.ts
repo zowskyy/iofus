@@ -156,7 +156,8 @@ export function listFriends(userId: string): FriendSummary[] {
        FROM friend_links fl
        JOIN users u ON u.id = CASE WHEN fl.requester_id = ? THEN fl.addressee_id ELSE fl.requester_id END
        WHERE (fl.requester_id = ? OR fl.addressee_id = ?) AND fl.status = 'accepted'
-       ORDER BY fl.responded_at DESC`,
+       ORDER BY fl.responded_at DESC
+       LIMIT 500`,
     )
     .all(userId, userId, userId) as { link_id: string; user_id: string; handle: string }[];
   return rows.map((r) => ({ linkId: r.link_id, userId: r.user_id, handle: r.handle }));
@@ -185,7 +186,8 @@ export function listIncomingRequests(userId: string): PendingRequest[] {
       `SELECT fl.id, u.id as from_id, u.handle as from_handle, fl.created_at
        FROM friend_links fl JOIN users u ON u.id = fl.requester_id
        WHERE fl.addressee_id = ? AND fl.status = 'pending'
-       ORDER BY fl.created_at DESC`,
+       ORDER BY fl.created_at DESC
+       LIMIT 100`,
     )
     .all(userId) as { id: string; from_id: string; from_handle: string; created_at: string }[];
   return rows.map((r) => ({ id: r.id, fromUserId: r.from_id, fromHandle: r.from_handle, createdAt: r.created_at }));
@@ -246,7 +248,8 @@ export function listBlockedUsers(blockerId: string): { userId: string; handle: s
       `SELECT u.id as user_id, u.handle
        FROM blocks b JOIN users u ON u.id = b.blocked_id
        WHERE b.blocker_id = ?
-       ORDER BY b.created_at DESC`,
+       ORDER BY b.created_at DESC
+       LIMIT 1000`,
     )
     .all(blockerId) as { user_id: string; handle: string }[];
   return rows.map((r) => ({ userId: r.user_id, handle: r.handle }));

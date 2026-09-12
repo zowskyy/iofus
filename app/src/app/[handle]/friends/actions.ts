@@ -63,7 +63,7 @@ export async function acceptFriendRequestAction(handle: string, requestId: strin
     if (result) return result;
   }
 
-  revalidatePath(`/@${handle}`);
+  revalidatePath(`/@${viewer.handle}`);
   return {};
 }
 
@@ -80,7 +80,7 @@ export async function declineFriendRequestAction(handle: string, requestId: stri
     if (result) return result;
   }
 
-  revalidatePath(`/@${handle}`);
+  revalidatePath(`/@${viewer.handle}`);
   return {};
 }
 

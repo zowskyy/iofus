@@ -34,6 +34,14 @@ export async function installThemeAction(themeId: string): Promise<void> {
   const viewer = await getCurrentUser();
   if (!viewer) redirect(`/login?next=/explore/themes/${themeId}`);
 
+  try {
+    const key = await rateLimitActorKey("theme-install", viewer.id);
+    checkRateLimit(key, 20);
+  } catch (e) {
+    if (e instanceof RateLimitError) throw e;
+    throw e;
+  }
+
   const theme = getSharedTheme(themeId);
   if (!theme) throw new Error("That theme no longer exists.");
 

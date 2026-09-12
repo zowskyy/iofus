@@ -36,7 +36,7 @@ function rowToRing(r: RingRow): WebRing {
 export function listWebRings(): WebRing[] {
   const db = getDb();
   const rows = db
-    .prepare("SELECT id, slug, name, description, creator_user_id, is_open FROM web_rings ORDER BY name ASC")
+    .prepare("SELECT id, slug, name, description, creator_user_id, is_open FROM web_rings ORDER BY name ASC LIMIT 500")
     .all() as RingRow[];
   return rows.map(rowToRing);
 }
