@@ -1,3 +1,4 @@
+import Image from "next/image";
 import Link from "next/link";
 import { getCurrentUser } from "@/lib/session";
 import { isModerator } from "@/lib/moderation";
@@ -90,7 +91,7 @@ export async function SiteNav() {
         <Link href="/make">Make</Link>
       </nav>
       <Link href="/" className="top-bar-logo" aria-label="iofus home">
-        <img src="/logo.png" alt="iofus" className="site-logo" width={384} height={192} />
+        <Image src="/logo.png" alt="iofus" className="site-logo" width={384} height={192} preload />
       </Link>
       {/* Desktop right nav */}
       <nav className="controls controls-right nav-desktop-right">

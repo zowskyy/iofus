@@ -104,7 +104,7 @@ export const PAGE_MODULE_REGISTRY: Record<string, PageModuleDefinition> = {
           <ul className="gallery-grid">
             {document.gallery.map((item) => (
               <li key={item.id} className="gallery-item">
-                <img src={item.url} alt={item.alt} className="gallery-image" />
+                <img src={item.url} alt={item.alt} className="gallery-image" loading="lazy" decoding="async" />
                 {item.caption && <p className="gallery-caption">{item.caption}</p>}
               </li>
             ))}
@@ -266,7 +266,7 @@ export const PAGE_MODULE_REGISTRY: Record<string, PageModuleDefinition> = {
               <li key={shrine.id} className="shrine-item profile-panel">
                 <h3 className="shrine-title">{shrine.title}</h3>
                 {shrine.imageUrl && (
-                  <img src={shrine.imageUrl} alt={shrine.imageAlt ?? shrine.title} className="shrine-image" />
+                  <img src={shrine.imageUrl} alt={shrine.imageAlt ?? shrine.title} className="shrine-image" loading="lazy" decoding="async" />
                 )}
                 <p className="shrine-body">{shrine.body}</p>
               </li>

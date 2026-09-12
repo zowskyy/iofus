@@ -188,3 +188,32 @@ export function searchPages(query: string, limit = 24): DiscoverablePage[] {
     return { handle: r.handle, displayName: meta.displayName || r.handle, updatedAt: r.updated_at, tags: meta.tags, template: meta.template };
   });
 }
+
+/** Count of all public discoverable profiles, for sitemap pagination. */
+export function countPublicProfiles(): number {
+  const db = getDb();
+  const row = db
+    .prepare(
+      `SELECT COUNT(*) AS n
+       FROM page_documents pd
+       JOIN users u ON u.id = pd.user_id
+       WHERE ${DISCOVERABLE_WHERE}`,
+    )
+    .get() as { n: number };
+  return row.n;
+}
+
+/** One bounded page of public discoverable handles for sitemap generation. */
+export function listPublicProfilesPage(offset: number, limit: number): { handle: string; updatedAt: string }[] {
+  const db = getDb();
+  return db
+    .prepare(
+      `SELECT u.handle, pd.updated_at AS updatedAt
+       FROM page_documents pd
+       JOIN users u ON u.id = pd.user_id
+       WHERE ${DISCOVERABLE_WHERE}
+       ORDER BY pd.updated_at DESC
+       LIMIT ? OFFSET ?`,
+    )
+    .all(limit, offset) as { handle: string; updatedAt: string }[];
+}
