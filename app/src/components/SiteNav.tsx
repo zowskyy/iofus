@@ -91,7 +91,7 @@ export async function SiteNav() {
         <Link href="/make">Make</Link>
       </nav>
       <Link href="/" className="top-bar-logo" aria-label="iofus home">
-        <Image src="/logo.png" alt="iofus" className="site-logo" width={384} height={192} priority />
+        <Image src="/logo.png" alt="iofus" className="site-logo" width={384} height={192} preload />
       </Link>
       {/* Desktop right nav */}
       <nav className="controls controls-right nav-desktop-right">
