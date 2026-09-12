@@ -9,27 +9,27 @@ import { getDb, resetDbForTests } from "./db";
 
 process.env.IOFUS_DB_PATH = ":memory:";
 
-beforeEach(() => {
+beforeEach(async () => {
   resetDbForTests();
 });
 
 describe("sharedThemes", () => {
-  it("seeds starter themes when gallery is empty", () => {
+  it("seeds starter themes when gallery is empty", async () => {
     const themes = listSharedThemes();
     expect(themes.length).toBeGreaterThanOrEqual(8);
     expect(themes.some((t) => t.name === "Y2K Chrome")).toBe(true);
   });
 
-  it("publishes a user theme with attribution", () => {
-    const user = createUser("voidarcade", "correct-horse-battery");
+  it("publishes a user theme with attribution", async () => {
+    const user = await createUser("voidarcade", "correct-horse-battery");
     savePageDocument(user.id, defaultPageDocument("Void Arcade"));
     const id = publishTheme(user.id, user.handle, "My Look", "A cozy corner", ["soft"], defaultPageDocument("Void").theme);
     const themes = listSharedThemes();
     expect(themes.some((t) => t.id === id && t.creatorHandle === "voidarcade")).toBe(true);
   });
 
-  it("forking a theme records provenance on the new gallery entry", () => {
-    const creator = createUser("voidarcade", "correct-horse-battery");
+  it("forking a theme records provenance on the new gallery entry", async () => {
+    const creator = await createUser("voidarcade", "correct-horse-battery");
     savePageDocument(creator.id, defaultPageDocument("Void Arcade"));
     const sourceId = publishTheme(
       creator.id,
@@ -40,7 +40,7 @@ describe("sharedThemes", () => {
       defaultPageDocument("Void").theme,
     );
 
-    const forker = createUser("neonorchard", "correct-horse-battery");
+    const forker = await createUser("neonorchard", "correct-horse-battery");
     savePageDocument(forker.id, defaultPageDocument("Neon Orchard"));
     const forkId = forkTheme(forker.id, forker.handle, sourceId);
 
@@ -56,7 +56,7 @@ describe("sharedThemes", () => {
   // used by every other test in this file, doesn't persist across a
   // close/reopen, so it can't actually prove idempotency — a fresh empty
   // memory db re-seeding once looks identical to correct de-duplication).
-  it("the real seed path (db.ts migrate()) is idempotent across repeated opens of the same file", () => {
+  it("the real seed path (db.ts migrate()) is idempotent across repeated opens of the same file", async () => {
     const dir = mkdtempSync(join(tmpdir(), "iofus-seed-idem-"));
     const dbPath = join(dir, "test.db");
     const originalPath = process.env.IOFUS_DB_PATH;

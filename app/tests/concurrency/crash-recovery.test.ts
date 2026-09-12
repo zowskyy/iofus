@@ -114,7 +114,7 @@ describe("crash recovery (real SIGKILL mid-transaction)", () => {
       // the uncommitted transaction, never anything already committed.
       process.env.IOFUS_DB_PATH = dbPath;
       resetDbForTests();
-      const survivor = createUser("survivor-account", "correct-horse-battery");
+      const survivor = await createUser("survivor-account", "correct-horse-battery");
       resetDbForTests(); // release this process's handle before the child opens the same file
 
       await killMidTransaction(dbPath, "crashvictim", 5);
@@ -158,7 +158,7 @@ describe("crash recovery (real SIGKILL mid-transaction)", () => {
       // support a normal write, not just a read.
       resetDbForTests();
       getDb();
-      const afterRestart = createUser("post-crash-signup", "correct-horse-battery");
+      const afterRestart = await createUser("post-crash-signup", "correct-horse-battery");
       expect(afterRestart.handle).toBe("post-crash-signup");
       resetDbForTests();
     },

@@ -1,5 +1,7 @@
 "use client";
 
+import Link from "next/link";
+
 export default function GlobalError({ error, reset }: { error: Error & { digest?: string }; reset: () => void }) {
   return (
     <html lang="en">
@@ -18,12 +20,12 @@ export default function GlobalError({ error, reset }: { error: Error & { digest?
             >
               Try again
             </button>
-            <a
+            <Link
               href="/"
               style={{ padding: "0.5rem 1rem", border: "1px solid #555", background: "transparent", color: "#eee", borderRadius: "4px", textDecoration: "none" }}
             >
               Back to iofus
-            </a>
+            </Link>
           </div>
         </main>
       </body>

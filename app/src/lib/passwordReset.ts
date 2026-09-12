@@ -1,5 +1,6 @@
-import { createHash, randomBytes, scryptSync } from "node:crypto";
+import { createHash, randomBytes } from "node:crypto";
 import { getDb } from "./db";
+import { hashPassword } from "./auth";
 import { sendMail } from "./mailer";
 
 const TOKEN_TTL_MS = 60 * 60 * 1000; // 1 hour
@@ -21,7 +22,18 @@ export function setUserEmail(userId: string, email: string): void {
     .get(trimmed, userId);
   if (conflict) throw new PasswordResetError("That email is already in use.");
 
-  db.prepare("UPDATE users SET email = ? WHERE id = ?").run(trimmed, userId);
+  try {
+    db.prepare("UPDATE users SET email = ? WHERE id = ?").run(trimmed, userId);
+  } catch (err) {
+    // The check above only rules out an already-committed duplicate. Two
+    // concurrent claims on the same address can both pass it, and the unique
+    // index is what actually stops the second -- translated here into the same
+    // message the upfront check produces rather than a raw SQLite error.
+    if (err instanceof Error && /UNIQUE constraint failed/i.test(err.message)) {
+      throw new PasswordResetError("That email is already in use.");
+    }
+    throw err;
+  }
 }
 
 export function getUserEmail(userId: string): string | null {
@@ -89,11 +101,34 @@ export function verifyResetToken(token: string): string | null {
   return row.user_id;
 }
 
-export function consumeResetToken(token: string, newPassword: string): void {
+export async function consumeResetToken(token: string, newPassword: string): Promise<void> {
   if (!newPassword || newPassword.length < 8) throw new PasswordResetError("Password must be at least 8 characters.");
 
   const tokenHash = hashToken(token);
   const db = getDb();
+
+  // Reject a token that is already known bad before doing any hashing. Hashing
+  // is deliberately slow and runs in a small queue shared with login and
+  // signup, so letting invalid, expired or already-used tokens reach it would
+  // let stale reset forms -- or deliberate submissions, which the per-IP limit
+  // does not stop when spread across addresses -- occupy those slots and stall
+  // real sign-ins. This is only an early-out: the authoritative check is still
+  // the one inside the transaction below, which is what makes reuse racing
+  // safe.
+  const preliminary = db
+    .prepare("SELECT expires_at FROM password_reset_tokens WHERE token_hash = ?")
+    .get(tokenHash) as { expires_at: string } | undefined;
+  if (!preliminary) {
+    throw new PasswordResetError("This reset link is invalid or has already been used.");
+  }
+  if (new Date(preliminary.expires_at) < new Date()) {
+    db.prepare("DELETE FROM password_reset_tokens WHERE token_hash = ?").run(tokenHash);
+    throw new PasswordResetError("This reset link has expired. Request a new one.");
+  }
+
+  // Hashed before the transaction opens. BEGIN IMMEDIATE takes the write lock,
+  // and a deliberately slow KDF must not be run while holding it.
+  const passwordHash = await hashPassword(newPassword);
 
   // All checks and writes happen inside a single BEGIN IMMEDIATE transaction
   // so concurrent submissions of the same token cannot both observe it as
@@ -114,10 +149,6 @@ export function consumeResetToken(token: string, newPassword: string): void {
       db.exec("COMMIT");
       throw new PasswordResetError("This reset link has expired. Request a new one.");
     }
-
-    const salt = randomBytes(16).toString("hex");
-    const hash = scryptSync(newPassword, salt, 64).toString("hex");
-    const passwordHash = `${salt}:${hash}`;
 
     db.prepare("UPDATE users SET password_hash = ? WHERE id = ?").run(passwordHash, row.user_id);
     db.prepare("DELETE FROM password_reset_tokens WHERE token_hash = ?").run(tokenHash);

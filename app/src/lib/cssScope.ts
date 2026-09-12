@@ -63,6 +63,36 @@ export interface CssScopeResult {
   rejected: string[];
 }
 
+/**
+ * Whether *selector* already starts with this page's own scope class, and so
+ * may be emitted without another prefix.
+ *
+ * A plain `startsWith` is not enough: scope `.profile-scope--bob` also prefixes
+ * `.profile-scope--bobby`, so the user with the shorter handle could write
+ * `.profile-scope--bobby .x {}` and have it emitted unscoped, styling a
+ * different user's page. The character following the prefix therefore has to be
+ * one that cannot continue a CSS identifier -- backslash included, since
+ * `.profile-scope--bob\62 by` is another spelling of `.profile-scope--bobby`
+ * that a browser decodes but a naive prefix check does not.
+ */
+function isAlreadyScoped(selector: string, scopeClass: string): boolean {
+  if (!selector.startsWith(scopeClass)) return false;
+
+  const next = selector.charAt(scopeClass.length);
+  if (next !== "" && /[A-Za-z0-9_\-\\]/.test(next)) return false;
+
+  // A sibling combinator immediately after the prefix leaves the container
+  // rather than staying inside it: the page body has real siblings on a
+  // profile page (the friends section, the keep-exploring panel), so
+  // `.profile-scope--bob ~ .their-friends` would reach content that is not the
+  // author's. Treating these as unscoped re-prefixes them, which confines the
+  // match to siblings *within* the page body.
+  const rest = selector.slice(scopeClass.length);
+  if (/^\s*(\+|~|\|\|)/.test(rest)) return false;
+
+  return true;
+}
+
 export function scopeProfileCss(raw: string, scopeClass: string): CssScopeResult {
   const warnings: string[] = [];
   const rejected: string[] = [];
@@ -140,7 +170,7 @@ export function scopeProfileCss(raw: string, scopeClass: string): CssScopeResult
       .map((s) => {
         const part = s.trim();
         if (!part) return "";
-        if (part.startsWith(scopeClass)) return part;
+        if (isAlreadyScoped(part, scopeClass)) return part;
         return `${scopeClass} ${part}`;
       })
       .filter(Boolean)

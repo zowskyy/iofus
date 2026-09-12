@@ -98,3 +98,84 @@ describe("profileScopeClass", () => {
     expect(profileScopeClass("Void_Arcade")).toBe("profile-scope--void_arcade");
   });
 });
+
+describe("scopeProfileCss — scope prefix isolation", () => {
+  it("does not treat a longer handle's scope as already scoped", () => {
+    // @bob writing this must not be able to style @bobby's page. A plain
+    // startsWith check passed this selector through unscoped.
+    const result = scopeProfileCss(
+      ".profile-scope--bobby .bio { color: red; }",
+      ".profile-scope--bob",
+    );
+    expect(result.css).toContain(".profile-scope--bob .profile-scope--bobby .bio");
+  });
+
+  it("does not accept a CSS escape sequence that continues the identifier", () => {
+    // Browsers decode \62 to "b", so this is another spelling of
+    // .profile-scope--bobby. The next character after the prefix is a
+    // backslash, which a naive non-identifier check would have allowed.
+    const result = scopeProfileCss(
+      ".profile-scope--bob\\62 by .bio { color: red; }",
+      ".profile-scope--bob",
+    );
+    expect(result.css).toContain(".profile-scope--bob .profile-scope--bob\\62 by .bio");
+  });
+
+  it("still passes through a selector that is exactly the page's own scope", () => {
+    const result = scopeProfileCss(
+      ".profile-scope--bob { background: black; }",
+      ".profile-scope--bob",
+    );
+    expect(result.css).toContain(".profile-scope--bob {");
+    expect(result.css).not.toContain(".profile-scope--bob .profile-scope--bob");
+  });
+
+  it("still passes through the page's own scope followed by a descendant", () => {
+    const result = scopeProfileCss(
+      ".profile-scope--bob .bio { color: red; }",
+      ".profile-scope--bob",
+    );
+    expect(result.css).not.toContain(".profile-scope--bob .profile-scope--bob");
+  });
+});
+
+describe("scopeProfileCss — sibling combinators cannot leave the container", () => {
+  // The page body has real siblings on a profile page (the friends section and
+  // the keep-exploring panel), so a selector that is scoped-then-sibling
+  // reaches content the page's author does not own.
+  for (const combinator of ["~", "+"]) {
+    it(`re-scopes '${combinator}' applied to the scope class itself`, () => {
+      const result = scopeProfileCss(
+        `.profile-scope--bob ${combinator} .their-friends { display: none; }`,
+        ".profile-scope--bob",
+      );
+      expect(result.css).toContain(
+        `.profile-scope--bob .profile-scope--bob ${combinator} .their-friends`,
+      );
+    });
+
+    it(`re-scopes '${combinator}' with no surrounding space`, () => {
+      const result = scopeProfileCss(
+        `.profile-scope--bob${combinator}.after-page-panel { display: none; }`,
+        ".profile-scope--bob",
+      );
+      expect(result.css).toContain(".profile-scope--bob .profile-scope--bob");
+    });
+  }
+
+  it("still passes through a plain descendant selector unchanged", () => {
+    const result = scopeProfileCss(
+      ".profile-scope--bob .bio { color: red; }",
+      ".profile-scope--bob",
+    );
+    expect(result.css).not.toContain(".profile-scope--bob .profile-scope--bob");
+  });
+
+  it("still passes through a child combinator, which stays inside", () => {
+    const result = scopeProfileCss(
+      ".profile-scope--bob > .bio { color: red; }",
+      ".profile-scope--bob",
+    );
+    expect(result.css).not.toContain(".profile-scope--bob .profile-scope--bob");
+  });
+});

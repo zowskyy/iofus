@@ -23,7 +23,7 @@ export async function resetPasswordAction(token: string, _prev: ResetState, form
   if (password !== confirm) return { error: "Passwords do not match." };
 
   try {
-    consumeResetToken(token, password);
+    await consumeResetToken(token, password);
   } catch (err) {
     if (err instanceof PasswordResetError) return { error: err.message };
     console.error("[resetPasswordAction] unexpected error", err);

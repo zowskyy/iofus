@@ -1,5 +1,6 @@
 import { z } from "zod";
 import { getDb } from "./db";
+import { hasBlockRelationship } from "./friends";
 import { randomUUID } from "node:crypto";
 import {
   CURRENT_SCHEMA_VERSION,
@@ -256,6 +257,27 @@ export function canViewPage(
   if (!stored.isPublished && !isOwner) return false;
   if (stored.visibility === "private" && !isOwner) return false;
   return true;
+}
+
+/**
+ * Whether *viewerId* may see *ownerId*'s page, block relationships included.
+ *
+ * `canViewPage` covers only publication and visibility, so every call site had
+ * to remember a separate `hasBlockRelationship` check. Two of them did not: the
+ * blog and devlog RSS feeds served a blocked reader the same posts the
+ * equivalent HTML route hides from them. Prefer this wherever a viewer is
+ * known, so the block check cannot be omitted by accident again.
+ */
+export function canViewPageFor(
+  stored: StoredPage | null,
+  ownerId: string,
+  viewerId: string | null,
+): boolean {
+  if (!canViewPage(stored, ownerId, viewerId)) return false;
+  // Signed-out visitors have no block relationship, and owners always see
+  // their own page.
+  if (viewerId === null || viewerId === ownerId) return true;
+  return !hasBlockRelationship(viewerId, ownerId);
 }
 
 /** Returns the draft when the owner is in preview, otherwise the published document. */

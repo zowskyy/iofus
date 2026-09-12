@@ -3,6 +3,7 @@ import {
   activatePanicMode,
   deactivatePanicMode,
   canViewPage,
+  canViewPageFor,
   defaultPageDocument,
   getPageDocument,
   importPageData,
@@ -21,46 +22,47 @@ import {
   CURRENT_SCHEMA_VERSION,
 } from "./pageDocument";
 import { createUser } from "./auth";
+import { blockUser } from "./friends";
 import { resetDbForTests } from "./db";
 
 process.env.IOFUS_DB_PATH = ":memory:";
 
-beforeEach(() => {
+beforeEach(async () => {
   resetDbForTests();
 });
 
 describe("parsePageDocument", () => {
-  it("accepts a well-formed v2 document", () => {
+  it("accepts a well-formed v2 document", async () => {
     const doc = defaultPageDocument("Void Arcade");
     expect(doc.version).toBe(CURRENT_SCHEMA_VERSION);
     expect(() => parsePageDocument(doc)).not.toThrow();
   });
 
-  it("rejects a document with the wrong schema version", () => {
+  it("rejects a document with the wrong schema version", async () => {
     const doc = { ...defaultPageDocument("Void"), version: 99 };
     expect(() => parsePageDocument(doc)).toThrow(PageDocumentValidationError);
   });
 
-  it("rejects a non-hex-color theme value (CSS-injection-shaped input)", () => {
+  it("rejects a non-hex-color theme value (CSS-injection-shaped input)", async () => {
     const doc = defaultPageDocument("Void");
     (doc.theme as unknown as Record<string, string>).accent = "red; } body { display:none";
     expect(() => parsePageDocument(doc)).toThrow(PageDocumentValidationError);
   });
 
-  it("accepts a valid backgroundImageUrl", () => {
+  it("accepts a valid backgroundImageUrl", async () => {
     const doc = defaultPageDocument("Void");
     doc.theme.backgroundImageUrl = "https://example.com/tile.gif";
     doc.theme.backgroundTile = true;
     expect(() => parsePageDocument(doc)).not.toThrow();
   });
 
-  it("rejects a javascript: backgroundImageUrl", () => {
+  it("rejects a javascript: backgroundImageUrl", async () => {
     const doc = defaultPageDocument("Void");
     (doc.theme as unknown as Record<string, string>).backgroundImageUrl = "javascript:alert(1)";
     expect(() => parsePageDocument(doc)).toThrow(PageDocumentValidationError);
   });
 
-  it("defaults marqueeStatus and backgroundTile to false when omitted", () => {
+  it("defaults marqueeStatus and backgroundTile to false when omitted", async () => {
     const doc = defaultPageDocument("Void");
     const { backgroundTile, marqueeStatus, ...rest } = doc.theme;
     void backgroundTile;
@@ -70,13 +72,13 @@ describe("parsePageDocument", () => {
     expect(parsed.theme.marqueeStatus).toBe(false);
   });
 
-  it("accepts a gallery image with empty alt text (decorative, not required)", () => {
+  it("accepts a gallery image with empty alt text (decorative, not required)", async () => {
     const doc = defaultPageDocument("Void");
     doc.gallery.push({ id: crypto.randomUUID(), url: "https://example.com/pic.jpg", alt: "" });
     expect(() => parsePageDocument(doc)).not.toThrow();
   });
 
-  it("defaults a missing gallery alt field to an empty string", () => {
+  it("defaults a missing gallery alt field to an empty string", async () => {
     const doc = defaultPageDocument("Void");
     const withGallery = {
       ...doc,
@@ -86,37 +88,37 @@ describe("parsePageDocument", () => {
     expect(parsed.gallery[0]!.alt).toBe("");
   });
 
-  it("rejects a javascript: URL in a link", () => {
+  it("rejects a javascript: URL in a link", async () => {
     const doc = defaultPageDocument("Void");
     doc.links.push({ label: "click me", url: "javascript:alert(1)" });
     expect(() => parsePageDocument(doc)).toThrow(PageDocumentValidationError);
   });
 
-  it("rejects a data: URL in a link", () => {
+  it("rejects a data: URL in a link", async () => {
     const doc = defaultPageDocument("Void");
     doc.links.push({ label: "click me", url: "data:text/html,<script>alert(1)</script>" });
     expect(() => parsePageDocument(doc)).toThrow(PageDocumentValidationError);
   });
 
-  it("rejects a bio over the length limit", () => {
+  it("rejects a bio over the length limit", async () => {
     const doc = defaultPageDocument("Void");
     doc.identity.bio = "x".repeat(281);
     expect(() => parsePageDocument(doc)).toThrow(PageDocumentValidationError);
   });
 
-  it("rejects an unknown page part id", () => {
+  it("rejects an unknown page part id", async () => {
     const doc = defaultPageDocument("Void");
     (doc.pageParts as string[]).push("javascript-executor");
     expect(() => parsePageDocument(doc)).toThrow(PageDocumentValidationError);
   });
 
-  it("rejects completely malformed input (not an object)", () => {
+  it("rejects completely malformed input (not an object)", async () => {
     expect(() => parsePageDocument("not a document")).toThrow(PageDocumentValidationError);
     expect(() => parsePageDocument(null)).toThrow(PageDocumentValidationError);
     expect(() => parsePageDocument(undefined)).toThrow(PageDocumentValidationError);
   });
 
-  it("error message lists the actual issues, not a generic message", () => {
+  it("error message lists the actual issues, not a generic message", async () => {
     try {
       parsePageDocument({});
       expect.fail("should have thrown");
@@ -129,7 +131,7 @@ describe("parsePageDocument", () => {
 });
 
 describe("migrateDocument", () => {
-  it("upgrades v1 documents to v3 without losing identity and links", () => {
+  it("upgrades v1 documents to v3 without losing identity and links", async () => {
     const v1 = {
       version: 1,
       identity: { displayName: "Legacy Page", bio: "still here" },
@@ -150,7 +152,7 @@ describe("migrateDocument", () => {
     expect(migrated.playlist).toEqual([]);
   });
 
-  it("upgrades v2 documents to v3 with Phase 5 fields", () => {
+  it("upgrades v2 documents to v3 with Phase 5 fields", async () => {
     const v2 = {
       version: 2,
       identity: { displayName: "V2 Page", bio: "" },
@@ -183,7 +185,7 @@ describe("migrateDocument", () => {
     expect(migrated.theme.marqueeStatus).toBe(false);
   });
 
-  it("upgrades v3 documents to v4 by defaulting the new Y2K theme fields", () => {
+  it("upgrades v3 documents to v4 by defaulting the new Y2K theme fields", async () => {
     const v3 = {
       ...defaultPageDocument("V3 Page"),
       version: 3,
@@ -203,8 +205,8 @@ describe("migrateDocument", () => {
 });
 
 describe("savePageDocument / getPageDocument", () => {
-  it("saves and retrieves a document for a real user", () => {
-    const user = createUser("voidarcade", "correct-horse-battery");
+  it("saves and retrieves a document for a real user", async () => {
+    const user = await createUser("voidarcade", "correct-horse-battery");
     savePageDocument(user.id, defaultPageDocument("Void Arcade"));
     const stored = getPageDocument(user.id);
     expect(stored?.document.identity.displayName).toBe("Void Arcade");
@@ -212,19 +214,19 @@ describe("savePageDocument / getPageDocument", () => {
     expect(stored?.visibility).toBe("private");
   });
 
-  it("returns null for a user with no page document yet", () => {
-    const user = createUser("voidarcade", "correct-horse-battery");
+  it("returns null for a user with no page document yet", async () => {
+    const user = await createUser("voidarcade", "correct-horse-battery");
     expect(getPageDocument(user.id)).toBeNull();
   });
 
-  it("refuses to save an invalid document even for a real user", () => {
-    const user = createUser("voidarcade", "correct-horse-battery");
+  it("refuses to save an invalid document even for a real user", async () => {
+    const user = await createUser("voidarcade", "correct-horse-battery");
     expect(() => savePageDocument(user.id, { garbage: true })).toThrow(PageDocumentValidationError);
     expect(getPageDocument(user.id)).toBeNull();
   });
 
-  it("overwriting a document snapshots the previous version", () => {
-    const user = createUser("voidarcade", "correct-horse-battery");
+  it("overwriting a document snapshots the previous version", async () => {
+    const user = await createUser("voidarcade", "correct-horse-battery");
     savePageDocument(user.id, defaultPageDocument("First Name"));
     savePageDocument(user.id, defaultPageDocument("Second Name"));
 
@@ -237,8 +239,8 @@ describe("savePageDocument / getPageDocument", () => {
 });
 
 describe("restoreVersion", () => {
-  it("restores an earlier version as current, and that restore is itself snapshotted", () => {
-    const user = createUser("voidarcade", "correct-horse-battery");
+  it("restores an earlier version as current, and that restore is itself snapshotted", async () => {
+    const user = await createUser("voidarcade", "correct-horse-battery");
     savePageDocument(user.id, defaultPageDocument("First Name"));
     savePageDocument(user.id, defaultPageDocument("Second Name"));
 
@@ -252,15 +254,15 @@ describe("restoreVersion", () => {
     expect(listVersions(user.id).length).toBe(2);
   });
 
-  it("throws for a version id that doesn't exist", () => {
-    const user = createUser("voidarcade", "correct-horse-battery");
+  it("throws for a version id that doesn't exist", async () => {
+    const user = await createUser("voidarcade", "correct-horse-battery");
     savePageDocument(user.id, defaultPageDocument("Void"));
     expect(() => restoreVersion(user.id, "not-a-real-version-id")).toThrow(VersionNotFoundError);
   });
 
-  it("throws if the version belongs to a different user (no cross-account restore)", () => {
-    const userA = createUser("voidarcade", "correct-horse-battery");
-    const userB = createUser("otheruser", "correct-horse-battery");
+  it("throws if the version belongs to a different user (no cross-account restore)", async () => {
+    const userA = await createUser("voidarcade", "correct-horse-battery");
+    const userB = await createUser("otheruser", "correct-horse-battery");
     savePageDocument(userA.id, defaultPageDocument("A v1"));
     savePageDocument(userA.id, defaultPageDocument("A v2"));
     const versionId = listVersions(userA.id)[0]!.id;
@@ -270,20 +272,20 @@ describe("restoreVersion", () => {
 });
 
 describe("setPublished / setVisibility", () => {
-  it("publishes a page that already has a document", () => {
-    const user = createUser("voidarcade", "correct-horse-battery");
+  it("publishes a page that already has a document", async () => {
+    const user = await createUser("voidarcade", "correct-horse-battery");
     savePageDocument(user.id, defaultPageDocument("Void"));
     setPublished(user.id, true);
     expect(getPageDocument(user.id)?.isPublished).toBe(true);
   });
 
-  it("refuses to publish before any document exists", () => {
-    const user = createUser("voidarcade", "correct-horse-battery");
+  it("refuses to publish before any document exists", async () => {
+    const user = await createUser("voidarcade", "correct-horse-battery");
     expect(() => setPublished(user.id, true)).toThrow();
   });
 
-  it("changes visibility", () => {
-    const user = createUser("voidarcade", "correct-horse-battery");
+  it("changes visibility", async () => {
+    const user = await createUser("voidarcade", "correct-horse-battery");
     savePageDocument(user.id, defaultPageDocument("Void"));
     setVisibility(user.id, "public");
     expect(getPageDocument(user.id)?.visibility).toBe("public");
@@ -291,8 +293,8 @@ describe("setPublished / setVisibility", () => {
 });
 
 describe("draft invariant: publishing by any path clears a stale draft", () => {
-  it("restoreVersion discards the outstanding draft", () => {
-    const user = createUser("voidarcade", "correct-horse-battery");
+  it("restoreVersion discards the outstanding draft", async () => {
+    const user = await createUser("voidarcade", "correct-horse-battery");
     savePageDocument(user.id, defaultPageDocument("First Name"));
     savePageDocument(user.id, defaultPageDocument("Second Name"));
     const firstVersionId = listVersions(user.id)[listVersions(user.id).length - 1]!.id;
@@ -306,8 +308,8 @@ describe("draft invariant: publishing by any path clears a stale draft", () => {
     expect(getPageDocument(user.id)?.draftDocument).toBeNull();
   });
 
-  it("publishDraft clears the draft it just promoted", () => {
-    const user = createUser("voidarcade", "correct-horse-battery");
+  it("publishDraft clears the draft it just promoted", async () => {
+    const user = await createUser("voidarcade", "correct-horse-battery");
     savePageDocument(user.id, defaultPageDocument("Published"));
     saveDraftDocument(user.id, defaultPageDocument("Draft"));
 
@@ -318,8 +320,8 @@ describe("draft invariant: publishing by any path clears a stale draft", () => {
     expect(stored?.draftDocument).toBeNull();
   });
 
-  it("importPageData discards a stale draft that predates the import", () => {
-    const user = createUser("voidarcade", "correct-horse-battery");
+  it("importPageData discards a stale draft that predates the import", async () => {
+    const user = await createUser("voidarcade", "correct-horse-battery");
     savePageDocument(user.id, defaultPageDocument("Before import"));
     saveDraftDocument(user.id, defaultPageDocument("Stale draft"));
 
@@ -331,9 +333,9 @@ describe("draft invariant: publishing by any path clears a stale draft", () => {
 });
 
 describe("canViewPage", () => {
-  it("private published pages are owner-only", () => {
-    const owner = createUser("voidarcade", "correct-horse-battery");
-    const viewer = createUser("neonorchard", "correct-horse-battery");
+  it("private published pages are owner-only", async () => {
+    const owner = await createUser("voidarcade", "correct-horse-battery");
+    const viewer = await createUser("neonorchard", "correct-horse-battery");
     savePageDocument(owner.id, defaultPageDocument("Void"));
     setPublished(owner.id, true);
     setVisibility(owner.id, "private");
@@ -344,8 +346,8 @@ describe("canViewPage", () => {
     expect(canViewPage(stored, owner.id, null)).toBe(false);
   });
 
-  it("unlisted published pages are visible to anyone", () => {
-    const owner = createUser("voidarcade", "correct-horse-battery");
+  it("unlisted published pages are visible to anyone", async () => {
+    const owner = await createUser("voidarcade", "correct-horse-battery");
     savePageDocument(owner.id, defaultPageDocument("Void"));
     setPublished(owner.id, true);
     setVisibility(owner.id, "unlisted");
@@ -354,8 +356,8 @@ describe("canViewPage", () => {
     expect(canViewPage(stored, owner.id, null)).toBe(true);
   });
 
-  it("unpublished pages are owner-only", () => {
-    const owner = createUser("voidarcade", "correct-horse-battery");
+  it("unpublished pages are owner-only", async () => {
+    const owner = await createUser("voidarcade", "correct-horse-battery");
     savePageDocument(owner.id, defaultPageDocument("Void"));
     const stored = getPageDocument(owner.id)!;
 
@@ -365,8 +367,8 @@ describe("canViewPage", () => {
 });
 
 describe("activatePanicMode", () => {
-  it("keeps the page reachable by direct link, per its own documented promise", () => {
-    const owner = createUser("panicuser", "correct-horse-battery");
+  it("keeps the page reachable by direct link, per its own documented promise", async () => {
+    const owner = await createUser("panicuser", "correct-horse-battery");
     savePageDocument(owner.id, defaultPageDocument("Panic Test"));
     setPublished(owner.id, true);
     setVisibility(owner.id, "public");
@@ -381,8 +383,8 @@ describe("activatePanicMode", () => {
     expect(canViewPage(stored, owner.id, null)).toBe(true);
   });
 
-  it("hides the page from discovery and disables the guestbook", () => {
-    const owner = createUser("panicuser2", "correct-horse-battery");
+  it("hides the page from discovery and disables the guestbook", async () => {
+    const owner = await createUser("panicuser2", "correct-horse-battery");
     savePageDocument(owner.id, defaultPageDocument("Panic Test 2"));
     setPublished(owner.id, true);
     setVisibility(owner.id, "public");
@@ -396,13 +398,13 @@ describe("activatePanicMode", () => {
     expect(stored.isPublished).toBe(true);
   });
 
-  it("sets visibility to the exact state the settings page checks for its confirmation UI", () => {
+  it("sets visibility to the exact state the settings page checks for its confirmation UI", async () => {
     // Regression for the specific bug reported: settings/page.tsx's
     // confirmation text only renders when hiddenFromDiscovery && visibility
     // === "unlisted" — activatePanicMode previously set visibility to
     // 'private', so that condition never matched and the confirmation UI
     // never appeared even though the underlying update succeeded.
-    const owner = createUser("panicuser3", "correct-horse-battery");
+    const owner = await createUser("panicuser3", "correct-horse-battery");
     savePageDocument(owner.id, defaultPageDocument("Panic Test 3"));
     setPublished(owner.id, true);
     setVisibility(owner.id, "public");
@@ -416,8 +418,8 @@ describe("activatePanicMode", () => {
 });
 
 describe("deactivatePanicMode", () => {
-  it("restores the page to public, discoverable, and guestbook-enabled", () => {
-    const owner = createUser("panicuser4", "correct-horse-battery");
+  it("restores the page to public, discoverable, and guestbook-enabled", async () => {
+    const owner = await createUser("panicuser4", "correct-horse-battery");
     savePageDocument(owner.id, defaultPageDocument("Panic Test 4"));
     setPublished(owner.id, true);
     setVisibility(owner.id, "public");
@@ -435,5 +437,70 @@ describe("deactivatePanicMode", () => {
     // toggle button flips back to "Activate panic mode".
     const panicActive = stored.hiddenFromDiscovery && stored.visibility === "unlisted";
     expect(panicActive).toBe(false);
+  });
+});
+
+describe("canViewPageFor", () => {
+  async function publicPageOwnedBy(handle: string) {
+    const owner = await createUser(handle, "correct-horse-battery");
+    savePageDocument(owner.id, defaultPageDocument("Void"));
+    setPublished(owner.id, true);
+    setVisibility(owner.id, "public");
+    return owner;
+  }
+
+  it("hides a public page from a reader the owner blocked", async () => {
+    // The bug this covers: the blog and devlog RSS routes checked only
+    // isPublished/visibility, so a blocked reader could still read every post
+    // body through the feed even though the HTML route 404s for them.
+    const owner = await publicPageOwnedBy("voidarcade");
+    const reader = await createUser("neonorchard", "correct-horse-battery");
+    blockUser(owner.id, reader.id);
+    const stored = getPageDocument(owner.id)!;
+
+    expect(canViewPage(stored, owner.id, reader.id)).toBe(true); // visibility alone says yes
+    expect(canViewPageFor(stored, owner.id, reader.id)).toBe(false); // with blocks, no
+  });
+
+  it("hides the page in both directions of a block", async () => {
+    const owner = await publicPageOwnedBy("voidarcade");
+    const reader = await createUser("neonorchard", "correct-horse-battery");
+    blockUser(reader.id, owner.id); // reader blocked the owner, not vice versa
+    const stored = getPageDocument(owner.id)!;
+
+    expect(canViewPageFor(stored, owner.id, reader.id)).toBe(false);
+  });
+
+  it("still shows a public page to an unblocked reader and to signed-out visitors", async () => {
+    const owner = await publicPageOwnedBy("voidarcade");
+    const reader = await createUser("neonorchard", "correct-horse-battery");
+    const stored = getPageDocument(owner.id)!;
+
+    expect(canViewPageFor(stored, owner.id, reader.id)).toBe(true);
+    expect(canViewPageFor(stored, owner.id, null)).toBe(true);
+  });
+
+  it("always shows owners their own page", async () => {
+    const owner = await publicPageOwnedBy("voidarcade");
+    const stored = getPageDocument(owner.id)!;
+    expect(canViewPageFor(stored, owner.id, owner.id)).toBe(true);
+  });
+
+  it("still enforces visibility and publication", async () => {
+    const owner = await createUser("voidarcade", "correct-horse-battery");
+    const reader = await createUser("neonorchard", "correct-horse-battery");
+    savePageDocument(owner.id, defaultPageDocument("Void"));
+    setPublished(owner.id, true);
+    setVisibility(owner.id, "private");
+    const stored = getPageDocument(owner.id)!;
+
+    expect(canViewPageFor(stored, owner.id, reader.id)).toBe(false);
+  });
+
+  it("rejects a page id that matches no document", async () => {
+    // The stamp endpoints accepted any UUID as a page owner, inserting rows
+    // for pages that never existed.
+    const reader = await createUser("neonorchard", "correct-horse-battery");
+    expect(canViewPageFor(null, "no-such-owner", reader.id)).toBe(false);
   });
 });

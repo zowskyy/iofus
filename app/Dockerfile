@@ -40,7 +40,16 @@ ENV IOFUS_DB_PATH=/data/iofus.db
 USER nextjs
 
 EXPOSE 3000
+# Render injects its own PORT at runtime, which overrides this; the default
+# only matters when the image is run directly. HOSTNAME must stay 0.0.0.0 --
+# binding loopback makes the service unreachable from outside the container.
 ENV PORT=3000
 ENV HOSTNAME="0.0.0.0"
+
+# Checks the database is actually reachable, not merely that the port is open.
+# The boot gate exits on bad configuration, but a container can also reach a
+# state where it listens while being unable to serve.
+HEALTHCHECK --interval=30s --timeout=5s --start-period=20s --retries=3 \
+  CMD node -e "fetch('http://127.0.0.1:'+(process.env.PORT||3000)+'/api/health').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))"
 
 CMD ["node", "server.js"]

@@ -9,7 +9,7 @@ import { getFriendActivityFeed } from "./activityFeed";
 
 process.env.IOFUS_DB_PATH = ":memory:";
 
-beforeEach(() => {
+beforeEach(async () => {
   resetDbForTests();
 });
 
@@ -20,8 +20,8 @@ function befriend(a: { id: string }, b: { id: string }) {
   acceptFriendRequest(b.id, req.id);
 }
 
-function publishPublicPage(handle: string, displayName: string) {
-  const user = createUser(handle, "correct-horse-battery");
+async function publishPublicPage(handle: string, displayName: string) {
+  const user = await createUser(handle, "correct-horse-battery");
   savePageDocument(user.id, defaultPageDocument(displayName));
   setPublished(user.id, true);
   setVisibility(user.id, "public");
@@ -29,14 +29,14 @@ function publishPublicPage(handle: string, displayName: string) {
 }
 
 describe("getFriendActivityFeed", () => {
-  it("returns an empty feed for a user with no friends", () => {
-    const user = createUser("lonely", "correct-horse-battery");
+  it("returns an empty feed for a user with no friends", async () => {
+    const user = await createUser("lonely", "correct-horse-battery");
     expect(getFriendActivityFeed(user.id)).toEqual([]);
   });
 
-  it("returns a page_decorated item for each published friend page", () => {
-    const viewer = createUser("viewer", "correct-horse-battery");
-    const friend = publishPublicPage("friendone", "Friend One");
+  it("returns a page_decorated item for each published friend page", async () => {
+    const viewer = await createUser("viewer", "correct-horse-battery");
+    const friend = await publishPublicPage("friendone", "Friend One");
     befriend(viewer, friend);
 
     const feed = getFriendActivityFeed(viewer.id);
@@ -47,18 +47,18 @@ describe("getFriendActivityFeed", () => {
     expect(feed[0]!.href).toBe("/@friendone");
   });
 
-  it("excludes friends who haven't published", () => {
-    const viewer = createUser("viewer", "correct-horse-battery");
-    const friend = createUser("unpublishedfriend", "correct-horse-battery");
+  it("excludes friends who haven't published", async () => {
+    const viewer = await createUser("viewer", "correct-horse-battery");
+    const friend = await createUser("unpublishedfriend", "correct-horse-battery");
     savePageDocument(friend.id, defaultPageDocument("Unpublished"));
     befriend(viewer, friend);
 
     expect(getFriendActivityFeed(viewer.id)).toEqual([]);
   });
 
-  it("includes blog posts and devlog entries, using the resolved display name", () => {
-    const viewer = createUser("viewer", "correct-horse-battery");
-    const friend = createUser("blogger", "correct-horse-battery");
+  it("includes blog posts and devlog entries, using the resolved display name", async () => {
+    const viewer = await createUser("viewer", "correct-horse-battery");
+    const friend = await createUser("blogger", "correct-horse-battery");
     const doc = defaultPageDocument("Blogger Name");
     doc.blog = [
       { id: randomUUID(), title: "First post", slug: "first-post", body: "hello", publishedAt: "2024-01-01T00:00:00.000Z" },
@@ -83,9 +83,9 @@ describe("getFriendActivityFeed", () => {
     expect(blogItems[0]!.title).toBe("Second post");
   });
 
-  it("caps blog posts and devlog entries at 3 each per friend", () => {
-    const viewer = createUser("viewer", "correct-horse-battery");
-    const friend = createUser("prolific", "correct-horse-battery");
+  it("caps blog posts and devlog entries at 3 each per friend", async () => {
+    const viewer = await createUser("viewer", "correct-horse-battery");
+    const friend = await createUser("prolific", "correct-horse-battery");
     const doc = defaultPageDocument("Prolific Poster");
     doc.blog = Array.from({ length: 5 }, (_, i) => ({
       id: randomUUID(),
@@ -104,9 +104,9 @@ describe("getFriendActivityFeed", () => {
     expect(blogItems).toHaveLength(3);
   });
 
-  it("truncates long devlog bodies to 60 chars with an ellipsis in the title", () => {
-    const viewer = createUser("viewer", "correct-horse-battery");
-    const friend = createUser("longwriter", "correct-horse-battery");
+  it("truncates long devlog bodies to 60 chars with an ellipsis in the title", async () => {
+    const viewer = await createUser("viewer", "correct-horse-battery");
+    const friend = await createUser("longwriter", "correct-horse-battery");
     const doc = defaultPageDocument("Long Writer");
     const longBody = "x".repeat(100);
     doc.devlog = [{ id: randomUUID(), date: "2024-01-01T00:00:00.000Z", body: longBody }];
@@ -120,9 +120,9 @@ describe("getFriendActivityFeed", () => {
     expect(devlogItem.title).toBe("x".repeat(60) + "…");
   });
 
-  it("falls back to the handle and skips blog/devlog when document_json is malformed", () => {
-    const viewer = createUser("viewer", "correct-horse-battery");
-    const friend = publishPublicPage("corruptdoc", "Corrupt Doc");
+  it("falls back to the handle and skips blog/devlog when document_json is malformed", async () => {
+    const viewer = await createUser("viewer", "correct-horse-battery");
+    const friend = await publishPublicPage("corruptdoc", "Corrupt Doc");
     befriend(viewer, friend);
 
     const db = getDb();
@@ -134,16 +134,16 @@ describe("getFriendActivityFeed", () => {
     expect(feed[0]!.actorDisplayName).toBe("corruptdoc");
   });
 
-  it("includes an approved guestbook entry authored by a friend on someone else's page, with the friend's resolved display name", () => {
-    const viewer = createUser("viewer", "correct-horse-battery");
-    const author = createUser("signerhandle", "correct-horse-battery");
+  it("includes an approved guestbook entry authored by a friend on someone else's page, with the friend's resolved display name", async () => {
+    const viewer = await createUser("viewer", "correct-horse-battery");
+    const author = await createUser("signerhandle", "correct-horse-battery");
     const doc = defaultPageDocument("Signer Display Name");
     savePageDocument(author.id, doc);
     setPublished(author.id, true);
     setVisibility(author.id, "public");
     befriend(viewer, author);
 
-    const pageOwner = publishPublicPage("someoneelse", "Someone Else");
+    const pageOwner = await publishPublicPage("someoneelse", "Someone Else");
     signGuestbook(pageOwner.id, author.id, "signerhandle", "hi there", false);
 
     const feed = getFriendActivityFeed(viewer.id);
@@ -154,11 +154,11 @@ describe("getFriendActivityFeed", () => {
     expect(gbItem.targetHandle).toBe("someoneelse");
   });
 
-  it("excludes a pending (unapproved) guestbook entry", () => {
-    const viewer = createUser("viewer", "correct-horse-battery");
-    const author = publishPublicPage("pendingsigner", "Pending Signer");
+  it("excludes a pending (unapproved) guestbook entry", async () => {
+    const viewer = await createUser("viewer", "correct-horse-battery");
+    const author = await publishPublicPage("pendingsigner", "Pending Signer");
     befriend(viewer, author);
-    const pageOwner = publishPublicPage("modpage", "Mod Page");
+    const pageOwner = await publishPublicPage("modpage", "Mod Page");
 
     signGuestbook(pageOwner.id, author.id, "pendingsigner", "awaiting approval", true);
 
@@ -166,22 +166,22 @@ describe("getFriendActivityFeed", () => {
     expect(feed.some((f) => f.kind === "guestbook_signed")).toBe(false);
   });
 
-  it("excludes a guestbook entry whose author handle isn't in the viewer's friend set", () => {
-    const viewer = createUser("viewer", "correct-horse-battery");
-    const friend = publishPublicPage("realfriend", "Real Friend");
+  it("excludes a guestbook entry whose author handle isn't in the viewer's friend set", async () => {
+    const viewer = await createUser("viewer", "correct-horse-battery");
+    const friend = await publishPublicPage("realfriend", "Real Friend");
     befriend(viewer, friend);
 
-    const stranger = createUser("stranger", "correct-horse-battery");
-    const pageOwner = publishPublicPage("targetpage", "Target Page");
+    const stranger = await createUser("stranger", "correct-horse-battery");
+    const pageOwner = await publishPublicPage("targetpage", "Target Page");
     signGuestbook(pageOwner.id, stranger.id, "stranger", "hi", false);
 
     const feed = getFriendActivityFeed(viewer.id);
     expect(feed.some((f) => f.kind === "guestbook_signed")).toBe(false);
   });
 
-  it("sorts the combined feed newest first and respects the limit", () => {
-    const viewer = createUser("viewer", "correct-horse-battery");
-    const friend = createUser("timelinefriend", "correct-horse-battery");
+  it("sorts the combined feed newest first and respects the limit", async () => {
+    const viewer = await createUser("viewer", "correct-horse-battery");
+    const friend = await createUser("timelinefriend", "correct-horse-battery");
     const doc = defaultPageDocument("Timeline Friend");
     doc.blog = [
       { id: randomUUID(), title: "Old post", slug: "old-post", body: "b", publishedAt: "2020-01-01T00:00:00.000Z" },
@@ -198,9 +198,9 @@ describe("getFriendActivityFeed", () => {
   });
 
   // Privacy/block-bypass regression tests from PR #18 security audit
-  it("does not leak a friend's page-decorated activity once they go private", () => {
-    const viewer = createUser("voidarcade", "correct-horse-battery");
-    const friend = publishPublicPage("neonorchard", "Neon Orchard");
+  it("does not leak a friend's page-decorated activity once they go private", async () => {
+    const viewer = await createUser("voidarcade", "correct-horse-battery");
+    const friend = await publishPublicPage("neonorchard", "Neon Orchard");
     savePageDocument(viewer.id, defaultPageDocument("Void Arcade"));
     setPublished(viewer.id, true);
     befriend(viewer, friend);
@@ -210,9 +210,9 @@ describe("getFriendActivityFeed", () => {
     expect(items.some((i) => i.actorHandle === "neonorchard")).toBe(false);
   });
 
-  it("does not leak a blocked friend's activity", () => {
-    const viewer = createUser("voidarcade", "correct-horse-battery");
-    const friend = publishPublicPage("neonorchard", "Neon Orchard");
+  it("does not leak a blocked friend's activity", async () => {
+    const viewer = await createUser("voidarcade", "correct-horse-battery");
+    const friend = await publishPublicPage("neonorchard", "Neon Orchard");
     savePageDocument(viewer.id, defaultPageDocument("Void Arcade"));
     setPublished(viewer.id, true);
     befriend(viewer, friend);
@@ -222,10 +222,10 @@ describe("getFriendActivityFeed", () => {
     expect(items.some((i) => i.actorHandle === "neonorchard")).toBe(false);
   });
 
-  it("does not leak a private target's identity through a friend's guestbook activity", () => {
-    const viewer = createUser("voidarcade", "correct-horse-battery");
-    const friend = publishPublicPage("neonorchard", "Neon Orchard");
-    const target = publishPublicPage("privateuser", "Private User");
+  it("does not leak a private target's identity through a friend's guestbook activity", async () => {
+    const viewer = await createUser("voidarcade", "correct-horse-battery");
+    const friend = await publishPublicPage("neonorchard", "Neon Orchard");
+    const target = await publishPublicPage("privateuser", "Private User");
     savePageDocument(viewer.id, defaultPageDocument("Void Arcade"));
     setPublished(viewer.id, true);
     setVisibility(target.id, "private");
@@ -237,10 +237,10 @@ describe("getFriendActivityFeed", () => {
     expect(items.some((i) => i.kind === "guestbook_signed" && i.targetHandle === "privateuser")).toBe(false);
   });
 
-  it("does not leak a guestbook target's identity when the viewer has blocked them", () => {
-    const viewer = createUser("voidarcade", "correct-horse-battery");
-    const friend = publishPublicPage("neonorchard", "Neon Orchard");
-    const target = publishPublicPage("blockeduser", "Blocked User");
+  it("does not leak a guestbook target's identity when the viewer has blocked them", async () => {
+    const viewer = await createUser("voidarcade", "correct-horse-battery");
+    const friend = await publishPublicPage("neonorchard", "Neon Orchard");
+    const target = await publishPublicPage("blockeduser", "Blocked User");
     savePageDocument(viewer.id, defaultPageDocument("Void Arcade"));
     setPublished(viewer.id, true);
     befriend(viewer, friend);

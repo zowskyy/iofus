@@ -61,8 +61,15 @@ const commandArb = fc.oneof(
   }),
 );
 
-function makePool(): User[] {
-  return Array.from({ length: POOL_SIZE }, (_, i) => createUser(`fuzz${i}user`, "correct-horse-battery"));
+async function makePool(): Promise<User[]> {
+  const users: User[] = [];
+  // Sequential rather than Promise.all: these share one SQLite write lock, and
+  // the handles must be created in a deterministic order for the fuzzer's
+  // index-based commands to mean the same thing on every run.
+  for (let i = 0; i < POOL_SIZE; i++) {
+    users.push(await createUser(`fuzz${i}user`, "correct-horse-battery"));
+  }
+  return users;
 }
 
 /** Executes *cmd* against the real friends.ts API, swallowing the domain errors it can legitimately throw for an invalid transition (self-friend, duplicate, blocked, not-found, not-a-participant) — those rejections are exactly the invariant under test, not a bug. */
@@ -164,17 +171,19 @@ function checkInvariants(pool: User[]): void {
 }
 
 describe("friend graph invariants (property-based)", () => {
-  beforeEach(() => {
+  beforeEach(async () => {
     resetDbForTests();
   });
 
   it(
-    "never violates graph invariants under any sequence of valid/invalid operations",
-    () => {
-      fc.assert(
-        fc.property(fc.array(commandArb, { minLength: 1, maxLength: 25 }), (commands) => {
+    "never violates graph invariants under any sequence of valid/invalid operations", async () => {
+      // asyncProperty (and awaiting the assert) because building the pool now
+      // hashes passwords, which is async. fc.property would silently treat the
+      // returned promise as a truthy pass and assert nothing.
+      await fc.assert(
+        fc.asyncProperty(fc.array(commandArb, { minLength: 1, maxLength: 25 }), async (commands) => {
           resetDbForTests();
-          const pool = makePool();
+          const pool = await makePool();
           for (const cmd of commands) apply(pool, cmd);
           checkInvariants(pool);
         }),
@@ -184,9 +193,9 @@ describe("friend graph invariants (property-based)", () => {
     30_000,
   );
 
-  it("regression: blocking after a pending request removes it, and re-requesting after unblock starts clean", () => {
+  it("regression: blocking after a pending request removes it, and re-requesting after unblock starts clean", async () => {
     resetDbForTests();
-    const pool = makePool();
+    const pool = await makePool();
     sendFriendRequest(pool[0]!.id, pool[1]!.id);
     blockUser(pool[1]!.id, pool[0]!.id);
     expect(listIncomingRequests(pool[1]!.id)).toHaveLength(0);

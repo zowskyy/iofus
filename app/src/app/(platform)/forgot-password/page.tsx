@@ -33,7 +33,7 @@ export default function ForgotPasswordPage() {
       </p>
       <h1>Reset your password</h1>
       <p style={{ color: "var(--ink-soft)" }}>
-        Enter your handle or the email address on your account. If we have a match, we'll send a reset link.
+        Enter your handle or the email address on your account. If we have a match, we&apos;ll send a reset link.
       </p>
 
       {state.error && (

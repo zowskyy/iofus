@@ -1,5 +1,6 @@
 import type { MetadataRoute } from "next";
 import { countPublicProfiles, listPublicProfilesPage } from "@/lib/discovery";
+import { canonicalOrigin } from "@/lib/canonicalOrigin";
 
 // Force runtime evaluation so the sitemap queries the live database, not a
 // build-time snapshot (the SQLite volume is not mounted during `next build`).
@@ -11,12 +12,6 @@ const STATIC_SLOTS = 2;
 const MAX_PER_SITEMAP = 50_000;
 const PROFILES_PAGE_0 = MAX_PER_SITEMAP - STATIC_SLOTS;
 
-function baseUrl(): string {
-  const origin = process.env.IOFUS_ALLOWED_ORIGIN;
-  if (origin) return `https://${origin}`;
-  return "http://localhost:3000";
-}
-
 export function generateSitemaps(): { id: number }[] {
   const total = countPublicProfiles();
   const extraPages = Math.max(0, Math.ceil((total - PROFILES_PAGE_0) / MAX_PER_SITEMAP));
@@ -25,7 +20,7 @@ export function generateSitemaps(): { id: number }[] {
 
 export default async function sitemap(props: { id: Promise<string> }): Promise<MetadataRoute.Sitemap> {
   const pageId = Number(await props.id);
-  const root = baseUrl();
+  const root = canonicalOrigin();
 
   if (pageId === 0) {
     const profiles = listPublicProfilesPage(0, PROFILES_PAGE_0).map(({ handle, updatedAt }) => ({

@@ -1,31 +1,13 @@
 import { DatabaseSync } from "node:sqlite";
-import { readFileSync, mkdirSync } from "node:fs";
+import { mkdirSync } from "node:fs";
 import { join, dirname } from "node:path";
 import { fileURLToPath } from "node:url";
 import { randomUUID } from "node:crypto";
+import { SCHEMA_SQL } from "./schema";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 
 let dbInstance: DatabaseSync | undefined;
-
-// Warn loudly on first startup if production-critical env vars are missing.
-// Logged once (guarded by dbInstance being undefined) so it appears in
-// container logs before any request is served.
-function warnMissingProductionEnv(): void {
-  if (process.env.NODE_ENV !== "production") return;
-  const required: Record<string, string> = {
-    IOFUS_ALLOWED_ORIGIN: "password reset links will point to localhost",
-    IOFUS_SMTP_HOST: "emails will be printed to console instead of sent",
-  };
-  for (const [key, consequence] of Object.entries(required)) {
-    if (!process.env[key]) {
-      console.error(`[startup] CRITICAL: ${key} is not set — ${consequence}`);
-    }
-  }
-  if (process.env.IOFUS_DISABLE_RATE_LIMIT === "true") {
-    console.error("[startup] CRITICAL: IOFUS_DISABLE_RATE_LIMIT is set in production — all rate limits are disabled");
-  }
-}
 
 /** Returns true when *column* already exists in *table*, used to guard incremental ALTER TABLE migrations. */
 function columnExists(db: DatabaseSync, table: string, column: string): boolean {
@@ -58,11 +40,50 @@ function addColumnIfMissing(db: DatabaseSync, table: string, definition: string)
   }
 }
 
+/**
+ * Clears the email on every account that shares an address with an older one,
+ * so a unique index can be added to a database that predates the constraint.
+ *
+ * The earliest account (by `created_at`, then `id` for a deterministic
+ * tie-break) keeps the address; the others are left with no recovery email and
+ * can set one again, which the unique index will then enforce properly. That
+ * is a real if small loss for those accounts, and it is the mild option: the
+ * alternative is a database the application refuses to open at all.
+ *
+ * Exported for tests; callers other than `migrate` have no reason to use it.
+ */
+export function clearDuplicateEmails(db: DatabaseSync): number {
+  const duplicates = db
+    .prepare(
+      `SELECT u.id, u.email FROM users u
+       WHERE u.email IS NOT NULL
+         AND EXISTS (
+           SELECT 1 FROM users o
+           WHERE o.email IS NOT NULL
+             AND LOWER(o.email) = LOWER(u.email)
+             AND (o.created_at < u.created_at
+                  OR (o.created_at = u.created_at AND o.id < u.id))
+         )`,
+    )
+    .all() as { id: string; email: string }[];
+
+  if (duplicates.length === 0) return 0;
+
+  const clear = db.prepare("UPDATE users SET email = NULL WHERE id = ?");
+  for (const row of duplicates) {
+    clear.run(row.id);
+  }
+  console.error(
+    `[migration] cleared ${duplicates.length} duplicate recovery email(s) so a unique index could be added; affected account ids: ${duplicates
+      .map((r) => r.id)
+      .join(", ")}`,
+  );
+  return duplicates.length;
+}
+
 /** Applies the base schema and any incremental column/index migrations to *db*. Safe to call on an already-migrated database. */
 function migrate(db: DatabaseSync): void {
-  const schemaPath = join(__dirname, "schema.sql");
-  const schema = readFileSync(schemaPath, "utf-8");
-  db.exec(schema);
+  db.exec(SCHEMA_SQL);
 
   // Incremental migrations for existing databases.
   addColumnIfMissing(db, "users", "is_moderator INTEGER NOT NULL DEFAULT 0");
@@ -87,6 +108,21 @@ function migrate(db: DatabaseSync): void {
   addColumnIfMissing(db, "web_rings", "creator_user_id TEXT REFERENCES users(id) ON DELETE SET NULL");
   addColumnIfMissing(db, "web_rings", "is_open INTEGER NOT NULL DEFAULT 1");
   addColumnIfMissing(db, "users", "email TEXT");
+  if (!indexExists(db, "idx_users_email_unique")) {
+    // A database written before this constraint existed can already contain
+    // duplicates -- setUserEmail's check-then-act is exactly what could
+    // produce them. CREATE UNIQUE INDEX throws on such a database, and since
+    // migrate() runs from getDb(), that failure would fail every request and
+    // the deploy would never come up. Clear the duplicates first.
+    clearDuplicateEmails(db);
+    // setUserEmail's conflict check is check-then-act: two requests claiming
+    // the same address can both find it free and both write it, leaving a
+    // reset request able to match two accounts. The index is the real guard.
+    // Partial, because NULL emails are the common case and must stay allowed.
+    db.exec(
+      "CREATE UNIQUE INDEX IF NOT EXISTS idx_users_email_unique ON users(LOWER(email)) WHERE email IS NOT NULL",
+    );
+  }
   db.exec(`
     CREATE TABLE IF NOT EXISTS password_reset_tokens (
       token_hash TEXT PRIMARY KEY,
@@ -362,7 +398,6 @@ function openAndMigrate(path: string): DatabaseSync {
 /** Returns the singleton database connection, opening and migrating it on first call. */
 export function getDb(): DatabaseSync {
   if (dbInstance) return dbInstance;
-  warnMissingProductionEnv();
   const path = process.env.IOFUS_DB_PATH ?? join(__dirname, "..", "..", "iofus.db");
   // Built up in a local first, and only assigned to the module-level
   // singleton once setup fully succeeds. A real multi-process test caught
@@ -393,6 +428,28 @@ export function getDb(): DatabaseSync {
   // Unreachable (the loop always returns or throws), but keeps TypeScript's
   // control-flow analysis happy without an unsound non-null assertion.
   throw lastError;
+}
+
+/**
+ * Closes the database connection if one is open, checkpointing the WAL.
+ *
+ * Render stops the old instance before starting the new one when a disk is
+ * attached, so shutdown is the one moment the file is handed over. Closing
+ * cleanly leaves no WAL for the next process to recover.
+ */
+export function closeDb(): void {
+  if (!dbInstance) return;
+  try {
+    dbInstance.exec("PRAGMA wal_checkpoint(TRUNCATE)");
+  } catch {
+    /* nothing useful to do while shutting down */
+  }
+  try {
+    dbInstance.close();
+  } catch {
+    /* already closed */
+  }
+  dbInstance = undefined;
 }
 
 /** Closes and clears the singleton so the next `getDb()` call opens a fresh connection. Only for use in tests. */

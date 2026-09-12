@@ -2,6 +2,7 @@
 
 import { requestPasswordReset } from "@/lib/passwordReset";
 import { checkRateLimit, RateLimitError, rateLimitActorKey } from "@/lib/rateLimit";
+import { canonicalOrigin } from "@/lib/canonicalOrigin";
 
 export interface ForgotState {
   sent?: boolean;
@@ -21,15 +22,9 @@ export async function forgotPasswordAction(_prev: ForgotState, formData: FormDat
     throw e;
   }
 
-  // Build the reset URL from the configured canonical origin, never from request
-  // headers — host headers are attacker-controlled and could redirect the token
-  // to an attacker's server. Strip any accidental scheme prefix so the value
-  // can be stored as either "example.com" or "https://example.com" without
-  // producing a double-scheme URL like "https://https://example.com".
-  const rawOrigin = process.env.IOFUS_ALLOWED_ORIGIN ?? "";
-  const origin = rawOrigin
-    ? rawOrigin.startsWith("http") ? rawOrigin : `https://${rawOrigin}`
-    : "http://localhost:3000";
+  // Built from the configured canonical origin, never from request headers —
+  // a forged Host would redirect the reset token to an attacker's server.
+  const origin = canonicalOrigin();
 
   try {
     await requestPasswordReset(emailOrHandle, origin);

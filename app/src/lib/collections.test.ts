@@ -9,12 +9,12 @@ import { ensureModeratorSeed, setPlatformBlock } from "./moderation";
 process.env.IOFUS_DB_PATH = ":memory:";
 process.env.IOFUS_AUTO_MODERATOR_SEED = "true";
 
-beforeEach(() => {
+beforeEach(async () => {
   resetDbForTests();
 });
 
-function publishPublicPage(handle: string, displayName: string) {
-  const user = createUser(handle, "correct-horse-battery");
+async function publishPublicPage(handle: string, displayName: string) {
+  const user = await createUser(handle, "correct-horse-battery");
   savePageDocument(user.id, defaultPageDocument(displayName));
   setPublished(user.id, true);
   setVisibility(user.id, "public");
@@ -22,33 +22,33 @@ function publishPublicPage(handle: string, displayName: string) {
 }
 
 describe("collections", () => {
-  it("a fresh database is seeded with the two default collections on first open", () => {
+  it("a fresh database is seeded with the two default collections on first open", async () => {
     const list = listCollections();
     expect(list.map((c) => c.slug).sort()).toEqual(["freshly-painted", "quiet-corners"]);
   });
 
-  it("getCollectionBySlug returns null for an unknown slug", () => {
+  it("getCollectionBySlug returns null for an unknown slug", async () => {
     expect(getCollectionBySlug("does-not-exist")).toBeNull();
   });
 
-  it("getCollectionBySlug returns a seeded collection by slug", () => {
+  it("getCollectionBySlug returns a seeded collection by slug", async () => {
     const found = getCollectionBySlug("freshly-painted");
     expect(found).not.toBeNull();
     expect(found!.title).toBe("Freshly Painted");
   });
 
-  it("listCollectionPages returns an empty array for a collection with no pages", () => {
+  it("listCollectionPages returns an empty array for a collection with no pages", async () => {
     const collection = getCollectionBySlug("freshly-painted")!;
     expect(listCollectionPages(collection.id)).toEqual([]);
   });
 
-  it("listCollectionPages only returns published, public pages", () => {
+  it("listCollectionPages only returns published, public pages", async () => {
     const collection = getCollectionBySlug("freshly-painted")!;
     const db = getDb();
 
-    const published = publishPublicPage("published-user", "Published User");
+    const published = await publishPublicPage("published-user", "Published User");
 
-    const draftUser = createUser("draft-user", "correct-horse-battery");
+    const draftUser = await createUser("draft-user", "correct-horse-battery");
     savePageDocument(draftUser.id, defaultPageDocument("Draft User"));
 
     const now = new Date().toISOString();
@@ -64,12 +64,12 @@ describe("collections", () => {
     expect(pages[0]!.handle).toBe("published-user");
   });
 
-  it("listCollectionPages orders by position ascending", () => {
+  it("listCollectionPages orders by position ascending", async () => {
     const collection = getCollectionBySlug("freshly-painted")!;
     const db = getDb();
 
-    const userA = publishPublicPage("user-a", "User A");
-    const userB = publishPublicPage("user-b", "User B");
+    const userA = await publishPublicPage("user-a", "User A");
+    const userB = await publishPublicPage("user-b", "User B");
 
     const now = new Date().toISOString();
     db.prepare(
@@ -83,11 +83,11 @@ describe("collections", () => {
     expect(pages.map((p) => p.handle)).toEqual(["user-b", "user-a"]);
   });
 
-  it("listCollectionPages falls back to the handle when document_json is malformed", () => {
+  it("listCollectionPages falls back to the handle when document_json is malformed", async () => {
     const collection = getCollectionBySlug("freshly-painted")!;
     const db = getDb();
 
-    const user = publishPublicPage("weird-doc-user", "Weird Doc User");
+    const user = await publishPublicPage("weird-doc-user", "Weird Doc User");
     db.prepare("UPDATE page_documents SET document_json = ? WHERE user_id = ?").run("{not valid json", user.id);
 
     db.prepare(
@@ -99,9 +99,9 @@ describe("collections", () => {
     expect(pages[0]!.displayName).toBe("weird-doc-user");
   });
 
-  it("excludes a page the owner has hidden from discovery", () => {
+  it("excludes a page the owner has hidden from discovery", async () => {
     const collection = getCollectionBySlug("freshly-painted")!;
-    const user = publishPublicPage("voidarcade", "Void Arcade");
+    const user = await publishPublicPage("voidarcade", "Void Arcade");
     setHiddenFromDiscovery(user.id, true);
     getDb()
       .prepare("INSERT INTO collection_pages (collection_id, user_id, position, added_at) VALUES (?, ?, 0, ?)")
@@ -110,10 +110,10 @@ describe("collections", () => {
     expect(listCollectionPages(collection.id).map((p) => p.handle)).not.toContain("voidarcade");
   });
 
-  it("excludes a page whose owner has been platform-blocked by a moderator", () => {
+  it("excludes a page whose owner has been platform-blocked by a moderator", async () => {
     const collection = getCollectionBySlug("freshly-painted")!;
-    const mod = createUser("moduser", "correct-horse-battery");
-    const user = publishPublicPage("voidarcade", "Void Arcade");
+    const mod = await createUser("moduser", "correct-horse-battery");
+    const user = await publishPublicPage("voidarcade", "Void Arcade");
     getDb()
       .prepare("INSERT INTO collection_pages (collection_id, user_id, position, added_at) VALUES (?, ?, 0, ?)")
       .run(collection.id, user.id, new Date().toISOString());

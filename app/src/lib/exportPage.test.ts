@@ -11,7 +11,7 @@ import type { GuestbookEntry } from "./guestbook";
 
 process.env.IOFUS_DB_PATH = ":memory:";
 
-beforeEach(() => {
+beforeEach(async () => {
   resetDbForTests();
 });
 
@@ -25,7 +25,7 @@ function docWithParts(overrides: Partial<PageDocument>): PageDocument {
 }
 
 describe("buildPageHtml / renderPart — escaping and empty-state behavior across all part types", () => {
-  it("identity: escapes displayName, bio, and status", () => {
+  it("identity: escapes displayName, bio, and status", async () => {
     const doc = docWithParts({
       pageParts: ["identity"],
       identity: { displayName: XSS_ATTEMPT, bio: XSS_ATTEMPT, status: XSS_ATTEMPT },
@@ -35,7 +35,7 @@ describe("buildPageHtml / renderPart — escaping and empty-state behavior acros
     expect(html).toContain(ESCAPED_XSS);
   });
 
-  it("now: renders when present, omits the section when empty", () => {
+  it("now: renders when present, omits the section when empty", async () => {
     const withNow = docWithParts({ pageParts: ["now"], now: XSS_ATTEMPT });
     const html = buildPageHtml(withNow, "handle", [], [], "", new Date().toISOString());
     expect(html).toContain(ESCAPED_XSS);
@@ -45,7 +45,7 @@ describe("buildPageHtml / renderPart — escaping and empty-state behavior acros
     expect(emptyHtml).not.toContain("<h2>Now</h2>");
   });
 
-  it("links: escapes label and url, and omits the section when empty", () => {
+  it("links: escapes label and url, and omits the section when empty", async () => {
     const withLinks = docWithParts({
       pageParts: ["links"],
       links: [{ label: XSS_ATTEMPT, url: `https://example.com/${encodeURIComponent(XSS_ATTEMPT)}` }],
@@ -59,7 +59,7 @@ describe("buildPageHtml / renderPart — escaping and empty-state behavior acros
     expect(emptyHtml).not.toContain("<h2>Links</h2>");
   });
 
-  it("blog: escapes title and body, converts newlines to <br>, omits when empty", () => {
+  it("blog: escapes title and body, converts newlines to <br>, omits when empty", async () => {
     const withBlog = docWithParts({
       pageParts: ["blog"],
       blog: [
@@ -82,7 +82,7 @@ describe("buildPageHtml / renderPart — escaping and empty-state behavior acros
     expect(emptyHtml).not.toContain("<h2>Blog</h2>");
   });
 
-  it("devlog: escapes date and body, omits when empty", () => {
+  it("devlog: escapes date and body, omits when empty", async () => {
     const withDevlog = docWithParts({
       pageParts: ["devlog"],
       devlog: [{ id: randomUUID(), date: "2024-01-01", body: XSS_ATTEMPT }],
@@ -95,7 +95,7 @@ describe("buildPageHtml / renderPart — escaping and empty-state behavior acros
     expect(emptyHtml).not.toContain("<h2>Devlog</h2>");
   });
 
-  it("guestbook: escapes author handle and message, falls back to 'Anonymous', omits when empty", () => {
+  it("guestbook: escapes author handle and message, falls back to 'Anonymous', omits when empty", async () => {
     const doc = docWithParts({ pageParts: ["guestbook"] });
     const entries: GuestbookEntry[] = [
       {
@@ -122,7 +122,7 @@ describe("buildPageHtml / renderPart — escaping and empty-state behavior acros
     expect(emptyHtml).not.toContain("<h2>Guestbook</h2>");
   });
 
-  it("topEight: escapes handles, links to /@handle, omits when empty", () => {
+  it("topEight: escapes handles, links to /@handle, omits when empty", async () => {
     const withTopEight = docWithParts({ pageParts: ["topEight"], topEight: [XSS_ATTEMPT] });
     const html = buildPageHtml(withTopEight, "handle", [], [], "", new Date().toISOString());
     expect(html).toContain(ESCAPED_XSS);
@@ -133,7 +133,7 @@ describe("buildPageHtml / renderPart — escaping and empty-state behavior acros
     expect(emptyHtml).not.toContain("<h2>Top 8</h2>");
   });
 
-  it("friends: escapes handles, links to /@handle, omits when empty", () => {
+  it("friends: escapes handles, links to /@handle, omits when empty", async () => {
     const doc = docWithParts({ pageParts: ["friends"] });
     const html = buildPageHtml(doc, "handle", [], [XSS_ATTEMPT], "", new Date().toISOString());
     expect(html).toContain(ESCAPED_XSS);
@@ -143,7 +143,7 @@ describe("buildPageHtml / renderPart — escaping and empty-state behavior acros
     expect(emptyHtml).not.toContain("<h2>Friends</h2>");
   });
 
-  it("badges: escapes label and emoji, renders without emoji span when absent, omits when empty", () => {
+  it("badges: escapes label and emoji, renders without emoji span when absent, omits when empty", async () => {
     const withBadges = docWithParts({
       pageParts: ["badges"],
       badges: [{ id: randomUUID(), label: XSS_ATTEMPT, emoji: undefined }],
@@ -157,7 +157,7 @@ describe("buildPageHtml / renderPart — escaping and empty-state behavior acros
     expect(emptyHtml).not.toContain("<h2>Badges</h2>");
   });
 
-  it("shrine: escapes title, body, and image alt; omits image tag when imageUrl absent; omits section when empty", () => {
+  it("shrine: escapes title, body, and image alt; omits image tag when imageUrl absent; omits section when empty", async () => {
     const withShrine = docWithParts({
       pageParts: ["shrine"],
       shrines: [{ id: randomUUID(), title: XSS_ATTEMPT, body: `a\n${XSS_ATTEMPT}` }],
@@ -171,7 +171,7 @@ describe("buildPageHtml / renderPart — escaping and empty-state behavior acros
     expect(emptyHtml).not.toContain("<h2>Shrines</h2>");
   });
 
-  it("playlist: escapes title and url, omits when empty", () => {
+  it("playlist: escapes title and url, omits when empty", async () => {
     const withPlaylist = docWithParts({
       pageParts: ["playlist"],
       playlist: [{ id: randomUUID(), title: XSS_ATTEMPT, url: "https://example.com/track" }],
@@ -185,14 +185,14 @@ describe("buildPageHtml / renderPart — escaping and empty-state behavior acros
     expect(emptyHtml).not.toContain("<h2>Playlist</h2>");
   });
 
-  it("an unknown pageParts entry (e.g. a part with no export renderer) renders nothing, not an error", () => {
+  it("an unknown pageParts entry (e.g. a part with no export renderer) renders nothing, not an error", async () => {
     // gallery/pixelArt/miniPages/stamps have no export renderer (default case
     // in renderPart's switch) — must degrade to an empty string, never throw.
     const doc = docWithParts({ pageParts: ["gallery", "pixelArt", "miniPages", "stamps"] });
     expect(() => buildPageHtml(doc, "handle", [], [], "", new Date().toISOString())).not.toThrow();
   });
 
-  it("theme colors (validated hex by schema) interpolate into inline style without breaking out", () => {
+  it("theme colors (validated hex by schema) interpolate into inline style without breaking out", async () => {
     const doc = docWithParts({ pageParts: ["identity"] });
     doc.theme.accent = "#ff00aa";
     doc.theme.background = "#00aaff";
@@ -203,14 +203,14 @@ describe("buildPageHtml / renderPart — escaping and empty-state behavior acros
 });
 
 describe("exportPageAsHtml", () => {
-  it("throws ExportError when the user has no page document", () => {
-    const user = createUser("nopagehere", "correct-horse-battery");
+  it("throws ExportError when the user has no page document", async () => {
+    const user = await createUser("nopagehere", "correct-horse-battery");
     expect(() => exportPageAsHtml(user.id)).toThrow(ExportError);
     expect(() => exportPageAsHtml(user.id)).toThrow("No page found.");
   });
 
-  it("exports a full page end-to-end: identity, links, blog, guestbook, and friends", () => {
-    const user = createUser("exportme", "correct-horse-battery");
+  it("exports a full page end-to-end: identity, links, blog, guestbook, and friends", async () => {
+    const user = await createUser("exportme", "correct-horse-battery");
     const doc = defaultPageDocument("Export Me");
     doc.pageParts = ["identity", "links", "blog", "guestbook", "friends"];
     doc.links = [{ label: "My site", url: "https://example.com" }];
@@ -221,10 +221,10 @@ describe("exportPageAsHtml", () => {
     setPublished(user.id, true);
     setVisibility(user.id, "public");
 
-    const signer = createUser("signerperson", "correct-horse-battery");
+    const signer = await createUser("signerperson", "correct-horse-battery");
     signGuestbook(user.id, signer.id, "signerperson", "nice page!", false);
 
-    const friend = createUser("friendperson", "correct-horse-battery");
+    const friend = await createUser("friendperson", "correct-horse-battery");
     savePageDocument(friend.id, defaultPageDocument("Friend Person"));
     setPublished(friend.id, true);
     setVisibility(friend.id, "public");

@@ -1,4 +1,12 @@
--- iofus database schema. Every table that stores anything a user wrote
+/**
+ * The iofus database schema, embedded as a string rather than read from disk.
+ *
+ * `next build` with `output: "standalone"` bundles src/lib into .next/server
+ * chunks, so a sibling .sql file is never shipped and `import.meta.url` resolves
+ * to the chunk directory — reading it at runtime ENOENTs inside the container.
+ * Embedding removes the filesystem dependency entirely.
+ */
+export const SCHEMA_SQL = `-- iofus database schema. Every table that stores anything a user wrote
 -- or iofus itself generated is versioned at the application layer via
 -- the page document's own "version" field (see pageDocument.ts) — this
 -- schema only defines storage shape, not content validation.
@@ -257,3 +265,4 @@ CREATE TABLE IF NOT EXISTS messages (
 );
 
 CREATE INDEX IF NOT EXISTS idx_messages_conversation ON messages(conversation_id, created_at);
+`;

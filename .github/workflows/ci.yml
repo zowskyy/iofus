@@ -25,6 +25,11 @@ jobs:
       - name: Typecheck
         run: npx tsc --noEmit
 
+      # Next 16's `next build` no longer runs ESLint, so without this step
+      # nothing in CI catches a lint error.
+      - name: Lint
+        run: npm run lint
+
       - name: Unit + property tests
         run: npm test
 
@@ -51,3 +56,131 @@ jobs:
           path: app/test-results/
           retention-days: 7
           if-no-files-found: ignore
+
+  # The unit suite cannot catch a container that will not start: a missing file
+  # in the standalone bundle, a wrong entry-point path, or a boot check that
+  # logs instead of exiting all look fine until a deploy. This builds the real
+  # image and boots it.
+  container:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Build image
+        run: docker build -f app/Dockerfile -t iofus:ci app
+
+      - name: Refuse to start when the database would be ephemeral
+        run: |
+          set +e
+          output=$(docker run --rm \
+            -e IOFUS_DB_PATH=/data/iofus.db \
+            -e IOFUS_SMTP_HOST=smtp.example.com \
+            -e IOFUS_ALLOWED_ORIGIN=https://iofus.example \
+            -e IOFUS_MODERATOR_HANDLE=rootmod \
+            -e IOFUS_TRUSTED_PROXY_HOPS=1 \
+            iofus:ci 2>&1)
+          code=$?
+          echo "$output"
+          if [ "$code" -eq 0 ]; then
+            echo "::error::container started without a persistent volume"
+            exit 1
+          fi
+          echo "$output" | grep -q "ephemeral" || {
+            echo "::error::exited, but not for the expected reason"; exit 1; }
+
+      - name: Refuse to start without SMTP configured
+        run: |
+          set +e
+          output=$(docker run --rm -v iofus-ci-data:/data \
+            -e IOFUS_DB_PATH=/data/iofus.db \
+            -e IOFUS_ALLOWED_ORIGIN=https://iofus.example \
+            -e IOFUS_MODERATOR_HANDLE=rootmod \
+            -e IOFUS_TRUSTED_PROXY_HOPS=1 \
+            iofus:ci 2>&1)
+          code=$?
+          echo "$output"
+          [ "$code" -ne 0 ] || { echo "::error::started without SMTP"; exit 1; }
+          echo "$output" | grep -q "IOFUS_SMTP_HOST" || {
+            echo "::error::exited, but not for the expected reason"; exit 1; }
+
+      - name: Boot, serve, and keep data across a restart
+        run: |
+          set -e
+          # IOFUS_ALLOWED_ORIGIN is the canonical origin used to build links,
+          # not the bind address -- the checks below reach the container on
+          # localhost regardless. It must be https: the boot gate rejects a
+          # cleartext origin, because reset links carry a credential.
+          #
+          # This comment cannot live inside run_container's command below:
+          # bash splices a backslash-continued command into one logical line
+          # before parsing, so a '#' placed between continuation lines does
+          # not comment out just that line -- it comments out everything from
+          # there to the end of the whole spliced command, silently dropping
+          # every flag and the image name after it. That produced exactly
+          # this job's prior failure ("'docker run' requires at least 1
+          # argument"): the image name had been eaten as part of a comment.
+          run_container () {
+            docker run -d --name "$1" -v iofus-ci-data:/data -p 3000:3000 \
+              -e IOFUS_DB_PATH=/data/iofus.db \
+              -e IOFUS_SMTP_HOST=smtp.example.com \
+              -e IOFUS_ALLOWED_ORIGIN=https://iofus.example \
+              -e IOFUS_MODERATOR_HANDLE=rootmod \
+              -e IOFUS_TRUSTED_PROXY_HOPS=1 \
+              iofus:ci
+          }
+          wait_healthy () {
+            for i in $(seq 1 30); do
+              if curl -fsS http://localhost:3000/api/health | grep -q '"ok"'; then return 0; fi
+              sleep 2
+            done
+            docker logs "$1"; return 1
+          }
+
+          run_container iofus-first
+          wait_healthy iofus-first
+          curl -fsS -o /dev/null http://localhost:3000/explore
+
+          # Booting twice proves nothing about persistence on its own: a
+          # container writing to its own ephemeral layer would create a fresh
+          # database on restart and still pass every health check. So write a
+          # marker into the real database file on the volume, and require it
+          # back afterwards.
+          MARKER="ci-marker-${GITHUB_RUN_ID}-${GITHUB_RUN_ATTEMPT}"
+          docker exec iofus-first node -e "
+            const { DatabaseSync } = require('node:sqlite');
+            const db = new DatabaseSync(process.env.IOFUS_DB_PATH);
+            db.prepare('INSERT INTO users (id, handle, handle_lower, password_hash, created_at) VALUES (?, ?, ?, ?, ?)')
+              .run('$MARKER', '$MARKER', '$MARKER', 'x', new Date().toISOString());
+            db.close();
+          "
+
+          # SIGTERM, not SIGKILL: Render stops the old instance this way, and
+          # the handler checkpoints the WAL on the way out.
+          docker stop iofus-first
+          docker rm iofus-first
+
+          run_container iofus-second
+          wait_healthy iofus-second
+          curl -fsS -o /dev/null http://localhost:3000/explore
+
+          docker exec iofus-second node -e "
+            const { DatabaseSync } = require('node:sqlite');
+            const db = new DatabaseSync(process.env.IOFUS_DB_PATH);
+            const row = db.prepare('SELECT handle FROM users WHERE id = ?').get('$MARKER');
+            db.close();
+            if (!row) {
+              console.error('marker row is gone: the database did not survive the restart');
+              process.exit(1);
+            }
+            console.log('marker survived the restart:', row.handle);
+          "
+          docker rm -f iofus-second
+
+      - name: Clean up
+        if: always()
+        # Containers first: a volume still attached to one that failed before
+        # its own `docker rm` cannot be removed, which turned a real failure
+        # into a second, noisier one.
+        run: |
+          docker rm -f iofus-first iofus-second 2>/dev/null || true
+          docker volume rm -f iofus-ci-data || true
