@@ -374,6 +374,28 @@ export function getDb(): DatabaseSync {
   throw lastError;
 }
 
+/**
+ * Closes the database connection if one is open, checkpointing the WAL.
+ *
+ * Render stops the old instance before starting the new one when a disk is
+ * attached, so shutdown is the one moment the file is handed over. Closing
+ * cleanly leaves no WAL for the next process to recover.
+ */
+export function closeDb(): void {
+  if (!dbInstance) return;
+  try {
+    dbInstance.exec("PRAGMA wal_checkpoint(TRUNCATE)");
+  } catch {
+    /* nothing useful to do while shutting down */
+  }
+  try {
+    dbInstance.close();
+  } catch {
+    /* already closed */
+  }
+  dbInstance = undefined;
+}
+
 /** Closes and clears the singleton so the next `getDb()` call opens a fresh connection. Only for use in tests. */
 export function resetDbForTests(): void {
   if (dbInstance) {

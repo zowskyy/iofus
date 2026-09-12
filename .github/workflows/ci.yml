@@ -25,6 +25,11 @@ jobs:
       - name: Typecheck
         run: npx tsc --noEmit
 
+      # Next 16's `next build` no longer runs ESLint, so without this step
+      # nothing in CI catches a lint error.
+      - name: Lint
+        run: npm run lint
+
       - name: Unit + property tests
         run: npm test
 
@@ -51,3 +56,87 @@ jobs:
           path: app/test-results/
           retention-days: 7
           if-no-files-found: ignore
+
+  # The unit suite cannot catch a container that will not start: a missing file
+  # in the standalone bundle, a wrong entry-point path, or a boot check that
+  # logs instead of exiting all look fine until a deploy. This builds the real
+  # image and boots it.
+  container:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Build image
+        run: docker build -f app/Dockerfile -t iofus:ci app
+
+      - name: Refuse to start when the database would be ephemeral
+        run: |
+          set +e
+          output=$(docker run --rm \
+            -e IOFUS_DB_PATH=/data/iofus.db \
+            -e IOFUS_SMTP_HOST=smtp.example.com \
+            -e IOFUS_ALLOWED_ORIGIN=https://iofus.example \
+            -e IOFUS_MODERATOR_HANDLE=rootmod \
+            -e IOFUS_TRUSTED_PROXY_HOPS=1 \
+            iofus:ci 2>&1)
+          code=$?
+          echo "$output"
+          if [ "$code" -eq 0 ]; then
+            echo "::error::container started without a persistent volume"
+            exit 1
+          fi
+          echo "$output" | grep -q "ephemeral" || {
+            echo "::error::exited, but not for the expected reason"; exit 1; }
+
+      - name: Refuse to start without SMTP configured
+        run: |
+          set +e
+          output=$(docker run --rm -v iofus-ci-data:/data \
+            -e IOFUS_DB_PATH=/data/iofus.db \
+            -e IOFUS_ALLOWED_ORIGIN=https://iofus.example \
+            -e IOFUS_MODERATOR_HANDLE=rootmod \
+            -e IOFUS_TRUSTED_PROXY_HOPS=1 \
+            iofus:ci 2>&1)
+          code=$?
+          echo "$output"
+          [ "$code" -ne 0 ] || { echo "::error::started without SMTP"; exit 1; }
+          echo "$output" | grep -q "IOFUS_SMTP_HOST" || {
+            echo "::error::exited, but not for the expected reason"; exit 1; }
+
+      - name: Boot, serve, and keep data across a restart
+        run: |
+          set -e
+          run_container () {
+            docker run -d --name "$1" -v iofus-ci-data:/data -p 3000:3000 \
+              -e IOFUS_DB_PATH=/data/iofus.db \
+              -e IOFUS_SMTP_HOST=smtp.example.com \
+              -e IOFUS_ALLOWED_ORIGIN=http://localhost:3000 \
+              -e IOFUS_MODERATOR_HANDLE=rootmod \
+              -e IOFUS_TRUSTED_PROXY_HOPS=1 \
+              iofus:ci
+          }
+          wait_healthy () {
+            for i in $(seq 1 30); do
+              if curl -fsS http://localhost:3000/api/health | grep -q '"ok"'; then return 0; fi
+              sleep 2
+            done
+            docker logs "$1"; return 1
+          }
+
+          run_container iofus-first
+          wait_healthy iofus-first
+          curl -fsS -o /dev/null http://localhost:3000/explore
+
+          # SIGTERM, not SIGKILL: Render stops the old instance this way, and
+          # the handler checkpoints the WAL on the way out.
+          docker stop iofus-first
+          docker rm iofus-first
+
+          run_container iofus-second
+          wait_healthy iofus-second
+          curl -fsS -o /dev/null http://localhost:3000/explore
+          docker rm -f iofus-second
+
+      - name: Clean up volume
+        if: always()
+        run: docker volume rm -f iofus-ci-data || true

@@ -42,7 +42,7 @@ export default async function SettingsPage() {
       <section className="settings-section">
         <h2>Recovery email</h2>
         <p className="settings-description">
-          Add an email address to enable password reset. iofus won't send you anything else.
+          Add an email address to enable password reset. iofus won&apos;t send you anything else.
         </p>
         <EmailForm currentEmail={currentEmail} />
       </section>

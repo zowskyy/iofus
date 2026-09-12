@@ -37,4 +37,17 @@ export async function register(): Promise<void> {
   } catch (err) {
     console.error("[startup] moderator seed failed:", err);
   }
+
+  const { closeDb } = await import("./lib/db");
+  let shuttingDown = false;
+  for (const signal of ["SIGTERM", "SIGINT"] as const) {
+    process.on(signal, () => {
+      // Both signals can arrive, and the platform may send a second one while
+      // the first is still unwinding.
+      if (shuttingDown) return;
+      shuttingDown = true;
+      closeDb();
+      process.exit(0);
+    });
+  }
 }
