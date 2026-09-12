@@ -37,7 +37,6 @@ function itemDescription(item: FeedItem): string {
 export default async function FeedPage() {
   const viewer = await getCurrentUser();
   if (!viewer) redirect("/login");
-  // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
   const items = getFriendActivityFeed(viewer!.id, 40);
 
   return (
