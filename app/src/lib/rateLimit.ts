@@ -50,7 +50,7 @@ export function checkRateLimit(key: string, maxCount: number, windowMs: number =
   // flag only exists in playwright.config.ts's webServer env — never set
   // in production — so the limit stays fully enforced everywhere real
   // traffic reaches it.
-  if (process.env.IOFUS_DISABLE_RATE_LIMIT === "true") return;
+  if (process.env.IOFUS_DISABLE_RATE_LIMIT === "true" && process.env.NODE_ENV !== "production") return;
   const db = getDb();
   db.exec("BEGIN IMMEDIATE");
   let limitError: RateLimitError | undefined;
@@ -95,7 +95,7 @@ export function checkRateLimit(key: string, maxCount: number, windowMs: number =
  * inside an existing `BEGIN IMMEDIATE` block to avoid nested-transaction errors.
  */
 export function checkRateLimitInTx(key: string, maxCount: number, windowMs: number = DEFAULT_WINDOW_MS): void {
-  if (process.env.IOFUS_DISABLE_RATE_LIMIT === "true") return;
+  if (process.env.IOFUS_DISABLE_RATE_LIMIT === "true" && process.env.NODE_ENV !== "production") return;
   const db = getDb();
   const now = Date.now();
   const row = db.prepare("SELECT count, window_start FROM rate_limits WHERE key = ?").get(key) as

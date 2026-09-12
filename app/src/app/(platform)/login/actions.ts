@@ -14,9 +14,13 @@ export async function loginAction(_prevState: LoginState, formData: FormData): P
   const password = String(formData.get("password") ?? "");
 
   try {
+    const normalizedHandle = handle.trim().toLowerCase();
+    // Per-IP:handle limit blocks single-IP brute force.
+    // Per-handle global limit caps distributed brute force across many IPs.
     const key = await rateLimitActorKey("login", null);
-    checkRateLimit(`${key}:${handle.trim().toLowerCase()}`, 10);
-    const user = authenticate(handle, password);
+    checkRateLimit(`${key}:${normalizedHandle}`, 10);
+    checkRateLimit(`login:handle:${normalizedHandle}`, 50);
+    const user = authenticate(normalizedHandle, password);
     await logIn(user.id);
   } catch (e) {
     if (e instanceof InvalidCredentialsError) {

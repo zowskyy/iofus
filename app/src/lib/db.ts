@@ -8,6 +8,25 @@ const __dirname = dirname(fileURLToPath(import.meta.url));
 
 let dbInstance: DatabaseSync | undefined;
 
+// Warn loudly on first startup if production-critical env vars are missing.
+// Logged once (guarded by dbInstance being undefined) so it appears in
+// container logs before any request is served.
+function warnMissingProductionEnv(): void {
+  if (process.env.NODE_ENV !== "production") return;
+  const required: Record<string, string> = {
+    IOFUS_ALLOWED_ORIGIN: "password reset links will point to localhost",
+    IOFUS_SMTP_HOST: "emails will be printed to console instead of sent",
+  };
+  for (const [key, consequence] of Object.entries(required)) {
+    if (!process.env[key]) {
+      console.error(`[startup] CRITICAL: ${key} is not set — ${consequence}`);
+    }
+  }
+  if (process.env.IOFUS_DISABLE_RATE_LIMIT === "true") {
+    console.error("[startup] CRITICAL: IOFUS_DISABLE_RATE_LIMIT is set in production — all rate limits are disabled");
+  }
+}
+
 /** Returns true when *column* already exists in *table*, used to guard incremental ALTER TABLE migrations. */
 function columnExists(db: DatabaseSync, table: string, column: string): boolean {
   const rows = db.prepare(`PRAGMA table_info(${table})`).all() as { name: string }[];
@@ -343,6 +362,7 @@ function openAndMigrate(path: string): DatabaseSync {
 /** Returns the singleton database connection, opening and migrating it on first call. */
 export function getDb(): DatabaseSync {
   if (dbInstance) return dbInstance;
+  warnMissingProductionEnv();
   const path = process.env.IOFUS_DB_PATH ?? join(__dirname, "..", "..", "iofus.db");
   // Built up in a local first, and only assigned to the module-level
   // singleton once setup fully succeeds. A real multi-process test caught

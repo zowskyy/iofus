@@ -3,11 +3,14 @@
 import { redirect } from "next/navigation";
 import { findUserByHandle } from "@/lib/auth";
 import { blockUser } from "@/lib/friends";
+import { checkRateLimit, rateLimitActorKey } from "@/lib/rateLimit";
 import { getCurrentUser } from "@/lib/session";
 
 export async function blockAction(handle: string): Promise<void> {
   const viewer = await getCurrentUser();
   if (!viewer) redirect(`/login?next=/@${handle}/block`);
+
+  checkRateLimit(await rateLimitActorKey("block", viewer.id), 30);
 
   const target = findUserByHandle(handle);
   if (target) blockUser(viewer.id, target.id);
