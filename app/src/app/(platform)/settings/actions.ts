@@ -19,6 +19,16 @@ export interface SettingsActionState {
   error?: string;
 }
 
+/**
+ * Every action below is bound with its row-specific argument(s) before being
+ * handed to `useActionState` (`unblockAction.bind(null, handle)`, matching
+ * ManageRingControls' established convention) so the component gets a
+ * pending flag (disables the button — the mobile-network duplicate-submit
+ * guard) and an `{ error }` state to render inline, via
+ * `withNetworkErrorHandling` from `@/lib/actionResilience`, instead of a
+ * silently-swallowed network failure.
+ */
+
 export async function unblockUserAction(blockedUserId: string): Promise<void> {
   const viewer = await getCurrentUser();
   if (!viewer) redirect("/login?next=/settings");
@@ -26,92 +36,130 @@ export async function unblockUserAction(blockedUserId: string): Promise<void> {
   revalidatePath("/settings");
 }
 
-export async function unblockAction(handle: string): Promise<void> {
+export async function unblockAction(
+  handle: string,
+  _prevState: SettingsActionState,
+  _formData: FormData,
+): Promise<SettingsActionState> {
   const viewer = await getCurrentUser();
-  if (!viewer) return;
+  if (!viewer) redirect("/login?next=/settings");
 
   const target = findUserByHandle(handle);
-  if (!target) return;
+  if (!target) return {};
 
   unblockUser(viewer.id, target.id);
   revalidatePath("/settings");
+  return {};
 }
 
-export async function acceptIncomingAction(requestId: string): Promise<void> {
+export async function acceptIncomingAction(
+  requestId: string,
+  _prevState: SettingsActionState,
+  _formData: FormData,
+): Promise<SettingsActionState> {
   const viewer = await getCurrentUser();
-  if (!viewer) return;
+  if (!viewer) redirect("/login?next=/settings");
 
   try {
     const key = await rateLimitActorKey("friend", viewer.id);
     checkRateLimit(key, 10);
     acceptFriendRequest(viewer.id, requestId);
     revalidatePath("/settings");
+    return {};
   } catch (e) {
-    if (e instanceof FriendRequestError || e instanceof FriendLinkNotFoundError) return;
-    if (e instanceof RateLimitError) return;
+    if (e instanceof FriendRequestError || e instanceof FriendLinkNotFoundError) {
+      return { error: "That request is no longer available." };
+    }
+    if (e instanceof RateLimitError) return { error: "Too many requests — try again in a moment." };
     throw e;
   }
 }
 
-export async function declineIncomingAction(requestId: string): Promise<void> {
+export async function declineIncomingAction(
+  requestId: string,
+  _prevState: SettingsActionState,
+  _formData: FormData,
+): Promise<SettingsActionState> {
   const viewer = await getCurrentUser();
-  if (!viewer) return;
+  if (!viewer) redirect("/login?next=/settings");
 
   try {
     const key = await rateLimitActorKey("friend", viewer.id);
     checkRateLimit(key, 10);
     removeFriendLink(viewer.id, requestId);
     revalidatePath("/settings");
+    return {};
   } catch (e) {
-    if (e instanceof FriendRequestError) return;
-    if (e instanceof RateLimitError) return;
+    if (e instanceof FriendRequestError) return { error: "That request is no longer available." };
+    if (e instanceof RateLimitError) return { error: "Too many requests — try again in a moment." };
     throw e;
   }
 }
 
-export async function approveGuestbookAction(entryId: string): Promise<void> {
+export async function approveGuestbookAction(
+  entryId: string,
+  _prevState: SettingsActionState,
+  _formData: FormData,
+): Promise<SettingsActionState> {
   const viewer = await getCurrentUser();
-  if (!viewer) return;
+  if (!viewer) redirect("/login?next=/settings");
 
   try {
     moderateGuestbookEntry(viewer.id, entryId, true);
     revalidatePath("/settings");
     revalidatePath(`/@${viewer.handle}`);
+    return {};
   } catch (e) {
-    if (e instanceof GuestbookError) return;
+    if (e instanceof GuestbookError) return { error: "That entry was already moderated." };
     throw e;
   }
 }
 
-export async function rejectGuestbookAction(entryId: string): Promise<void> {
+export async function rejectGuestbookAction(
+  entryId: string,
+  _prevState: SettingsActionState,
+  _formData: FormData,
+): Promise<SettingsActionState> {
   const viewer = await getCurrentUser();
-  if (!viewer) return;
+  if (!viewer) redirect("/login?next=/settings");
 
   try {
     moderateGuestbookEntry(viewer.id, entryId, false);
     revalidatePath("/settings");
+    return {};
   } catch (e) {
-    if (e instanceof GuestbookError) return;
+    if (e instanceof GuestbookError) return { error: "That entry was already moderated." };
     throw e;
   }
 }
 
-/** Toggles panic mode based on the page's current state — a single button flips it on or off. */
-export async function panicModeAction(): Promise<void> {
+/**
+ * Sets panic mode to an explicit *activate* state, bound at render time from
+ * the page's current state (see settings/page.tsx). Deliberately takes the
+ * desired state rather than reading current state and flipping it: a form
+ * resubmit after a dropped response (common on flaky mobile connections)
+ * would otherwise silently toggle panic mode back off, undoing the user's
+ * action instead of just repeating it.
+ */
+export async function panicModeAction(
+  activate: boolean,
+  _prevState: SettingsActionState,
+  _formData: FormData,
+): Promise<SettingsActionState> {
   const viewer = await getCurrentUser();
   if (!viewer) redirect("/login?next=/settings");
 
   const stored = getPageDocument(viewer.id);
   if (!stored) redirect("/make");
 
-  const panicActive = stored.hiddenFromDiscovery && stored.visibility === "unlisted";
-  if (panicActive) {
-    deactivatePanicMode(viewer.id);
-  } else {
+  if (activate) {
     activatePanicMode(viewer.id);
+  } else {
+    deactivatePanicMode(viewer.id);
   }
   revalidatePath("/settings");
   revalidatePath(`/@${viewer.handle}`);
+  return {};
 }
 
 export interface EmailState {

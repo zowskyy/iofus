@@ -80,6 +80,9 @@
 }
 
 .studio-tab {
+  display: inline-flex;
+  align-items: center;
+  min-height: 44px;
   border: 1px solid transparent;
   background: transparent;
   color: var(--ink-soft);
@@ -481,6 +484,7 @@
     flex-wrap: nowrap;
     -webkit-overflow-scrolling: touch;
     scrollbar-width: none;
+    scroll-snap-type: x proximity;
   }
   .studio-tabs::-webkit-scrollbar {
     display: none;
@@ -488,6 +492,7 @@
   .studio-tab {
     white-space: nowrap;
     flex-shrink: 0;
+    scroll-snap-align: start;
   }
   .studio-tab-panel {
     padding: 0.75rem;

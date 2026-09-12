@@ -63,6 +63,42 @@ test.describe("Accessibility — automated scan", () => {
     const results = await new AxeBuilder({ page }).withTags(["wcag2a", "wcag2aa"]).analyze();
     expect(results.violations, JSON.stringify(results.violations, null, 2)).toEqual([]);
   });
+
+  test("Settings has no automatically-detectable violations", async ({ page }) => {
+    const handle = uniqueHandle("a11ysettings");
+    await signUpAndPublish(page, handle, "Settings Check");
+    await page.goto("/settings");
+    const results = await new AxeBuilder({ page }).withTags(["wcag2a", "wcag2aa"]).analyze();
+    expect(results.violations, JSON.stringify(results.violations, null, 2)).toEqual([]);
+  });
+
+  test("Rings has no automatically-detectable violations", async ({ page }) => {
+    const handle = uniqueHandle("a11yrings");
+    await signUpAndPublish(page, handle, "Rings Check");
+    await page.goto("/rings");
+    const results = await new AxeBuilder({ page }).withTags(["wcag2a", "wcag2aa"]).analyze();
+    expect(results.violations, JSON.stringify(results.violations, null, 2)).toEqual([]);
+  });
+});
+
+test.describe("Accessibility — narrow viewport (320px)", () => {
+  // WCAG 1.4.10 (Reflow) requires no loss of content/function and no
+  // two-dimensional scrolling at a 320px CSS-pixel viewport width.
+  test("Settings at 320px has no horizontal overflow and every action stays reachable", async ({ page }) => {
+    await page.setViewportSize({ width: 320, height: 640 });
+    const handle = uniqueHandle("a11ynarrow");
+    await signUpAndPublish(page, handle, "Narrow Viewport Check");
+    await page.goto("/settings");
+
+    const hasHorizontalOverflow = await page.evaluate(
+      () => document.documentElement.scrollWidth > document.documentElement.clientWidth + 1,
+    );
+    expect(hasHorizontalOverflow, "Settings overflows horizontally at 320px").toBe(false);
+
+    await expect(page.getByRole("button", { name: "Activate panic mode" })).toBeVisible();
+    const results = await new AxeBuilder({ page }).withTags(["wcag2a", "wcag2aa"]).analyze();
+    expect(results.violations, JSON.stringify(results.violations, null, 2)).toEqual([]);
+  });
 });
 
 test.describe("Accessibility — zoom and large text", () => {

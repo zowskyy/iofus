@@ -192,4 +192,42 @@ test.describe("Make → Shape → Publish → Wander", () => {
     await ownerContext.close();
     await visitorContext.close();
   });
+
+  test("panic mode works from Settings at a phone viewport", async ({ page }) => {
+    // Regression coverage for two things at once: panicModeAction now takes
+    // an explicit desired state instead of reading-then-toggling (see
+    // settings/actions.ts), and the control is a real, working touch target
+    // at a narrow width, not just a desktop-only layout.
+    await page.setViewportSize({ width: 375, height: 667 });
+
+    const ownerHandle = uniqueHandle("panicowner");
+
+    await withFreshIp(page);
+    await page.goto("/signup");
+    await page.fill("#handle", ownerHandle);
+    await page.fill("#displayName", "Panic Owner");
+    await page.fill("#password", "correct horse battery staple");
+    await page.getByRole("button", { name: "Make your page" }).click();
+    await page.getByRole("button", { name: "Publish your corner" }).click();
+    await expect(page).toHaveURL(new RegExp(`/@${ownerHandle}$`));
+
+    await page.goto("/settings");
+
+    // --- Panic mode: activate, then deactivate, verifying the button label
+    // and banner flip each time rather than double-toggling on a resubmit. ---
+    const panicButton = page.getByRole("button", { name: "Activate panic mode" });
+    await expect(panicButton).toBeVisible();
+    await panicButton.click();
+    await expect(page.getByText(/panic mode is on/i)).toBeVisible({ timeout: 10_000 });
+    await expect(page.getByRole("button", { name: "Deactivate panic mode" })).toBeVisible();
+
+    await page.getByRole("button", { name: "Deactivate panic mode" }).click();
+    await expect(page.getByText(/panic mode is on/i)).toHaveCount(0, { timeout: 10_000 });
+    await expect(page.getByRole("button", { name: "Activate panic mode" })).toBeVisible();
+
+    // Touch-target sanity: the panic mode button meets the 44px minimum this
+    // plan requires for a primary control, not just a desktop-sized hit area.
+    const box = await page.getByRole("button", { name: "Activate panic mode" }).boundingBox();
+    expect(box?.height).toBeGreaterThanOrEqual(44);
+  });
 });

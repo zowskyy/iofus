@@ -1,4 +1,3 @@
-import Link from "next/link";
 import { redirect } from "next/navigation";
 import { listBlockedUsers, listIncomingRequests } from "@/lib/friends";
 import { listPendingGuestbookEntries } from "@/lib/guestbook";
@@ -8,14 +7,7 @@ import { getAmbientStatus } from "@/lib/ambientStatus";
 import { getUserEmail } from "@/lib/passwordReset";
 import { AmbientStatusEditor } from "@/components/AmbientStatusEditor";
 import { EmailForm } from "./EmailForm";
-import {
-  acceptIncomingAction,
-  approveGuestbookAction,
-  declineIncomingAction,
-  panicModeAction,
-  rejectGuestbookAction,
-  unblockAction,
-} from "./actions";
+import { BlockedUserRow, FriendRequestRow, GuestbookEntryRow, PanicModeButton } from "./SettingsRows";
 
 export default async function SettingsPage() {
   const viewer = await getCurrentUser();
@@ -64,19 +56,7 @@ export default async function SettingsPage() {
         {panicActive && (
           <p style={{ color: "#2563eb", margin: "0 0 0.75rem" }}>Panic mode is on — your page is hidden from discovery and unlisted.</p>
         )}
-        <form action={panicModeAction}>
-          <button
-            type="submit"
-            className="btn"
-            style={
-              panicActive
-                ? { background: "#2563eb", borderColor: "#2563eb" }
-                : { background: "var(--danger)", borderColor: "var(--danger)" }
-            }
-          >
-            {panicActive ? "Deactivate panic mode" : "Activate panic mode"}
-          </button>
-        </form>
+        <PanicModeButton panicActive={Boolean(panicActive)} />
       </section>
 
       <section className="settings-section">
@@ -86,17 +66,7 @@ export default async function SettingsPage() {
         ) : (
           <ul className="settings-list">
             {incoming.map((req) => (
-              <li key={req.id} className="settings-list-item">
-                <Link href={`/@${req.fromHandle}`}>@{req.fromHandle}</Link>
-                <div className="settings-actions-row">
-                  <form action={acceptIncomingAction.bind(null, req.id)}>
-                    <button type="submit" className="btn">Accept</button>
-                  </form>
-                  <form action={declineIncomingAction.bind(null, req.id)}>
-                    <button type="submit" className="btn secondary">Decline</button>
-                  </form>
-                </div>
-              </li>
+              <FriendRequestRow key={req.id} requestId={req.id} fromHandle={req.fromHandle} />
             ))}
           </ul>
         )}
@@ -109,12 +79,7 @@ export default async function SettingsPage() {
         ) : (
           <ul className="settings-list">
             {blocked.map((b) => (
-              <li key={b.userId} className="settings-list-item">
-                <span>@{b.handle}</span>
-                <form action={unblockAction.bind(null, b.handle)}>
-                  <button type="submit" className="btn secondary">Unblock</button>
-                </form>
-              </li>
+              <BlockedUserRow key={b.userId} handle={b.handle} />
             ))}
           </ul>
         )}
@@ -127,20 +92,12 @@ export default async function SettingsPage() {
         ) : (
           <ul className="settings-list settings-guestbook-list">
             {pendingGuestbook.map((entry) => (
-              <li key={entry.id} className="settings-list-item settings-guestbook-item">
-                <p className="guestbook-message">{entry.message}</p>
-                <p className="guestbook-meta mono">
-                  {entry.authorHandle ? `@${entry.authorHandle}` : "Anonymous"}
-                </p>
-                <div className="settings-actions-row">
-                  <form action={approveGuestbookAction.bind(null, entry.id)}>
-                    <button type="submit" className="btn">Approve</button>
-                  </form>
-                  <form action={rejectGuestbookAction.bind(null, entry.id)}>
-                    <button type="submit" className="btn secondary">Reject</button>
-                  </form>
-                </div>
-              </li>
+              <GuestbookEntryRow
+                key={entry.id}
+                entryId={entry.id}
+                message={entry.message}
+                authorHandle={entry.authorHandle}
+              />
             ))}
           </ul>
         )}

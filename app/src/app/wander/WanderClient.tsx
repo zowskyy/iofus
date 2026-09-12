@@ -2,17 +2,26 @@
 
 import { useState, useEffect, useCallback, useRef } from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 
 interface Props {
   handles: string[];
 }
 
-/** Client-side Wander UI: full-screen iframe navigation between profile pages with next/previous buttons and cross-fade loading animation. */
+// Minimum horizontal drag distance, and how much more horizontal than
+// vertical movement there must be, before a touch is treated as a
+// next/prev swipe rather than the visitor scrolling the framed page.
+const SWIPE_MIN_DISTANCE_PX = 60;
+const SWIPE_DIRECTION_RATIO = 1.5;
+
+/** Client-side Wander UI: full-screen iframe navigation between profile pages with next/previous buttons, keyboard nav, touch swipe, and cross-fade loading animation. */
 export function WanderClient({ handles }: Props) {
   const [index, setIndex] = useState(0);
   const [started, setStarted] = useState(false);
   const [loading, setLoading] = useState(false);
   const iframeRef = useRef<HTMLIFrameElement>(null);
+  const touchStartRef = useRef<{ x: number; y: number } | null>(null);
+  const router = useRouter();
 
   const handle = handles[index] ?? null;
 
@@ -39,17 +48,43 @@ export function WanderClient({ handles }: Props) {
       if (e.key === "ArrowRight" || e.key === "j" || e.key === "J") goNext();
       if (e.key === "ArrowLeft" || e.key === "k" || e.key === "K") goPrev();
       if (e.key === "Escape") {
-        window.location.href = "/explore";
+        router.push("/explore");
       }
     }
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
-  }, [goNext, goPrev]);
+  }, [goNext, goPrev, router]);
 
   // Clear loading state once iframe finishes loading
   const onIframeLoad = useCallback(() => {
     setLoading(false);
   }, []);
+
+  // Touch swipe is an enhancement layered on top of the buttons and keyboard
+  // nav above, never a replacement — WCAG 2.5.1 requires a single-pointer
+  // alternative to any path-based gesture, and both already exist here.
+  const onTouchStart = useCallback((e: React.TouchEvent) => {
+    const t = e.touches[0];
+    touchStartRef.current = t ? { x: t.clientX, y: t.clientY } : null;
+  }, []);
+
+  const onTouchEnd = useCallback(
+    (e: React.TouchEvent) => {
+      const start = touchStartRef.current;
+      touchStartRef.current = null;
+      const end = e.changedTouches[0];
+      if (!start || !end) return;
+
+      const dx = end.clientX - start.x;
+      const dy = end.clientY - start.y;
+      if (Math.abs(dx) < SWIPE_MIN_DISTANCE_PX) return;
+      if (Math.abs(dx) < Math.abs(dy) * SWIPE_DIRECTION_RATIO) return;
+
+      if (dx < 0) goNext();
+      else goPrev();
+    },
+    [goNext, goPrev],
+  );
 
   if (!handle) {
     return (
@@ -91,13 +126,19 @@ export function WanderClient({ handles }: Props) {
   }
 
   return (
-    <div className="wander-shell">
+    <div className="wander-shell" onTouchStart={onTouchStart} onTouchEnd={onTouchEnd}>
+      {/* Visually hidden but announced by screen readers on each change — the
+          visual progress counter below is aria-hidden so the position isn't
+          announced twice. */}
+      <p className="sr-only" role="status" aria-live="polite">
+        {loading ? `Loading @${handle}…` : `Showing @${handle}, page ${index + 1} of ${handles.length}`}
+      </p>
       <div className="wander-chrome">
         <Link href={`/@${handle}`} className="wander-handle" target="_blank" rel="noreferrer">
           @{handle}
         </Link>
         <div className="wander-controls">
-          <span className="wander-progress">
+          <span className="wander-progress" aria-hidden="true">
             {index + 1} / {handles.length}
           </span>
           <button
