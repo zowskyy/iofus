@@ -193,7 +193,12 @@ export function searchPages(query: string, limit = 24): DiscoverablePage[] {
 export function countPublicProfiles(): number {
   const db = getDb();
   const row = db
-    .prepare(`SELECT COUNT(*) AS n FROM page_documents pd WHERE ${DISCOVERABLE_WHERE}`)
+    .prepare(
+      `SELECT COUNT(*) AS n
+       FROM page_documents pd
+       JOIN users u ON u.id = pd.user_id
+       WHERE ${DISCOVERABLE_WHERE}`,
+    )
     .get() as { n: number };
   return row.n;
 }
