@@ -53,11 +53,8 @@ export function NavDropdown({ label, children, badgeCount = 0 }: Props) {
       {open && (
         <div
           id={menuId}
-          role="menu"
           className="nav-dropdown-panel"
           onClick={(e) => {
-            // Activating a link or the logout button inside the menu should
-            // close it, same as any normal nav click would.
             if ((e.target as HTMLElement).closest("a, button")) setOpen(false);
           }}
         >
