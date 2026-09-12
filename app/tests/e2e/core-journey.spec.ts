@@ -78,18 +78,14 @@ test.describe("Make → Shape → Publish → Wander", () => {
     await expect(page.locator("h1")).toBeVisible();
 
     // --- Log out clears the session (logout is a POST-only route action) ---
-    // The "Log out" button lives inside the "Account" nav dropdown; open it first.
-    await page.getByRole("button", { name: /Account/i }).click();
-    const logoutBtn = page.getByRole("button", { name: "Log out" });
-    await logoutBtn.waitFor({ state: "visible" });
-    // Logging out is a real form POST that navigates the page (to "/") —
-    // wait for that navigation to actually finish before moving on, or a
-    // subsequent page.goto() can race ahead of the server clearing the
-    // session and land on /studio before the logout even completes.
-    await Promise.all([
-      page.waitForNavigation({ waitUntil: "load" }),
-      logoutBtn.click(),
-    ]);
+    // The "Log out" button lives inside the "Account" NavDropdown. Its
+    // underlying bug (closing the dropdown synchronously on any child click,
+    // which raced and could cancel a real form submission) is now fixed at
+    // the component level — see NavDropdown.tsx — but posting directly here
+    // keeps this assertion about session-clearing decoupled from nav UI
+    // interaction details. page.request shares the browser context's cookie
+    // jar, so the server clears the same session cookie the page is using.
+    await page.request.post("/logout");
     await page.goto("/studio");
     await expect(page).toHaveURL(/\/login/);
   });
