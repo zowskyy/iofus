@@ -2,7 +2,7 @@ import { randomUUID } from "node:crypto";
 import { beforeEach, describe, expect, it } from "vitest";
 import { createUser } from "./auth";
 import { getDb, resetDbForTests } from "./db";
-import { sendFriendRequest, acceptFriendRequest, listIncomingRequests } from "./friends";
+import { sendFriendRequest, acceptFriendRequest, blockUser, listIncomingRequests } from "./friends";
 import { defaultPageDocument, savePageDocument, setPublished, setVisibility } from "./pageDocument";
 import { signGuestbook } from "./guestbook";
 import { getFriendActivityFeed } from "./activityFeed";
@@ -51,7 +51,6 @@ describe("getFriendActivityFeed", () => {
     const viewer = createUser("viewer", "correct-horse-battery");
     const friend = createUser("unpublishedfriend", "correct-horse-battery");
     savePageDocument(friend.id, defaultPageDocument("Unpublished"));
-    // never published
     befriend(viewer, friend);
 
     expect(getFriendActivityFeed(viewer.id)).toEqual([]);
@@ -81,7 +80,6 @@ describe("getFriendActivityFeed", () => {
 
     const blogItems = feed.filter((f) => f.kind === "blog_post");
     expect(blogItems.every((f) => f.actorDisplayName === "Blogger Name")).toBe(true);
-    // Most recent blog post first among blog items (sorted before slicing to top 3).
     expect(blogItems[0]!.title).toBe("Second post");
   });
 
@@ -197,5 +195,60 @@ describe("getFriendActivityFeed", () => {
     const feed = getFriendActivityFeed(viewer.id, 2);
     expect(feed).toHaveLength(2);
     expect(feed[0]!.title).toBe("New post");
+  });
+
+  // Privacy/block-bypass regression tests from PR #18 security audit
+  it("does not leak a friend's page-decorated activity once they go private", () => {
+    const viewer = createUser("voidarcade", "correct-horse-battery");
+    const friend = publishPublicPage("neonorchard", "Neon Orchard");
+    savePageDocument(viewer.id, defaultPageDocument("Void Arcade"));
+    setPublished(viewer.id, true);
+    befriend(viewer, friend);
+    setVisibility(friend.id, "private");
+
+    const items = getFriendActivityFeed(viewer.id);
+    expect(items.some((i) => i.actorHandle === "neonorchard")).toBe(false);
+  });
+
+  it("does not leak a blocked friend's activity", () => {
+    const viewer = createUser("voidarcade", "correct-horse-battery");
+    const friend = publishPublicPage("neonorchard", "Neon Orchard");
+    savePageDocument(viewer.id, defaultPageDocument("Void Arcade"));
+    setPublished(viewer.id, true);
+    befriend(viewer, friend);
+    blockUser(viewer.id, friend.id);
+
+    const items = getFriendActivityFeed(viewer.id);
+    expect(items.some((i) => i.actorHandle === "neonorchard")).toBe(false);
+  });
+
+  it("does not leak a private target's identity through a friend's guestbook activity", () => {
+    const viewer = createUser("voidarcade", "correct-horse-battery");
+    const friend = publishPublicPage("neonorchard", "Neon Orchard");
+    const target = publishPublicPage("privateuser", "Private User");
+    savePageDocument(viewer.id, defaultPageDocument("Void Arcade"));
+    setPublished(viewer.id, true);
+    setVisibility(target.id, "private");
+    befriend(viewer, friend);
+
+    signGuestbook(target.id, friend.id, "neonorchard", "hi!", false);
+
+    const items = getFriendActivityFeed(viewer.id);
+    expect(items.some((i) => i.kind === "guestbook_signed" && i.targetHandle === "privateuser")).toBe(false);
+  });
+
+  it("does not leak a guestbook target's identity when the viewer has blocked them", () => {
+    const viewer = createUser("voidarcade", "correct-horse-battery");
+    const friend = publishPublicPage("neonorchard", "Neon Orchard");
+    const target = publishPublicPage("blockeduser", "Blocked User");
+    savePageDocument(viewer.id, defaultPageDocument("Void Arcade"));
+    setPublished(viewer.id, true);
+    befriend(viewer, friend);
+    blockUser(viewer.id, target.id);
+
+    signGuestbook(target.id, friend.id, "neonorchard", "hi!", false);
+
+    const items = getFriendActivityFeed(viewer.id);
+    expect(items.some((i) => i.kind === "guestbook_signed" && i.targetHandle === "blockeduser")).toBe(false);
   });
 });

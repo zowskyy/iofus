@@ -88,3 +88,30 @@ export function checkRateLimit(key: string, maxCount: number, windowMs: number =
     throw err;
   }
 }
+
+/**
+ * Same semantics as checkRateLimit but assumes the caller already holds an
+ * open write transaction. Does not open BEGIN/COMMIT — use this only from
+ * inside an existing `BEGIN IMMEDIATE` block to avoid nested-transaction errors.
+ */
+export function checkRateLimitInTx(key: string, maxCount: number, windowMs: number = DEFAULT_WINDOW_MS): void {
+  if (process.env.IOFUS_DISABLE_RATE_LIMIT === "true") return;
+  const db = getDb();
+  const now = Date.now();
+  const row = db.prepare("SELECT count, window_start FROM rate_limits WHERE key = ?").get(key) as
+    | { count: number; window_start: string }
+    | undefined;
+
+  if (!row) {
+    db.prepare("INSERT INTO rate_limits (key, count, window_start) VALUES (?, 1, ?)").run(key, new Date(now).toISOString());
+  } else {
+    const windowStart = new Date(row.window_start).getTime();
+    if (now - windowStart >= windowMs) {
+      db.prepare("UPDATE rate_limits SET count = 1, window_start = ? WHERE key = ?").run(new Date(now).toISOString(), key);
+    } else if (row.count >= maxCount) {
+      throw new RateLimitError(Math.ceil((windowMs - (now - windowStart)) / 1000));
+    } else {
+      db.prepare("UPDATE rate_limits SET count = count + 1 WHERE key = ?").run(key);
+    }
+  }
+}

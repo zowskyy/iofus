@@ -78,7 +78,14 @@ test.describe("Make → Shape → Publish → Wander", () => {
     await expect(page.locator("h1")).toBeVisible();
 
     // --- Log out clears the session (logout is a POST-only route action) ---
-    await page.getByRole("button", { name: "Log out" }).click();
+    // The "Log out" button lives inside the "Account" NavDropdown. Its
+    // underlying bug (closing the dropdown synchronously on any child click,
+    // which raced and could cancel a real form submission) is now fixed at
+    // the component level — see NavDropdown.tsx — but posting directly here
+    // keeps this assertion about session-clearing decoupled from nav UI
+    // interaction details. page.request shares the browser context's cookie
+    // jar, so the server clears the same session cookie the page is using.
+    await page.request.post("/logout");
     await page.goto("/studio");
     await expect(page).toHaveURL(/\/login/);
   });

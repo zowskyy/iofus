@@ -17,5 +17,11 @@ export function parseHandleParam(rawParam: string): string | null {
     return null; // malformed percent-encoding (e.g. a lone "%")
   }
   if (!decoded.startsWith("@")) return null;
-  return decoded.slice(1);
+  const handle = decoded.slice(1);
+  // A percent-encoded slash (e.g. "%40foo%2Fbar") still matches the single
+  // [handle] dynamic segment and decodes to a value containing "/" —
+  // reject anything that isn't shaped like a real handle rather than
+  // passing it through to callers that assume a single path segment.
+  if (!/^[a-zA-Z0-9_-]+$/.test(handle)) return null;
+  return handle;
 }

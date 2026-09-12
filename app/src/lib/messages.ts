@@ -1,7 +1,7 @@
 import { randomUUID } from "node:crypto";
 import { getDb } from "./db";
 import { hasBlockRelationship } from "./friends";
-import { checkRateLimit, DAY_MS } from "./rateLimit";
+import { checkRateLimit, checkRateLimitInTx, DAY_MS } from "./rateLimit";
 import { createMonotonicClock } from "./monotonicTime";
 
 const monotonicNow = createMonotonicClock();
@@ -77,25 +77,30 @@ export function sendMessage(senderId: string, recipientId: string, body: string)
 
   const db = getDb();
   const [userAId, userBId] = orderedPair(senderId, recipientId);
-  const existing = findConversationRow(db, userAId, userBId);
-
   // Per-sender message rate limit applies to all sends (new or existing thread).
-  // New-conversation cap is an additional, stricter daily guard.
+  // Checked outside the lock so the atomic BEGIN IMMEDIATE is held as briefly
+  // as possible; the per-minute guard is lenient enough that a double-consume
+  // in an unlikely race doesn't matter.
   checkRateLimit(`dm:msg:${senderId}`, MAX_MESSAGES_PER_MINUTE);
-  if (!existing) {
-    checkRateLimit(`dm:new-conversation:${senderId}`, MAX_NEW_CONVERSATIONS_PER_DAY, DAY_MS);
-  }
 
   const now = monotonicNow();
   const messageId = randomUUID();
 
   db.exec("BEGIN IMMEDIATE");
   try {
+    // Re-read under the write lock rather than trusting a pre-transaction
+    // snapshot: two concurrent first messages between the same pair can both
+    // see "no conversation" before either transaction opens, and whichever
+    // commits second would otherwise hit the UNIQUE constraint.
+    const existingLocked = findConversationRow(db, userAId, userBId);
     let conversationId: string;
-    if (existing) {
-      conversationId = existing.id;
+    if (existingLocked) {
+      conversationId = existingLocked.id;
       db.prepare("UPDATE conversations SET last_message_at = ? WHERE id = ?").run(now, conversationId);
     } else {
+      // New-conversation daily cap checked inside the lock so concurrent first
+      // sends cannot both consume an allowance for what becomes one conversation.
+      checkRateLimitInTx(`dm:new-conversation:${senderId}`, MAX_NEW_CONVERSATIONS_PER_DAY, DAY_MS);
       conversationId = randomUUID();
       db.prepare(
         "INSERT INTO conversations (id, user_a_id, user_b_id, created_at, last_message_at) VALUES (?, ?, ?, ?, ?)",

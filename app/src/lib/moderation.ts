@@ -29,6 +29,8 @@ export function ensureModeratorSeed(): void {
   db.prepare("UPDATE users SET is_moderator = 1 WHERE id = ?").run(first.id);
 }
 
+export class ReportNotOpenError extends Error {}
+
 export function reviewReport(
   reportId: string,
   moderatorId: string,
@@ -37,9 +39,17 @@ export function reviewReport(
 ): void {
   const db = getDb();
   const now = new Date().toISOString();
-  db.prepare(
-    "UPDATE reports SET status = ?, moderator_id = ?, moderator_note = ?, reviewed_at = ? WHERE id = ?",
-  ).run(status, moderatorId, note.trim() || null, now, reportId);
+  // Only an *open* report may transition — without this, two moderators
+  // (or two tabs) reviewing the same report can each overwrite the other's
+  // outcome and both get logged as contradictory moderator actions.
+  const result = db
+    .prepare(
+      "UPDATE reports SET status = ?, moderator_id = ?, moderator_note = ?, reviewed_at = ? WHERE id = ? AND status = 'open'",
+    )
+    .run(status, moderatorId, note.trim() || null, now, reportId);
+  if (result.changes === 0) {
+    throw new ReportNotOpenError("This report has already been reviewed.");
+  }
 
   const report = db.prepare("SELECT reported_handle FROM reports WHERE id = ?").get(reportId) as
     | { reported_handle: string }

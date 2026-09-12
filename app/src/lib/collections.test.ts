@@ -1,10 +1,13 @@
+import { randomUUID } from "node:crypto";
 import { beforeEach, describe, expect, it } from "vitest";
 import { createUser } from "./auth";
 import { getDb, resetDbForTests } from "./db";
-import { defaultPageDocument, savePageDocument, setPublished, setVisibility } from "./pageDocument";
 import { getCollectionBySlug, listCollectionPages, listCollections } from "./collections";
+import { defaultPageDocument, savePageDocument, setHiddenFromDiscovery, setPublished, setVisibility } from "./pageDocument";
+import { ensureModeratorSeed, setPlatformBlock } from "./moderation";
 
 process.env.IOFUS_DB_PATH = ":memory:";
+process.env.IOFUS_AUTO_MODERATOR_SEED = "true";
 
 beforeEach(() => {
   resetDbForTests();
@@ -20,8 +23,6 @@ function publishPublicPage(handle: string, displayName: string) {
 
 describe("collections", () => {
   it("a fresh database is seeded with the two default collections on first open", () => {
-    // db.ts's migration seeds this table automatically (getDb() -> openAndMigrate
-    // -> seedCollections); there's no separate public seeding entry point.
     const list = listCollections();
     expect(list.map((c) => c.slug).sort()).toEqual(["freshly-painted", "quiet-corners"]);
   });
@@ -49,7 +50,6 @@ describe("collections", () => {
 
     const draftUser = createUser("draft-user", "correct-horse-battery");
     savePageDocument(draftUser.id, defaultPageDocument("Draft User"));
-    // never published or made public
 
     const now = new Date().toISOString();
     db.prepare(
@@ -71,7 +71,6 @@ describe("collections", () => {
     const userA = publishPublicPage("user-a", "User A");
     const userB = publishPublicPage("user-b", "User B");
 
-    // Insert out of position order to prove the query sorts, not insertion order.
     const now = new Date().toISOString();
     db.prepare(
       "INSERT INTO collection_pages (collection_id, user_id, position, added_at) VALUES (?, ?, 1, ?)",
@@ -89,7 +88,6 @@ describe("collections", () => {
     const db = getDb();
 
     const user = publishPublicPage("weird-doc-user", "Weird Doc User");
-    // Corrupt the stored document to exercise the try/catch fallback.
     db.prepare("UPDATE page_documents SET document_json = ? WHERE user_id = ?").run("{not valid json", user.id);
 
     db.prepare(
@@ -99,5 +97,29 @@ describe("collections", () => {
     const pages = listCollectionPages(collection.id);
     expect(pages).toHaveLength(1);
     expect(pages[0]!.displayName).toBe("weird-doc-user");
+  });
+
+  it("excludes a page the owner has hidden from discovery", () => {
+    const collection = getCollectionBySlug("freshly-painted")!;
+    const user = publishPublicPage("voidarcade", "Void Arcade");
+    setHiddenFromDiscovery(user.id, true);
+    getDb()
+      .prepare("INSERT INTO collection_pages (collection_id, user_id, position, added_at) VALUES (?, ?, 0, ?)")
+      .run(collection.id, user.id, new Date().toISOString());
+
+    expect(listCollectionPages(collection.id).map((p) => p.handle)).not.toContain("voidarcade");
+  });
+
+  it("excludes a page whose owner has been platform-blocked by a moderator", () => {
+    const collection = getCollectionBySlug("freshly-painted")!;
+    const mod = createUser("moduser", "correct-horse-battery");
+    const user = publishPublicPage("voidarcade", "Void Arcade");
+    getDb()
+      .prepare("INSERT INTO collection_pages (collection_id, user_id, position, added_at) VALUES (?, ?, 0, ?)")
+      .run(collection.id, user.id, new Date().toISOString());
+    ensureModeratorSeed();
+    setPlatformBlock(user.id, true, mod.id);
+
+    expect(listCollectionPages(collection.id).map((p) => p.handle)).not.toContain("voidarcade");
   });
 });

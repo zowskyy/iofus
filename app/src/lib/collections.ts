@@ -28,8 +28,16 @@ export function getCollectionBySlug(slug: string): Collection | null {
   return row ?? null;
 }
 
-export function listCollectionPages(collectionId: string): CollectionPage[] {
+export function listCollectionPages(collectionId: string, viewerId?: string): CollectionPage[] {
   const db = getDb();
+  const blockClause = viewerId
+    ? `AND NOT EXISTS (
+           SELECT 1 FROM blocks b
+           WHERE (b.blocker_id = ? AND b.blocked_id = cp.user_id)
+              OR (b.blocker_id = cp.user_id AND b.blocked_id = ?)
+         )`
+    : "";
+  const params = viewerId ? [collectionId, viewerId, viewerId] : [collectionId];
   const rows = db
     .prepare(
       `SELECT u.handle, pd.document_json, cp.position
@@ -38,9 +46,11 @@ export function listCollectionPages(collectionId: string): CollectionPage[] {
        JOIN page_documents pd ON pd.user_id = cp.user_id
        WHERE cp.collection_id = ?
          AND pd.is_published = 1 AND pd.visibility = 'public'
+         AND pd.hidden_from_discovery = 0 AND u.is_blocked_platform = 0
+         ${blockClause}
        ORDER BY cp.position ASC`,
     )
-    .all(collectionId) as { handle: string; document_json: string; position: number }[];
+    .all(...params) as { handle: string; document_json: string; position: number }[];
 
   return rows.map((r) => {
     let displayName = r.handle;

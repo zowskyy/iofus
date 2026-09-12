@@ -1,5 +1,5 @@
 import { getDb } from "./db";
-import { listFriends } from "./friends";
+import { hasBlockRelationship, listFriends } from "./friends";
 import { migrateDocument } from "./pageDocument";
 
 export interface FeedItem {
@@ -18,12 +18,24 @@ interface PageDocRow {
   document_json: string;
   updated_at: string;
   is_published: number;
+  visibility: string;
+  hidden_from_discovery: number;
 }
 
 interface GuestbookRow {
   author_handle: string;
   page_owner_handle: string;
+  page_owner_id: string;
   created_at: string;
+  target_visibility: string;
+  target_hidden: number;
+}
+
+/** Whether a page at *visibility* is visible to someone other than its owner — same threshold as listPublicFriends. */
+function isVisibleToOthers(visibility: string, hiddenFromDiscovery: boolean): boolean {
+  if (visibility === "private") return false;
+  if (visibility === "public" && hiddenFromDiscovery) return false;
+  return true;
 }
 
 export function getFriendActivityFeed(viewerId: string, limit = 40): FeedItem[] {
@@ -35,27 +47,50 @@ export function getFriendActivityFeed(viewerId: string, limit = 40): FeedItem[] 
 
   const db = getDb();
 
-  // Load page_documents for all friends in one query
-  const pageRows = db
+  // Load page_documents for all friends in one query. A friend's private
+  // page, or a friend the viewer has blocked (or who has blocked the
+  // viewer), must not surface here even though the two are friends —
+  // canViewPage() would already reject visiting that page directly.
+  const allPageRows = db
     .prepare(
-      `SELECT pd.user_id, u.handle, pd.document_json, pd.updated_at, pd.is_published
+      `SELECT pd.user_id, u.handle, pd.document_json, pd.updated_at, pd.is_published,
+              pd.visibility, pd.hidden_from_discovery
        FROM page_documents pd
        JOIN users u ON u.id = pd.user_id
-       WHERE pd.user_id IN (${placeholders}) AND pd.is_published = 1`,
+       WHERE pd.user_id IN (${placeholders}) AND pd.is_published = 1 AND u.is_blocked_platform = 0`,
     )
     .all(...friendIds) as unknown as PageDocRow[];
+  const pageRows = allPageRows.filter(
+    (row) =>
+      isVisibleToOthers(row.visibility, !!row.hidden_from_discovery) &&
+      !hasBlockRelationship(viewerId, row.user_id),
+  );
 
-  // Load guestbook entries authored by friends (approved only)
+  // Load guestbook entries authored by friends (approved only) — but only
+  // when the *target* page is one the viewer could actually see, and
+  // there's no block between the viewer and the target page's owner.
+  // Otherwise this leaks a private/hidden/blocked-from user's handle and
+  // existence to the viewer purely through a friend's guestbook activity.
   const guestbookRows = db
     .prepare(
-      `SELECT ge.author_handle, u2.handle as page_owner_handle, ge.created_at
+      `SELECT ge.author_handle, u2.handle as page_owner_handle, ge.page_owner_id as page_owner_id,
+              ge.created_at, pd2.visibility as target_visibility, pd2.hidden_from_discovery as target_hidden
        FROM guestbook_entries ge
+       JOIN users u1 ON u1.id = ge.author_id
        JOIN users u2 ON u2.id = ge.page_owner_id
-       WHERE ge.author_id IN (${placeholders}) AND ge.status = 'approved'
+       JOIN page_documents pd2 ON pd2.user_id = ge.page_owner_id
+       WHERE ge.author_id IN (${placeholders}) AND ge.status = 'approved' AND pd2.is_published = 1
+         AND pd2.visibility = 'public' AND pd2.hidden_from_discovery = 0
+         AND u1.is_blocked_platform = 0 AND u2.is_blocked_platform = 0
+         AND NOT EXISTS (
+           SELECT 1 FROM blocks b
+           WHERE (b.blocker_id = ? AND b.blocked_id = ge.page_owner_id)
+              OR (b.blocker_id = ge.page_owner_id AND b.blocked_id = ?)
+         )
        ORDER BY ge.created_at DESC
        LIMIT 200`,
     )
-    .all(...friendIds) as unknown as GuestbookRow[];
+    .all(...friendIds, viewerId, viewerId) as unknown as GuestbookRow[];
 
   const items: FeedItem[] = [];
   // handle → displayName, resolved once per friend and reused both for that

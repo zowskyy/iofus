@@ -1,10 +1,18 @@
 import { getCurrentUser } from "@/lib/session";
 import { exportPageAsHtml } from "@/lib/exportPage";
+import { checkRateLimit, RateLimitError, rateLimitActorKey } from "@/lib/rateLimit";
 
 export async function GET() {
   const viewer = await getCurrentUser();
   if (!viewer) {
     return new Response("Unauthorized", { status: 401 });
+  }
+
+  try {
+    checkRateLimit(await rateLimitActorKey("export", viewer.id), 10);
+  } catch (e) {
+    if (e instanceof RateLimitError) return new Response(e.message, { status: 429 });
+    throw e;
   }
 
   try {
