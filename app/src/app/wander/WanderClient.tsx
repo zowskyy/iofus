@@ -21,6 +21,7 @@ export function WanderClient({ handles }: Props) {
   const [loading, setLoading] = useState(false);
   const iframeRef = useRef<HTMLIFrameElement>(null);
   const touchStartRef = useRef<{ x: number; y: number } | null>(null);
+  const detachFrameTouchRef = useRef<(() => void) | null>(null);
   const router = useRouter();
 
   const handle = handles[index] ?? null;
@@ -55,28 +56,21 @@ export function WanderClient({ handles }: Props) {
     return () => window.removeEventListener("keydown", onKey);
   }, [goNext, goPrev, router]);
 
-  // Clear loading state once iframe finishes loading
-  const onIframeLoad = useCallback(() => {
-    setLoading(false);
-  }, []);
-
   // Touch swipe is an enhancement layered on top of the buttons and keyboard
   // nav above, never a replacement — WCAG 2.5.1 requires a single-pointer
   // alternative to any path-based gesture, and both already exist here.
-  const onTouchStart = useCallback((e: React.TouchEvent) => {
-    const t = e.touches[0];
-    touchStartRef.current = t ? { x: t.clientX, y: t.clientY } : null;
+  const handleTouchStart = useCallback((x: number, y: number) => {
+    touchStartRef.current = { x, y };
   }, []);
 
-  const onTouchEnd = useCallback(
-    (e: React.TouchEvent) => {
+  const handleTouchEnd = useCallback(
+    (x: number, y: number) => {
       const start = touchStartRef.current;
       touchStartRef.current = null;
-      const end = e.changedTouches[0];
-      if (!start || !end) return;
+      if (!start) return;
 
-      const dx = end.clientX - start.x;
-      const dy = end.clientY - start.y;
+      const dx = x - start.x;
+      const dy = y - start.y;
       if (Math.abs(dx) < SWIPE_MIN_DISTANCE_PX) return;
       if (Math.abs(dx) < Math.abs(dy) * SWIPE_DIRECTION_RATIO) return;
 
@@ -85,6 +79,63 @@ export function WanderClient({ handles }: Props) {
     },
     [goNext, goPrev],
   );
+
+  const onTouchStart = useCallback(
+    (e: React.TouchEvent) => {
+      const t = e.touches[0];
+      if (t) handleTouchStart(t.clientX, t.clientY);
+    },
+    [handleTouchStart],
+  );
+
+  const onTouchEnd = useCallback(
+    (e: React.TouchEvent) => {
+      const t = e.changedTouches[0];
+      if (t) handleTouchEnd(t.clientX, t.clientY);
+    },
+    [handleTouchEnd],
+  );
+
+  // The listeners above only ever see touches that land on the chrome —
+  // the framed profile page renders in its own browsing context, so touches
+  // over it (nearly the whole screen) never bubble out to .wander-shell.
+  // Same-origin (sandbox includes allow-same-origin, and src is always
+  // `/@handle` on this origin), so its document is reachable directly;
+  // attach the same swipe handlers there too, and detach on the next load
+  // in case an in-frame link causes another same-origin navigation.
+  const onIframeLoad = useCallback(() => {
+    setLoading(false);
+    detachFrameTouchRef.current?.();
+    detachFrameTouchRef.current = null;
+
+    try {
+      const frameDoc = iframeRef.current?.contentDocument;
+      if (!frameDoc) return;
+
+      const onFrameTouchStart = (e: TouchEvent) => {
+        const t = e.touches[0];
+        if (t) handleTouchStart(t.clientX, t.clientY);
+      };
+      const onFrameTouchEnd = (e: TouchEvent) => {
+        const t = e.changedTouches[0];
+        if (t) handleTouchEnd(t.clientX, t.clientY);
+      };
+
+      frameDoc.addEventListener("touchstart", onFrameTouchStart, { passive: true });
+      frameDoc.addEventListener("touchend", onFrameTouchEnd, { passive: true });
+      detachFrameTouchRef.current = () => {
+        frameDoc.removeEventListener("touchstart", onFrameTouchStart);
+        frameDoc.removeEventListener("touchend", onFrameTouchEnd);
+      };
+    } catch {
+      // Same-origin access unexpectedly denied (e.g. a transient about:blank
+      // during navigation) — swipe over the chrome still works either way.
+    }
+  }, [handleTouchStart, handleTouchEnd]);
+
+  useEffect(() => {
+    return () => detachFrameTouchRef.current?.();
+  }, []);
 
   if (!handle) {
     return (

@@ -1,7 +1,6 @@
 "use client";
 
 import { useActionState } from "react";
-import { withNetworkErrorHandling } from "@/lib/actionResilience";
 import {
   acceptIncomingAction,
   approveGuestbookAction,
@@ -12,13 +11,21 @@ import {
   unblockAction,
 } from "./actions";
 
+// Deliberately NOT wrapped in withNetworkErrorHandling (unlike
+// ManageRingControls): that wrapper returns a plain client closure, which
+// loses the Server Action reference React/Next needs to encode a native
+// pre-hydration form submission — exactly the case ("JS hasn't loaded yet
+// on a slow mobile connection") this mobile-first pass cares about most.
+// Passing the bound action straight into useActionState keeps that working;
+// the actions above already return a `{ error }` state for every expected
+// failure themselves, so pending-disable and inline errors still work —
+// only an actual dropped-connection network error goes unhandled here,
+// same as these forms behaved before this refactor (no client JS at all).
+
 /** Panic mode's single toggle button — pending-disabled so a slow mobile network can't queue a second, state-flipping submit behind the first. */
 export function PanicModeButton({ panicActive }: { panicActive: boolean }) {
   const bound = panicModeAction.bind(null, !panicActive);
-  const [state, action, pending] = useActionState<SettingsActionState, FormData>(
-    withNetworkErrorHandling(bound),
-    {},
-  );
+  const [state, action, pending] = useActionState<SettingsActionState, FormData>(bound, {});
 
   return (
     <form action={action}>
@@ -46,12 +53,12 @@ export function PanicModeButton({ panicActive }: { panicActive: boolean }) {
 export function FriendRequestRow({ requestId, fromHandle }: { requestId: string; fromHandle: string }) {
   const acceptBound = acceptIncomingAction.bind(null, requestId);
   const [acceptState, acceptDispatch, acceptPending] = useActionState<SettingsActionState, FormData>(
-    withNetworkErrorHandling(acceptBound),
+    acceptBound,
     {},
   );
   const declineBound = declineIncomingAction.bind(null, requestId);
   const [declineState, declineDispatch, declinePending] = useActionState<SettingsActionState, FormData>(
-    withNetworkErrorHandling(declineBound),
+    declineBound,
     {},
   );
   const error = acceptState.error ?? declineState.error;
@@ -84,10 +91,7 @@ export function FriendRequestRow({ requestId, fromHandle }: { requestId: string;
 
 export function BlockedUserRow({ handle }: { handle: string }) {
   const bound = unblockAction.bind(null, handle);
-  const [state, dispatch, pending] = useActionState<SettingsActionState, FormData>(
-    withNetworkErrorHandling(bound),
-    {},
-  );
+  const [state, dispatch, pending] = useActionState<SettingsActionState, FormData>(bound, {});
 
   return (
     <li className="settings-list-item">
@@ -113,12 +117,12 @@ export function GuestbookEntryRow({
 }) {
   const approveBound = approveGuestbookAction.bind(null, entryId);
   const [approveState, approveDispatch, approvePending] = useActionState<SettingsActionState, FormData>(
-    withNetworkErrorHandling(approveBound),
+    approveBound,
     {},
   );
   const rejectBound = rejectGuestbookAction.bind(null, entryId);
   const [rejectState, rejectDispatch, rejectPending] = useActionState<SettingsActionState, FormData>(
-    withNetworkErrorHandling(rejectBound),
+    rejectBound,
     {},
   );
   const error = approveState.error ?? rejectState.error;
