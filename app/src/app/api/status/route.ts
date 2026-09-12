@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { getAmbientStatus, setAmbientStatus, AmbientStatusError } from "@/lib/ambientStatus";
 import { checkRateLimit, RateLimitError, rateLimitActorKey } from "@/lib/rateLimit";
 import { getCurrentUser } from "@/lib/session";
+import { canViewPageFor, getPageDocument } from "@/lib/pageDocument";
 
 /** GET /api/status?userId=<id> — returns the current ambient status for a user. */
 export async function GET(req: NextRequest) {
@@ -16,6 +17,14 @@ export async function GET(req: NextRequest) {
     if (e instanceof RateLimitError) return NextResponse.json({ error: e.message }, { status: 429 });
     throw e;
   }
+  // Ambient status is shown on a profile, so it inherits that profile's
+  // visibility. Without this the status text of a private or unpublished page
+  // -- and of an owner who blocked the viewer -- was readable by anyone who
+  // could guess a user id.
+  if (!canViewPageFor(getPageDocument(userId), userId, viewer?.id ?? null)) {
+    return NextResponse.json({ status: null, expiresAt: null });
+  }
+
   const status = getAmbientStatus(userId);
   return NextResponse.json({ status: status?.text ?? null, expiresAt: status?.expiresAt ?? null });
 }

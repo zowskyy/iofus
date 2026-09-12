@@ -63,6 +63,24 @@ export interface CssScopeResult {
   rejected: string[];
 }
 
+/**
+ * Whether *selector* already starts with this page's own scope class, and so
+ * may be emitted without another prefix.
+ *
+ * A plain `startsWith` is not enough: scope `.profile-scope--bob` also prefixes
+ * `.profile-scope--bobby`, so the user with the shorter handle could write
+ * `.profile-scope--bobby .x {}` and have it emitted unscoped, styling a
+ * different user's page. The character following the prefix therefore has to be
+ * one that cannot continue a CSS identifier -- backslash included, since
+ * `.profile-scope--bob\62 by` is another spelling of `.profile-scope--bobby`
+ * that a browser decodes but a naive prefix check does not.
+ */
+function isAlreadyScoped(selector: string, scopeClass: string): boolean {
+  if (!selector.startsWith(scopeClass)) return false;
+  const next = selector.charAt(scopeClass.length);
+  return next === "" || !/[A-Za-z0-9_\-\\]/.test(next);
+}
+
 export function scopeProfileCss(raw: string, scopeClass: string): CssScopeResult {
   const warnings: string[] = [];
   const rejected: string[] = [];
@@ -140,7 +158,7 @@ export function scopeProfileCss(raw: string, scopeClass: string): CssScopeResult
       .map((s) => {
         const part = s.trim();
         if (!part) return "";
-        if (part.startsWith(scopeClass)) return part;
+        if (isAlreadyScoped(part, scopeClass)) return part;
         return `${scopeClass} ${part}`;
       })
       .filter(Boolean)

@@ -1,7 +1,9 @@
 import { notFound } from "next/navigation";
 import { findUserByHandle } from "@/lib/auth";
-import { getPageDocument } from "@/lib/pageDocument";
+import { canViewPageFor, getPageDocument } from "@/lib/pageDocument";
 import { parseHandleParam } from "@/lib/handleParam";
+import { getCurrentUser } from "@/lib/session";
+import { canonicalOrigin } from "@/lib/canonicalOrigin";
 
 function escapeXml(str: string): string {
   return str
@@ -20,7 +22,7 @@ function toRfc822(dateStr: string): string {
 }
 
 export async function GET(
-  request: Request,
+  _request: Request,
   { params }: { params: Promise<{ handle: string }> },
 ) {
   const { handle: rawParam } = await params;
@@ -33,11 +35,17 @@ export async function GET(
   const stored = getPageDocument(user.id);
   if (!stored || !stored.isPublished || stored.visibility !== "public") notFound();
 
+  // Same block check the page routes enforce — a feed is another
+  // representation of the same content, not an exemption from it.
+  const viewer = await getCurrentUser();
+  if (!canViewPageFor(stored, user.id, viewer?.id ?? null)) notFound();
+
   const doc = stored.document;
   if (!doc.pageParts.includes("devlog")) notFound();
 
-  const host = request.headers.get("host") ?? "iofus.com";
-  const base = `https://${host}`;
+  // From configuration, never the Host header: a client controls that and
+  // could point every link in the feed at an origin it owns.
+  const base = canonicalOrigin();
   const displayName = escapeXml(doc.identity.displayName);
   const channelLink = `${base}/@${handle}/devlog`;
 

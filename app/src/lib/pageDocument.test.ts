@@ -3,6 +3,7 @@ import {
   activatePanicMode,
   deactivatePanicMode,
   canViewPage,
+  canViewPageFor,
   defaultPageDocument,
   getPageDocument,
   importPageData,
@@ -21,6 +22,7 @@ import {
   CURRENT_SCHEMA_VERSION,
 } from "./pageDocument";
 import { createUser } from "./auth";
+import { blockUser } from "./friends";
 import { resetDbForTests } from "./db";
 
 process.env.IOFUS_DB_PATH = ":memory:";
@@ -435,5 +437,70 @@ describe("deactivatePanicMode", () => {
     // toggle button flips back to "Activate panic mode".
     const panicActive = stored.hiddenFromDiscovery && stored.visibility === "unlisted";
     expect(panicActive).toBe(false);
+  });
+});
+
+describe("canViewPageFor", () => {
+  function publicPageOwnedBy(handle: string) {
+    const owner = createUser(handle, "correct-horse-battery");
+    savePageDocument(owner.id, defaultPageDocument("Void"));
+    setPublished(owner.id, true);
+    setVisibility(owner.id, "public");
+    return owner;
+  }
+
+  it("hides a public page from a reader the owner blocked", () => {
+    // The bug this covers: the blog and devlog RSS routes checked only
+    // isPublished/visibility, so a blocked reader could still read every post
+    // body through the feed even though the HTML route 404s for them.
+    const owner = publicPageOwnedBy("voidarcade");
+    const reader = createUser("neonorchard", "correct-horse-battery");
+    blockUser(owner.id, reader.id);
+    const stored = getPageDocument(owner.id)!;
+
+    expect(canViewPage(stored, owner.id, reader.id)).toBe(true); // visibility alone says yes
+    expect(canViewPageFor(stored, owner.id, reader.id)).toBe(false); // with blocks, no
+  });
+
+  it("hides the page in both directions of a block", () => {
+    const owner = publicPageOwnedBy("voidarcade");
+    const reader = createUser("neonorchard", "correct-horse-battery");
+    blockUser(reader.id, owner.id); // reader blocked the owner, not vice versa
+    const stored = getPageDocument(owner.id)!;
+
+    expect(canViewPageFor(stored, owner.id, reader.id)).toBe(false);
+  });
+
+  it("still shows a public page to an unblocked reader and to signed-out visitors", () => {
+    const owner = publicPageOwnedBy("voidarcade");
+    const reader = createUser("neonorchard", "correct-horse-battery");
+    const stored = getPageDocument(owner.id)!;
+
+    expect(canViewPageFor(stored, owner.id, reader.id)).toBe(true);
+    expect(canViewPageFor(stored, owner.id, null)).toBe(true);
+  });
+
+  it("always shows owners their own page", () => {
+    const owner = publicPageOwnedBy("voidarcade");
+    const stored = getPageDocument(owner.id)!;
+    expect(canViewPageFor(stored, owner.id, owner.id)).toBe(true);
+  });
+
+  it("still enforces visibility and publication", () => {
+    const owner = createUser("voidarcade", "correct-horse-battery");
+    const reader = createUser("neonorchard", "correct-horse-battery");
+    savePageDocument(owner.id, defaultPageDocument("Void"));
+    setPublished(owner.id, true);
+    setVisibility(owner.id, "private");
+    const stored = getPageDocument(owner.id)!;
+
+    expect(canViewPageFor(stored, owner.id, reader.id)).toBe(false);
+  });
+
+  it("rejects a page id that matches no document", () => {
+    // The stamp endpoints accepted any UUID as a page owner, inserting rows
+    // for pages that never existed.
+    const reader = createUser("neonorchard", "correct-horse-battery");
+    expect(canViewPageFor(null, "no-such-owner", reader.id)).toBe(false);
   });
 });
