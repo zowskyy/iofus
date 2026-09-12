@@ -80,11 +80,12 @@ test.describe("Make → Shape → Publish → Wander", () => {
     // --- Log out clears the session (logout is a POST-only route action) ---
     // The "Log out" button lives inside the "Account" nav dropdown; open it first.
     await page.getByRole("button", { name: /Account/i }).click();
-    // Wait for the logout POST to redirect to "/" before navigating again,
-    // otherwise page.goto("/studio") races with session invalidation.
+    const logoutBtn = page.getByRole("button", { name: "Log out" });
+    await logoutBtn.waitFor({ state: "visible" });
+    // Submit the logout form and wait for the resulting redirect to complete.
     await Promise.all([
-      page.waitForURL(/\/$/),
-      page.getByRole("button", { name: "Log out" }).click(),
+      page.waitForNavigation({ waitUntil: "load" }),
+      logoutBtn.click(),
     ]);
     await page.goto("/studio");
     await expect(page).toHaveURL(/\/login/);
