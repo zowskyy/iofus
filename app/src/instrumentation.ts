@@ -9,11 +9,32 @@ export async function register(): Promise<void> {
   if (process.env.NEXT_RUNTIME !== "nodejs") return;
 
   const { validateProductionConfig } = await import("./lib/productionConfig");
-  validateProductionConfig();
+
+  try {
+    validateProductionConfig();
+  } catch (err) {
+    // Throwing is not enough on its own. Next catches anything raised here,
+    // prints "Failed to prepare server", and leaves the process running with
+    // its HTTP listener already bound — verified against a production build,
+    // where a deliberately misconfigured boot stayed up until it was killed
+    // externally. A container in that state looks alive to anything watching
+    // the port while being unable to serve a request, which is precisely the
+    // silent failure this check exists to prevent. Exiting makes it loud.
+    console.error(err instanceof Error ? err.message : String(err));
+    process.exit(1);
+  }
 
   // Promotes IOFUS_MODERATOR_HANDLE's account when it already exists. On a
   // brand-new database nobody has signed up yet, so this is a no-op and the
   // call in the moderation page picks it up once that account is created.
-  const { ensureModeratorSeed } = await import("./lib/moderation");
-  ensureModeratorSeed();
+  //
+  // Deliberately not fatal: unlike configuration, a failure here is more
+  // likely transient, and exiting would turn it into a restart loop. The
+  // moderation page retries on every visit.
+  try {
+    const { ensureModeratorSeed } = await import("./lib/moderation");
+    ensureModeratorSeed();
+  } catch (err) {
+    console.error("[startup] moderator seed failed:", err);
+  }
 }
