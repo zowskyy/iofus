@@ -78,6 +78,8 @@ test.describe("Make → Shape → Publish → Wander", () => {
     await expect(page.locator("h1")).toBeVisible();
 
     // --- Log out clears the session (logout is a POST-only route action) ---
+    // The "Log out" button lives inside the "Account" nav dropdown; open it first.
+    await page.getByRole("button", { name: /Account/i }).click();
     await page.getByRole("button", { name: "Log out" }).click();
     await page.goto("/studio");
     await expect(page).toHaveURL(/\/login/);
