@@ -113,3 +113,22 @@ export async function panicModeAction(): Promise<void> {
   revalidatePath("/settings");
   revalidatePath(`/@${viewer.handle}`);
 }
+
+export interface EmailState {
+  error?: string;
+  success?: string;
+}
+
+export async function updateEmailAction(userId: string, _prev: EmailState, formData: FormData): Promise<EmailState> {
+  const { setUserEmail, PasswordResetError } = await import("@/lib/passwordReset");
+  const email = String(formData.get("email") ?? "").trim();
+  if (!email) return { error: "Enter an email address." };
+  try {
+    setUserEmail(userId, email);
+    return { success: "Recovery email saved." };
+  } catch (err) {
+    if (err instanceof PasswordResetError) return { error: err.message };
+    console.error("[updateEmailAction] unexpected error", err);
+    return { error: "Something went wrong. Try again." };
+  }
+}
