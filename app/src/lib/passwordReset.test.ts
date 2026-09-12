@@ -156,3 +156,40 @@ describe("account enumeration", () => {
     expect(token).toBeNull();
   });
 });
+
+describe("email uniqueness", () => {
+  it("rejects an address already claimed by another account", async () => {
+    await userWithEmail("voidarcade", "shared@example.com");
+    const other = await createUser("neonorchard", PASSWORD);
+    expect(() => setUserEmail(other.id, "shared@example.com")).toThrow(PasswordResetError);
+  });
+
+  it("compares case-insensitively", async () => {
+    await userWithEmail("voidarcade", "shared@example.com");
+    const other = await createUser("neonorchard", PASSWORD);
+    expect(() => setUserEmail(other.id, "SHARED@Example.com")).toThrow(PasswordResetError);
+  });
+
+  it("lets an account re-set its own address", async () => {
+    const user = await userWithEmail("voidarcade", "mine@example.com");
+    expect(() => setUserEmail(user.id, "mine@example.com")).not.toThrow();
+  });
+
+  it("is enforced by a database constraint, not only the upfront check", async () => {
+    // Bypasses setUserEmail entirely, the way a racing second writer would
+    // once both had passed the check-then-act query.
+    const a = await userWithEmail("voidarcade", "shared@example.com");
+    const b = await createUser("neonorchard", PASSWORD);
+    expect(() =>
+      getDb().prepare("UPDATE users SET email = ? WHERE id = ?").run("shared@example.com", b.id),
+    ).toThrow();
+    expect(getUserEmail(a.id)).toBe("shared@example.com");
+  });
+
+  it("still allows many accounts without an email", async () => {
+    const a = await createUser("usera", PASSWORD);
+    const b = await createUser("userb", PASSWORD);
+    expect(getUserEmail(a.id)).toBeNull();
+    expect(getUserEmail(b.id)).toBeNull();
+  });
+});

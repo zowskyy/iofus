@@ -48,7 +48,9 @@ export async function GET(
   // could point every link in the feed at an origin it owns.
   const base = canonicalOrigin();
   const displayName = escapeXml(doc.identity.displayName);
-  const channelLink = `${base}/@${handle}/blog`;
+  // The profile page is where blog posts are rendered; there is no separate
+  // /@handle/blog route, so linking there sent every reader to a 404.
+  const channelLink = `${base}/@${handle}`;
 
   const posts = [...doc.blog].sort(
     (a, b) => new Date(b.publishedAt).getTime() - new Date(a.publishedAt).getTime(),

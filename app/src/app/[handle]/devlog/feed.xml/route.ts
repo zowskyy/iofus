@@ -47,7 +47,9 @@ export async function GET(
   // could point every link in the feed at an origin it owns.
   const base = canonicalOrigin();
   const displayName = escapeXml(doc.identity.displayName);
-  const channelLink = `${base}/@${handle}/devlog`;
+  // Devlog entries render on the profile page and have no route of their own,
+  // so this previously pointed every reader at a 404.
+  const channelLink = `${base}/@${handle}`;
 
   const entries = [...doc.devlog].sort(
     (a, b) => new Date(b.date).getTime() - new Date(a.date).getTime(),

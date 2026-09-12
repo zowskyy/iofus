@@ -22,7 +22,18 @@ export function setUserEmail(userId: string, email: string): void {
     .get(trimmed, userId);
   if (conflict) throw new PasswordResetError("That email is already in use.");
 
-  db.prepare("UPDATE users SET email = ? WHERE id = ?").run(trimmed, userId);
+  try {
+    db.prepare("UPDATE users SET email = ? WHERE id = ?").run(trimmed, userId);
+  } catch (err) {
+    // The check above only rules out an already-committed duplicate. Two
+    // concurrent claims on the same address can both pass it, and the unique
+    // index is what actually stops the second -- translated here into the same
+    // message the upfront check produces rather than a raw SQLite error.
+    if (err instanceof Error && /UNIQUE constraint failed/i.test(err.message)) {
+      throw new PasswordResetError("That email is already in use.");
+    }
+    throw err;
+  }
 }
 
 export function getUserEmail(userId: string): string | null {

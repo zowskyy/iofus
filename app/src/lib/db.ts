@@ -67,6 +67,15 @@ function migrate(db: DatabaseSync): void {
   addColumnIfMissing(db, "web_rings", "creator_user_id TEXT REFERENCES users(id) ON DELETE SET NULL");
   addColumnIfMissing(db, "web_rings", "is_open INTEGER NOT NULL DEFAULT 1");
   addColumnIfMissing(db, "users", "email TEXT");
+  if (!indexExists(db, "idx_users_email_unique")) {
+    // setUserEmail's conflict check is check-then-act: two requests claiming
+    // the same address can both find it free and both write it, leaving a
+    // reset request able to match two accounts. The index is the real guard.
+    // Partial, because NULL emails are the common case and must stay allowed.
+    db.exec(
+      "CREATE UNIQUE INDEX IF NOT EXISTS idx_users_email_unique ON users(LOWER(email)) WHERE email IS NOT NULL",
+    );
+  }
   db.exec(`
     CREATE TABLE IF NOT EXISTS password_reset_tokens (
       token_hash TEXT PRIMARY KEY,
