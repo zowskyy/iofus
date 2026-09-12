@@ -162,14 +162,17 @@ export function listAsksForViewer(viewerId: string, domain?: string): Ask[] {
            ))
          )
          AND (? IS NULL OR a.domain = ?)
+         AND NOT EXISTS (
+           SELECT 1 FROM blocks b
+           WHERE (b.blocker_id = ? AND b.blocked_id = a.asker_id)
+              OR (b.blocker_id = a.asker_id AND b.blocked_id = ?)
+         )
        ORDER BY a.created_at DESC
        LIMIT ?`,
     )
-    .all(viewerId, viewerId, viewerId, viewerId, domain ?? null, domain ?? null, POOL_SIZE) as unknown as AskRow[];
+    .all(viewerId, viewerId, viewerId, viewerId, domain ?? null, domain ?? null, viewerId, viewerId, POOL_SIZE) as unknown as AskRow[];
 
-  return rows
-    .filter((row) => !hasBlockRelationship(viewerId, row.asker_id))
-    .map((row) => rowToAsk(row, viewerId));
+  return rows.map((row) => rowToAsk(row, viewerId));
 }
 
 /** All asks *askerId* has posted, for their own "My asks" view, newest first. */

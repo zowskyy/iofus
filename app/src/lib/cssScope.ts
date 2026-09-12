@@ -6,6 +6,9 @@ const BLOCKED_PATTERNS: RegExp[] = [
   /@import\b/i,
   /@font-face\b/i,
   /@namespace\b/i,
+  // @keyframes names are global-scope (not scoped to a selector), so a user's
+  // keyframe name could collide with a platform animation or override it.
+  /@keyframes\b/i,
   /javascript:/i,
   /expression\s*\(/i,
   /-moz-binding/i,

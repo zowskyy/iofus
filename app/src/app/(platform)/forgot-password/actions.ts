@@ -23,9 +23,12 @@ export async function forgotPasswordAction(_prev: ForgotState, formData: FormDat
 
   // Build the reset URL from the configured canonical origin, never from request
   // headers — host headers are attacker-controlled and could redirect the token
-  // to an attacker's server.
-  const origin = process.env.IOFUS_ALLOWED_ORIGIN
-    ? `https://${process.env.IOFUS_ALLOWED_ORIGIN}`
+  // to an attacker's server. Strip any accidental scheme prefix so the value
+  // can be stored as either "example.com" or "https://example.com" without
+  // producing a double-scheme URL like "https://https://example.com".
+  const rawOrigin = process.env.IOFUS_ALLOWED_ORIGIN ?? "";
+  const origin = rawOrigin
+    ? rawOrigin.startsWith("http") ? rawOrigin : `https://${rawOrigin}`
     : "http://localhost:3000";
 
   try {
