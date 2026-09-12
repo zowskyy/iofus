@@ -57,8 +57,18 @@ export function NavDropdown({ label, children, badgeCount = 0 }: Props) {
           className="nav-dropdown-panel"
           onClick={(e) => {
             // Activating a link or the logout button inside the menu should
-            // close it, same as any normal nav click would.
-            if ((e.target as HTMLElement).closest("a, button")) setOpen(false);
+            // close it, same as any normal nav click would — but Log out is
+            // a real <form method="post"> submit button, and closing
+            // synchronously here would unmount that form (this panel) in
+            // the same click that's supposed to submit it, which cancels
+            // the browser's native form-submission default action before
+            // it fires. Deferring the close to a macrotask lets that
+            // default action run first; for a next/link click (which
+            // preventDefault()s and navigates client-side) the delay is
+            // imperceptible either way.
+            if ((e.target as HTMLElement).closest("a, button")) {
+              setTimeout(() => setOpen(false), 0);
+            }
           }}
         >
           {children}
