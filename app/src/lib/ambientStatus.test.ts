@@ -13,38 +13,38 @@ function createUser(handle: string): string {
   return id;
 }
 
-beforeEach(() => {
+beforeEach(async () => {
   getDb().exec("DELETE FROM ambient_statuses; DELETE FROM users;");
 });
 
 describe("setAmbientStatus", () => {
-  it("sets a status", () => {
+  it("sets a status", async () => {
     const u = createUser("alice");
     setAmbientStatus(u, "listening to a record");
     const s = getAmbientStatus(u);
     expect(s?.text).toBe("listening to a record");
   });
 
-  it("clears status on empty string", () => {
+  it("clears status on empty string", async () => {
     const u = createUser("alice2");
     setAmbientStatus(u, "something");
     setAmbientStatus(u, "");
     expect(getAmbientStatus(u)).toBeNull();
   });
 
-  it("updates existing status", () => {
+  it("updates existing status", async () => {
     const u = createUser("alice3");
     setAmbientStatus(u, "first");
     setAmbientStatus(u, "second");
     expect(getAmbientStatus(u)?.text).toBe("second");
   });
 
-  it("throws when text exceeds max length", () => {
+  it("throws when text exceeds max length", async () => {
     const u = createUser("alice4");
     expect(() => setAmbientStatus(u, "x".repeat(AMBIENT_STATUS_MAX_LEN + 1))).toThrow(AmbientStatusError);
   });
 
-  it("trims whitespace before storing", () => {
+  it("trims whitespace before storing", async () => {
     const u = createUser("alice5");
     setAmbientStatus(u, "  making art  ");
     expect(getAmbientStatus(u)?.text).toBe("making art");
@@ -52,12 +52,12 @@ describe("setAmbientStatus", () => {
 });
 
 describe("getAmbientStatus", () => {
-  it("returns null when not set", () => {
+  it("returns null when not set", async () => {
     const u = createUser("bob");
     expect(getAmbientStatus(u)).toBeNull();
   });
 
-  it("returns null for expired status", () => {
+  it("returns null for expired status", async () => {
     const u = createUser("bob2");
     const db = getDb();
     const expired = new Date(Date.now() - 1000).toISOString();
@@ -67,7 +67,7 @@ describe("getAmbientStatus", () => {
 });
 
 describe("getAmbientStatuses", () => {
-  it("returns statuses for multiple users", () => {
+  it("returns statuses for multiple users", async () => {
     const a = createUser("multi1");
     const b = createUser("multi2");
     setAmbientStatus(a, "reading");
@@ -77,7 +77,7 @@ describe("getAmbientStatuses", () => {
     expect(map.get(b)).toBe("coding");
   });
 
-  it("returns empty map for empty input", () => {
+  it("returns empty map for empty input", async () => {
     expect(getAmbientStatuses([])).toEqual(new Map());
   });
 });

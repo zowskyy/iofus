@@ -16,32 +16,32 @@ import { fileReport } from "./reports";
 process.env.IOFUS_DB_PATH = ":memory:";
 process.env.IOFUS_AUTO_MODERATOR_SEED = "true";
 
-beforeEach(() => {
+beforeEach(async () => {
   resetDbForTests();
 });
 
 describe("ensureModeratorSeed", () => {
-  it("promotes the first user when no moderators exist", () => {
-    const a = createUser("voidarcade", "correct-horse-battery");
-    createUser("neonorchard", "correct-horse-battery");
+  it("promotes the first user when no moderators exist", async () => {
+    const a = await createUser("voidarcade", "correct-horse-battery");
+    await createUser("neonorchard", "correct-horse-battery");
     expect(isModerator(a.id)).toBe(false);
     ensureModeratorSeed();
     expect(isModerator(a.id)).toBe(true);
   });
 
-  it("does nothing when a moderator already exists", () => {
-    const a = createUser("voidarcade", "correct-horse-battery");
+  it("does nothing when a moderator already exists", async () => {
+    const a = await createUser("voidarcade", "correct-horse-battery");
     ensureModeratorSeed();
-    const b = createUser("neonorchard", "correct-horse-battery");
+    const b = await createUser("neonorchard", "correct-horse-battery");
     ensureModeratorSeed();
     expect(isModerator(a.id)).toBe(true);
     expect(isModerator(b.id)).toBe(false);
   });
 
-  it("promotes IOFUS_MODERATOR_HANDLE when set", () => {
+  it("promotes IOFUS_MODERATOR_HANDLE when set", async () => {
     delete process.env.IOFUS_AUTO_MODERATOR_SEED;
-    createUser("voidarcade", "correct-horse-battery");
-    const target = createUser("modtarget", "correct-horse-battery");
+    await createUser("voidarcade", "correct-horse-battery");
+    const target = await createUser("modtarget", "correct-horse-battery");
     process.env.IOFUS_MODERATOR_HANDLE = "modtarget";
     ensureModeratorSeed();
     expect(isModerator(target.id)).toBe(true);
@@ -49,10 +49,10 @@ describe("ensureModeratorSeed", () => {
     process.env.IOFUS_AUTO_MODERATOR_SEED = "true";
   });
 
-  it("skips auto-seed when neither env is set", () => {
+  it("skips auto-seed when neither env is set", async () => {
     delete process.env.IOFUS_AUTO_MODERATOR_SEED;
     delete process.env.IOFUS_MODERATOR_HANDLE;
-    const a = createUser("voidarcade", "correct-horse-battery");
+    const a = await createUser("voidarcade", "correct-horse-battery");
     ensureModeratorSeed();
     expect(isModerator(a.id)).toBe(false);
     process.env.IOFUS_AUTO_MODERATOR_SEED = "true";
@@ -60,9 +60,9 @@ describe("ensureModeratorSeed", () => {
 });
 
 describe("report queue", () => {
-  it("lists open reports with reporter handles", () => {
-    const reporter = createUser("voidarcade", "correct-horse-battery");
-    createUser("neonorchard", "correct-horse-battery");
+  it("lists open reports with reporter handles", async () => {
+    const reporter = await createUser("voidarcade", "correct-horse-battery");
+    await createUser("neonorchard", "correct-horse-battery");
     ensureModeratorSeed();
     fileReport(reporter.id, "neonorchard", "spam");
 
@@ -73,10 +73,10 @@ describe("report queue", () => {
     expect(open[0]!.status).toBe("open");
   });
 
-  it("reviewing a report removes it from the open queue and logs the action", () => {
-    const mod = createUser("moduser", "correct-horse-battery");
-    const reporter = createUser("voidarcade", "correct-horse-battery");
-    createUser("neonorchard", "correct-horse-battery");
+  it("reviewing a report removes it from the open queue and logs the action", async () => {
+    const mod = await createUser("moduser", "correct-horse-battery");
+    const reporter = await createUser("voidarcade", "correct-horse-battery");
+    await createUser("neonorchard", "correct-horse-battery");
     ensureModeratorSeed();
     fileReport(reporter.id, "neonorchard", "harassment");
 
@@ -88,11 +88,11 @@ describe("report queue", () => {
     expect(logs.some((l) => l.action === "report_reviewed" && l.targetHandle === "neonorchard")).toBe(true);
   });
 
-  it("a second review of the same report is rejected, not silently overwritten", () => {
-    const modA = createUser("moda", "correct-horse-battery");
-    const modB = createUser("modb", "correct-horse-battery");
-    const reporter = createUser("voidarcade", "correct-horse-battery");
-    createUser("neonorchard", "correct-horse-battery");
+  it("a second review of the same report is rejected, not silently overwritten", async () => {
+    const modA = await createUser("moda", "correct-horse-battery");
+    const modB = await createUser("modb", "correct-horse-battery");
+    const reporter = await createUser("voidarcade", "correct-horse-battery");
+    await createUser("neonorchard", "correct-horse-battery");
     ensureModeratorSeed();
     fileReport(reporter.id, "neonorchard", "harassment");
 
@@ -113,9 +113,9 @@ describe("report queue", () => {
 });
 
 describe("platform block", () => {
-  it("blocks and unblocks a user by handle", () => {
-    const mod = createUser("moduser", "correct-horse-battery");
-    const target = createUser("neonorchard", "correct-horse-battery");
+  it("blocks and unblocks a user by handle", async () => {
+    const mod = await createUser("moduser", "correct-horse-battery");
+    const target = await createUser("neonorchard", "correct-horse-battery");
     ensureModeratorSeed();
 
     setPlatformBlock(target.id, true, mod.id);

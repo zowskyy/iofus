@@ -143,8 +143,8 @@ describe("multi-process persistence concurrency", () => {
       // worker processes only race the relationship operations themselves.
       process.env.IOFUS_DB_PATH = dbPath;
       resetDbForTests();
-      const a = createUser("racerA", "correct-horse-battery");
-      const b = createUser("racerB", "correct-horse-battery");
+      const a = await createUser("racerA", "correct-horse-battery");
+      const b = await createUser("racerB", "correct-horse-battery");
       resetDbForTests(); // release this process's handle before the child processes open the same file
 
       const attempts = 15;
@@ -197,7 +197,7 @@ describe("multi-process persistence concurrency", () => {
       const dbPath = dbPathFor("guestbook-race");
       process.env.IOFUS_DB_PATH = dbPath;
       resetDbForTests();
-      const owner = createUser("gbowner", "correct-horse-battery");
+      const owner = await createUser("gbowner", "correct-horse-battery");
       resetDbForTests();
 
       const visitorCount = 8;

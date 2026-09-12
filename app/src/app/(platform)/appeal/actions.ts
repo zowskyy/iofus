@@ -17,7 +17,7 @@ export async function appealAction(_prev: AppealState, formData: FormData): Prom
   try {
     const key = await rateLimitActorKey("appeal", null);
     checkRateLimit(`${key}:${handle.trim().toLowerCase()}`, 3);
-    const user = authenticateBlockedForAppeal(handle, password);
+    const user = await authenticateBlockedForAppeal(handle, password);
     fileAppeal(user.id, reason);
   } catch (e) {
     if (e instanceof InvalidCredentialsError || e instanceof ValidationError) {

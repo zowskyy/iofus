@@ -1,7 +1,14 @@
 "use server";
 
 import { redirect } from "next/navigation";
-import { createUser, HandleTakenError, ValidationError } from "@/lib/auth";
+import {
+  createUserWithPasswordHash,
+  hashPassword,
+  HandleTakenError,
+  validateHandle,
+  validatePassword,
+  ValidationError,
+} from "@/lib/auth";
 import { getDb } from "@/lib/db";
 import { defaultPageDocument, savePageDocument } from "@/lib/pageDocument";
 import { checkRateLimit, RateLimitError, rateLimitActorKey } from "@/lib/rateLimit";
@@ -32,11 +39,24 @@ export async function signupAction(_prevState: SignupState, formData: FormData):
   // a half-created account the only way out of which was /login, since the
   // handle was now permanently taken. Rolling both back together means a
   // failed signup is simply retryable from scratch.
+  // Validated and hashed before the transaction opens. BEGIN IMMEDIATE blocks
+  // every other writer while held, and the password KDF is deliberately slow,
+  // so doing it inside would serialize signups behind each other.
+  let passwordHash: string;
+  try {
+    validateHandle(handle);
+    validatePassword(password);
+    passwordHash = await hashPassword(password);
+  } catch (e) {
+    if (e instanceof ValidationError) return { error: e.message };
+    throw e;
+  }
+
   let userId: string;
   const db = getDb();
   db.exec("BEGIN IMMEDIATE");
   try {
-    const user = createUser(handle, password);
+    const user = createUserWithPasswordHash(handle, passwordHash);
     userId = user.id;
     // A brand-new account gets a real, valid, unpublished starter page
     // immediately — never a null/undefined state that the rest of the app

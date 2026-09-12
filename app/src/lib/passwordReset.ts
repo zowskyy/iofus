@@ -1,5 +1,6 @@
-import { createHash, randomBytes, scryptSync } from "node:crypto";
+import { createHash, randomBytes } from "node:crypto";
 import { getDb } from "./db";
+import { hashPassword } from "./auth";
 import { sendMail } from "./mailer";
 
 const TOKEN_TTL_MS = 60 * 60 * 1000; // 1 hour
@@ -89,11 +90,15 @@ export function verifyResetToken(token: string): string | null {
   return row.user_id;
 }
 
-export function consumeResetToken(token: string, newPassword: string): void {
+export async function consumeResetToken(token: string, newPassword: string): Promise<void> {
   if (!newPassword || newPassword.length < 8) throw new PasswordResetError("Password must be at least 8 characters.");
 
   const tokenHash = hashToken(token);
   const db = getDb();
+
+  // Hashed before the transaction opens. BEGIN IMMEDIATE takes the write lock,
+  // and a deliberately slow KDF must not be run while holding it.
+  const passwordHash = await hashPassword(newPassword);
 
   // All checks and writes happen inside a single BEGIN IMMEDIATE transaction
   // so concurrent submissions of the same token cannot both observe it as
@@ -114,10 +119,6 @@ export function consumeResetToken(token: string, newPassword: string): void {
       db.exec("COMMIT");
       throw new PasswordResetError("This reset link has expired. Request a new one.");
     }
-
-    const salt = randomBytes(16).toString("hex");
-    const hash = scryptSync(newPassword, salt, 64).toString("hex");
-    const passwordHash = `${salt}:${hash}`;
 
     db.prepare("UPDATE users SET password_hash = ? WHERE id = ?").run(passwordHash, row.user_id);
     db.prepare("DELETE FROM password_reset_tokens WHERE token_hash = ?").run(tokenHash);

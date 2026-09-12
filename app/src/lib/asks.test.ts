@@ -18,14 +18,14 @@ import { resetDbForTests } from "./db";
 
 process.env.IOFUS_DB_PATH = ":memory:";
 
-beforeEach(() => {
+beforeEach(async () => {
   resetDbForTests();
 });
 
 /** Creates a default asker and answerer pair for use in tests. */
-function twoUsers() {
-  const asker = createUser("jamal", "correct-horse-battery");
-  const answerer = createUser("priya", "correct-horse-battery");
+async function twoUsers() {
+  const asker = await createUser("jamal", "correct-horse-battery");
+  const answerer = await createUser("priya", "correct-horse-battery");
   return { asker, answerer };
 }
 
@@ -37,13 +37,13 @@ function befriend(aId: string, bId: string) {
 }
 
 describe("setReachableForAsks", () => {
-  it("defaults to false", () => {
-    const { asker } = twoUsers();
+  it("defaults to false", async () => {
+    const { asker } = await twoUsers();
     expect(isReachableForAsks(asker.id)).toBe(false);
   });
 
-  it("can be turned on and off", () => {
-    const { asker } = twoUsers();
+  it("can be turned on and off", async () => {
+    const { asker } = await twoUsers();
     setReachableForAsks(asker.id, true);
     expect(isReachableForAsks(asker.id)).toBe(true);
     setReachableForAsks(asker.id, false);
@@ -52,23 +52,23 @@ describe("setReachableForAsks", () => {
 });
 
 describe("createAsk", () => {
-  it("rejects an empty ask", () => {
-    const { asker } = twoUsers();
+  it("rejects an empty ask", async () => {
+    const { asker } = await twoUsers();
     expect(() => createAsk({ askerId: asker.id, body: "   " })).toThrow(AskError);
   });
 
-  it("rejects an ask over the length limit", () => {
-    const { asker } = twoUsers();
+  it("rejects an ask over the length limit", async () => {
+    const { asker } = await twoUsers();
     expect(() => createAsk({ askerId: asker.id, body: "x".repeat(2001) })).toThrow(AskError);
   });
 
-  it("rejects a non-sensitive ask from an opted-out asker", () => {
-    const { asker } = twoUsers();
+  it("rejects a non-sensitive ask from an opted-out asker", async () => {
+    const { asker } = await twoUsers();
     expect(() => createAsk({ askerId: asker.id, body: "anyone know a plumber?" })).toThrow(AskError);
   });
 
-  it("creates an open ask with no answers", () => {
-    const { asker } = twoUsers();
+  it("creates an open ask with no answers", async () => {
+    const { asker } = await twoUsers();
     setReachableForAsks(asker.id, true);
     const ask = createAsk({ askerId: asker.id, body: "How do you learn a language fast?" });
     expect(ask.status).toBe("open");
@@ -76,8 +76,8 @@ describe("createAsk", () => {
     expect(ask.askerHandle).toBe("jamal");
   });
 
-  it("hides the asker's handle from non-owners when anonymous", () => {
-    const { asker, answerer } = twoUsers();
+  it("hides the asker's handle from non-owners when anonymous", async () => {
+    const { asker, answerer } = await twoUsers();
     setReachableForAsks(asker.id, true);
     setReachableForAsks(answerer.id, true);
     const ask = createAsk({ askerId: asker.id, body: "sensitive topic", isAnonymous: true });
@@ -87,8 +87,8 @@ describe("createAsk", () => {
     expect(seenByOther?.askerHandle).toBeNull();
   });
 
-  it("enforces a daily rate limit per asker", () => {
-    const { asker } = twoUsers();
+  it("enforces a daily rate limit per asker", async () => {
+    const { asker } = await twoUsers();
     setReachableForAsks(asker.id, true);
     for (let i = 0; i < 5; i++) {
       createAsk({ askerId: asker.id, body: `ask number ${i}` });
@@ -96,9 +96,9 @@ describe("createAsk", () => {
     expect(() => createAsk({ askerId: asker.id, body: "one too many" })).toThrow(RateLimitError);
   });
 
-  it("does not let one asker's rate limit affect another", () => {
-    const { asker } = twoUsers();
-    const other = createUser("maria", "correct-horse-battery");
+  it("does not let one asker's rate limit affect another", async () => {
+    const { asker } = await twoUsers();
+    const other = await createUser("maria", "correct-horse-battery");
     setReachableForAsks(asker.id, true);
     setReachableForAsks(other.id, true);
     for (let i = 0; i < 5; i++) {
@@ -107,23 +107,23 @@ describe("createAsk", () => {
     expect(() => createAsk({ askerId: other.id, body: "still fine" })).not.toThrow();
   });
 
-  it("allows a sensitive ask without reachability", () => {
-    const { asker } = twoUsers();
+  it("allows a sensitive ask without reachability", async () => {
+    const { asker } = await twoUsers();
     const ask = createAsk({ askerId: asker.id, body: "mental health question", isSensitive: true });
     expect(ask.isSensitive).toBe(true);
   });
 });
 
 describe("listAsksForViewer", () => {
-  it("is empty for a viewer who has not opted into reachability", () => {
-    const { asker, answerer } = twoUsers();
+  it("is empty for a viewer who has not opted into reachability", async () => {
+    const { asker, answerer } = await twoUsers();
     setReachableForAsks(asker.id, true);
     createAsk({ askerId: asker.id, body: "anyone know a good plumber?" });
     expect(listAsksForViewer(answerer.id)).toEqual([]);
   });
 
-  it("shows a non-sensitive ask to a reachable, non-blocked viewer", () => {
-    const { asker, answerer } = twoUsers();
+  it("shows a non-sensitive ask to a reachable, non-blocked viewer", async () => {
+    const { asker, answerer } = await twoUsers();
     setReachableForAsks(asker.id, true);
     setReachableForAsks(answerer.id, true);
     createAsk({ askerId: asker.id, body: "anyone know a good plumber?" });
@@ -131,15 +131,15 @@ describe("listAsksForViewer", () => {
     expect(visible.length).toBe(1);
   });
 
-  it("never shows a viewer their own asks", () => {
-    const { asker } = twoUsers();
+  it("never shows a viewer their own asks", async () => {
+    const { asker } = await twoUsers();
     setReachableForAsks(asker.id, true);
     createAsk({ askerId: asker.id, body: "anyone know a good plumber?" });
     expect(listAsksForViewer(asker.id)).toEqual([]);
   });
 
-  it("excludes asks from a blocked relationship even if reachable", () => {
-    const { asker, answerer } = twoUsers();
+  it("excludes asks from a blocked relationship even if reachable", async () => {
+    const { asker, answerer } = await twoUsers();
     setReachableForAsks(asker.id, true);
     setReachableForAsks(answerer.id, true);
     createAsk({ askerId: asker.id, body: "anyone know a good plumber?" });
@@ -147,8 +147,8 @@ describe("listAsksForViewer", () => {
     expect(listAsksForViewer(answerer.id)).toEqual([]);
   });
 
-  it("excludes asks from a relationship blocked in the other direction too", () => {
-    const { asker, answerer } = twoUsers();
+  it("excludes asks from a relationship blocked in the other direction too", async () => {
+    const { asker, answerer } = await twoUsers();
     setReachableForAsks(asker.id, true);
     setReachableForAsks(answerer.id, true);
     createAsk({ askerId: asker.id, body: "anyone know a good plumber?" });
@@ -156,8 +156,8 @@ describe("listAsksForViewer", () => {
     expect(listAsksForViewer(answerer.id)).toEqual([]);
   });
 
-  it("filters by domain when provided", () => {
-    const { asker, answerer } = twoUsers();
+  it("filters by domain when provided", async () => {
+    const { asker, answerer } = await twoUsers();
     setReachableForAsks(asker.id, true);
     setReachableForAsks(answerer.id, true);
     createAsk({ askerId: asker.id, body: "career question", domain: "career" });
@@ -167,8 +167,8 @@ describe("listAsksForViewer", () => {
     expect(visible[0]!.domain).toBe("career");
   });
 
-  it("does not show a closed ask", () => {
-    const { asker, answerer } = twoUsers();
+  it("does not show a closed ask", async () => {
+    const { asker, answerer } = await twoUsers();
     setReachableForAsks(asker.id, true);
     setReachableForAsks(answerer.id, true);
     const ask = createAsk({ askerId: asker.id, body: "anyone know a good plumber?" });
@@ -177,15 +177,15 @@ describe("listAsksForViewer", () => {
   });
 
   describe("sensitive asks", () => {
-    it("are NOT shown to a reachable stranger, even opted in", () => {
-      const { asker, answerer } = twoUsers();
+    it("are NOT shown to a reachable stranger, even opted in", async () => {
+      const { asker, answerer } = await twoUsers();
       setReachableForAsks(answerer.id, true);
       createAsk({ askerId: asker.id, body: "mental health question", isSensitive: true });
       expect(listAsksForViewer(answerer.id)).toEqual([]);
     });
 
-    it("ARE shown to the asker's own accepted friend, even without opting into reachability", () => {
-      const { asker, answerer } = twoUsers();
+    it("ARE shown to the asker's own accepted friend, even without opting into reachability", async () => {
+      const { asker, answerer } = await twoUsers();
       befriend(asker.id, answerer.id);
       createAsk({ askerId: asker.id, body: "mental health question", isSensitive: true });
       const visible = listAsksForViewer(answerer.id);
@@ -193,8 +193,8 @@ describe("listAsksForViewer", () => {
       expect(visible[0]!.isSensitive).toBe(true);
     });
 
-    it("stay hidden from a friend who was later blocked", () => {
-      const { asker, answerer } = twoUsers();
+    it("stay hidden from a friend who was later blocked", async () => {
+      const { asker, answerer } = await twoUsers();
       befriend(asker.id, answerer.id);
       createAsk({ askerId: asker.id, body: "mental health question", isSensitive: true });
       blockUser(asker.id, answerer.id);
@@ -204,15 +204,15 @@ describe("listAsksForViewer", () => {
 });
 
 describe("answerAsk", () => {
-  it("rejects answering your own ask", () => {
-    const { asker } = twoUsers();
+  it("rejects answering your own ask", async () => {
+    const { asker } = await twoUsers();
     setReachableForAsks(asker.id, true);
     const ask = createAsk({ askerId: asker.id, body: "anyone know a good plumber?" });
     expect(() => answerAsk(ask.id, asker.id, "call Bob")).toThrow(AskError);
   });
 
-  it("rejects answering twice from the same person", () => {
-    const { asker, answerer } = twoUsers();
+  it("rejects answering twice from the same person", async () => {
+    const { asker, answerer } = await twoUsers();
     setReachableForAsks(asker.id, true);
     setReachableForAsks(answerer.id, true);
     const ask = createAsk({ askerId: asker.id, body: "anyone know a good plumber?" });
@@ -220,16 +220,16 @@ describe("answerAsk", () => {
     expect(() => answerAsk(ask.id, answerer.id, "call Bob again")).toThrow(AskError);
   });
 
-  it("rejects an empty answer", () => {
-    const { asker, answerer } = twoUsers();
+  it("rejects an empty answer", async () => {
+    const { asker, answerer } = await twoUsers();
     setReachableForAsks(asker.id, true);
     setReachableForAsks(answerer.id, true);
     const ask = createAsk({ askerId: asker.id, body: "anyone know a good plumber?" });
     expect(() => answerAsk(ask.id, answerer.id, "   ")).toThrow(AskError);
   });
 
-  it("rejects answering a closed ask", () => {
-    const { asker, answerer } = twoUsers();
+  it("rejects answering a closed ask", async () => {
+    const { asker, answerer } = await twoUsers();
     setReachableForAsks(asker.id, true);
     setReachableForAsks(answerer.id, true);
     const ask = createAsk({ askerId: asker.id, body: "anyone know a good plumber?" });
@@ -237,8 +237,8 @@ describe("answerAsk", () => {
     expect(() => answerAsk(ask.id, answerer.id, "call Bob")).toThrow(AskError);
   });
 
-  it("rejects an answer from someone blocked by the asker", () => {
-    const { asker, answerer } = twoUsers();
+  it("rejects an answer from someone blocked by the asker", async () => {
+    const { asker, answerer } = await twoUsers();
     setReachableForAsks(asker.id, true);
     setReachableForAsks(answerer.id, true);
     const ask = createAsk({ askerId: asker.id, body: "anyone know a good plumber?" });
@@ -246,13 +246,13 @@ describe("answerAsk", () => {
     expect(() => answerAsk(ask.id, answerer.id, "call Bob")).toThrow(AskError);
   });
 
-  it("rejects answering a nonexistent ask", () => {
-    const { answerer } = twoUsers();
+  it("rejects answering a nonexistent ask", async () => {
+    const { answerer } = await twoUsers();
     expect(() => answerAsk("does-not-exist", answerer.id, "call Bob")).toThrow(AskError);
   });
 
-  it("records a valid answer and increments the ask's answer count", () => {
-    const { asker, answerer } = twoUsers();
+  it("records a valid answer and increments the ask's answer count", async () => {
+    const { asker, answerer } = await twoUsers();
     setReachableForAsks(asker.id, true);
     setReachableForAsks(answerer.id, true);
     const ask = createAsk({ askerId: asker.id, body: "anyone know a good plumber?" });
@@ -263,11 +263,11 @@ describe("answerAsk", () => {
     expect(getAsk(ask.id, asker.id)?.answerCount).toBe(1);
   });
 
-  it("allows multiple different answerers on the same ask", () => {
-    const { asker, answerer } = twoUsers();
+  it("allows multiple different answerers on the same ask", async () => {
+    const { asker, answerer } = await twoUsers();
     setReachableForAsks(asker.id, true);
     setReachableForAsks(answerer.id, true);
-    const third = createUser("beijing_student", "correct-horse-battery");
+    const third = await createUser("beijing_student", "correct-horse-battery");
     setReachableForAsks(third.id, true);
     const ask = createAsk({ askerId: asker.id, body: "anyone know a good plumber?" });
     answerAsk(ask.id, answerer.id, "call Bob");
@@ -277,30 +277,30 @@ describe("answerAsk", () => {
 });
 
 describe("closeAsk", () => {
-  it("rejects closing someone else's ask", () => {
-    const { asker, answerer } = twoUsers();
+  it("rejects closing someone else's ask", async () => {
+    const { asker, answerer } = await twoUsers();
     setReachableForAsks(asker.id, true);
     const ask = createAsk({ askerId: asker.id, body: "anyone know a good plumber?" });
     expect(() => closeAsk(ask.id, answerer.id)).toThrow(AskError);
   });
 
-  it("is idempotent when called twice by the owner", () => {
-    const { asker } = twoUsers();
+  it("is idempotent when called twice by the owner", async () => {
+    const { asker } = await twoUsers();
     setReachableForAsks(asker.id, true);
     const ask = createAsk({ askerId: asker.id, body: "anyone know a good plumber?" });
     closeAsk(ask.id, asker.id);
     expect(() => closeAsk(ask.id, asker.id)).not.toThrow();
   });
 
-  it("rejects closing a nonexistent ask", () => {
-    const { asker } = twoUsers();
+  it("rejects closing a nonexistent ask", async () => {
+    const { asker } = await twoUsers();
     expect(() => closeAsk("does-not-exist", asker.id)).toThrow(AskError);
   });
 });
 
 describe("listAsksByUser", () => {
-  it("returns all of a user's asks regardless of status", () => {
-    const { asker } = twoUsers();
+  it("returns all of a user's asks regardless of status", async () => {
+    const { asker } = await twoUsers();
     setReachableForAsks(asker.id, true);
     const a = createAsk({ askerId: asker.id, body: "first ask" });
     createAsk({ askerId: asker.id, body: "second ask" });
@@ -308,8 +308,8 @@ describe("listAsksByUser", () => {
     expect(listAsksByUser(asker.id).length).toBe(2);
   });
 
-  it("reveals the asker's own handle on their own anonymous ask", () => {
-    const { asker } = twoUsers();
+  it("reveals the asker's own handle on their own anonymous ask", async () => {
+    const { asker } = await twoUsers();
     setReachableForAsks(asker.id, true);
     createAsk({ askerId: asker.id, body: "anonymous ask", isAnonymous: true });
     const [ask] = listAsksByUser(asker.id);

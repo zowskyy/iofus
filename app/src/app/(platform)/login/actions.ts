@@ -20,7 +20,7 @@ export async function loginAction(_prevState: LoginState, formData: FormData): P
     const key = await rateLimitActorKey("login", null);
     checkRateLimit(`${key}:${normalizedHandle}`, 10);
     checkRateLimit(`login:handle:${normalizedHandle}`, 50);
-    const user = authenticate(normalizedHandle, password);
+    const user = await authenticate(normalizedHandle, password);
     await logIn(user.id);
   } catch (e) {
     if (e instanceof InvalidCredentialsError) {

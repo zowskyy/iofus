@@ -21,13 +21,13 @@ function publishPage(userId: string): void {
   ).run(userId);
 }
 
-beforeEach(() => {
+beforeEach(async () => {
   const db = getDb();
   db.exec("DELETE FROM graph_edges; DELETE FROM page_documents; DELETE FROM users;");
 });
 
 describe("recordEdge", () => {
-  it("inserts a guestbook edge", () => {
+  it("inserts a guestbook edge", async () => {
     const a = createUser("alice");
     const b = createUser("bob");
     recordEdge(a, b, "guestbook");
@@ -36,7 +36,7 @@ describe("recordEdge", () => {
     expect(row?.weight).toBe(1);
   });
 
-  it("increments weight on repeated edge", () => {
+  it("increments weight on repeated edge", async () => {
     const a = createUser("alice2");
     const b = createUser("bob2");
     recordEdge(a, b, "guestbook");
@@ -46,7 +46,7 @@ describe("recordEdge", () => {
     expect(row?.weight).toBe(2);
   });
 
-  it("does not insert self-edge", () => {
+  it("does not insert self-edge", async () => {
     const a = createUser("alice3");
     recordEdge(a, a, "guestbook");
     const db = getDb();
@@ -56,7 +56,7 @@ describe("recordEdge", () => {
 });
 
 describe("removeEdge", () => {
-  it("removes an existing edge", () => {
+  it("removes an existing edge", async () => {
     const a = createUser("alice4");
     const b = createUser("bob4");
     recordEdge(a, b, "ring");
@@ -68,7 +68,7 @@ describe("removeEdge", () => {
 });
 
 describe("getProximityOrdered", () => {
-  it("returns direct neighbors in weight order", () => {
+  it("returns direct neighbors in weight order", async () => {
     const center = createUser("center");
     const near = createUser("near");
     const far = createUser("far");
@@ -80,12 +80,12 @@ describe("getProximityOrdered", () => {
     expect(result[1]).toBe(far);
   });
 
-  it("returns empty array when no edges", () => {
+  it("returns empty array when no edges", async () => {
     const lone = createUser("loner");
     expect(getProximityOrdered(lone, 10)).toEqual([]);
   });
 
-  it("does not include the start user", () => {
+  it("does not include the start user", async () => {
     const a = createUser("startA");
     const b = createUser("neighborB");
     recordEdge(a, b, "guestbook");
@@ -95,7 +95,7 @@ describe("getProximityOrdered", () => {
 });
 
 describe("getWanderBatch", () => {
-  it("falls back to random pages for null userId", () => {
+  it("falls back to random pages for null userId", async () => {
     const u = createUser("wanderer");
     publishPage(u);
     const result = getWanderBatch(null, 5);
@@ -103,14 +103,14 @@ describe("getWanderBatch", () => {
     expect(Array.isArray(result)).toBe(true);
   });
 
-  it("returns only handles", () => {
+  it("returns only handles", async () => {
     const u = createUser("wanderer2");
     publishPage(u);
     const result = getWanderBatch(null, 5);
     for (const h of result) expect(typeof h).toBe("string");
   });
 
-  it("fills partial proximity results with random pages", () => {
+  it("fills partial proximity results with random pages", async () => {
     // Create a center user with proximity to 2 others
     const center = createUser("center-wander");
     const proximity1 = createUser("proximity1");
@@ -141,7 +141,7 @@ describe("getWanderBatch", () => {
     expect(Math.max(...proximityIndices)).toBeLessThan(2);
   });
 
-  it("returns partial proximity when some pages are not discoverable", () => {
+  it("returns partial proximity when some pages are not discoverable", async () => {
     // Create center with proximity to users, but one is not discoverable
     const center = createUser("center-partial");
     const visible = createUser("visible-user");

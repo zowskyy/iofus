@@ -15,45 +15,45 @@ import { resetDbForTests } from "./db";
 
 process.env.IOFUS_DB_PATH = ":memory:";
 
-beforeEach(() => {
+beforeEach(async () => {
   resetDbForTests();
 });
 
-function twoUsers() {
-  const a = createUser("voidarcade", "correct-horse-battery");
-  const b = createUser("neonorchard", "correct-horse-battery");
+async function twoUsers() {
+  const a = await createUser("voidarcade", "correct-horse-battery");
+  const b = await createUser("neonorchard", "correct-horse-battery");
   return { a, b };
 }
 
 describe("sendFriendRequest", () => {
-  it("creates a pending request the addressee can see", () => {
-    const { a, b } = twoUsers();
+  it("creates a pending request the addressee can see", async () => {
+    const { a, b } = await twoUsers();
     sendFriendRequest(a.id, b.id);
     const incoming = listIncomingRequests(b.id);
     expect(incoming.length).toBe(1);
     expect(incoming[0]!.fromHandle).toBe("voidarcade");
   });
 
-  it("does not appear in either user's friends list until accepted", () => {
-    const { a, b } = twoUsers();
+  it("does not appear in either user's friends list until accepted", async () => {
+    const { a, b } = await twoUsers();
     sendFriendRequest(a.id, b.id);
     expect(listFriends(a.id)).toEqual([]);
     expect(listFriends(b.id)).toEqual([]);
   });
 
-  it("rejects sending a request to yourself", () => {
-    const { a } = twoUsers();
+  it("rejects sending a request to yourself", async () => {
+    const { a } = await twoUsers();
     expect(() => sendFriendRequest(a.id, a.id)).toThrow(FriendRequestError);
   });
 
-  it("rejects a duplicate request from the same sender", () => {
-    const { a, b } = twoUsers();
+  it("rejects a duplicate request from the same sender", async () => {
+    const { a, b } = await twoUsers();
     sendFriendRequest(a.id, b.id);
     expect(() => sendFriendRequest(a.id, b.id)).toThrow(FriendRequestError);
   });
 
-  it("rejects sending once already friends", () => {
-    const { a, b } = twoUsers();
+  it("rejects sending once already friends", async () => {
+    const { a, b } = await twoUsers();
     sendFriendRequest(a.id, b.id);
     const [req] = listIncomingRequests(b.id);
     acceptFriendRequest(b.id, req!.id);
@@ -61,30 +61,30 @@ describe("sendFriendRequest", () => {
     expect(() => sendFriendRequest(b.id, a.id)).toThrow(FriendRequestError);
   });
 
-  it("a mutual double-request (B requests A while A's request to B is pending) auto-accepts instead of creating a duplicate row", () => {
-    const { a, b } = twoUsers();
+  it("a mutual double-request (B requests A while A's request to B is pending) auto-accepts instead of creating a duplicate row", async () => {
+    const { a, b } = await twoUsers();
     sendFriendRequest(a.id, b.id);
     sendFriendRequest(b.id, a.id);
     expect(listFriends(a.id).map((f) => f.handle)).toEqual(["neonorchard"]);
     expect(listFriends(b.id).map((f) => f.handle)).toEqual(["voidarcade"]);
   });
 
-  it("a blocked user cannot send a friend request", () => {
-    const { a, b } = twoUsers();
+  it("a blocked user cannot send a friend request", async () => {
+    const { a, b } = await twoUsers();
     blockUser(b.id, a.id);
     expect(() => sendFriendRequest(a.id, b.id)).toThrow(FriendRequestError);
   });
 
-  it("the blocker also cannot send a request to the blocked user", () => {
-    const { a, b } = twoUsers();
+  it("the blocker also cannot send a request to the blocked user", async () => {
+    const { a, b } = await twoUsers();
     blockUser(a.id, b.id);
     expect(() => sendFriendRequest(a.id, b.id)).toThrow(FriendRequestError);
   });
 });
 
 describe("acceptFriendRequest", () => {
-  it("makes both users appear in each other's friends list", () => {
-    const { a, b } = twoUsers();
+  it("makes both users appear in each other's friends list", async () => {
+    const { a, b } = await twoUsers();
     sendFriendRequest(a.id, b.id);
     const [req] = listIncomingRequests(b.id);
     acceptFriendRequest(b.id, req!.id);
@@ -93,30 +93,30 @@ describe("acceptFriendRequest", () => {
     expect(listFriends(b.id).map((f) => f.handle)).toEqual(["voidarcade"]);
   });
 
-  it("only the addressee can accept, not the requester", () => {
-    const { a, b } = twoUsers();
+  it("only the addressee can accept, not the requester", async () => {
+    const { a, b } = await twoUsers();
     sendFriendRequest(a.id, b.id);
     const [req] = listIncomingRequests(b.id);
     expect(() => acceptFriendRequest(a.id, req!.id)).toThrow(FriendRequestError);
   });
 
-  it("accepting twice is a harmless no-op", () => {
-    const { a, b } = twoUsers();
+  it("accepting twice is a harmless no-op", async () => {
+    const { a, b } = await twoUsers();
     sendFriendRequest(a.id, b.id);
     const [req] = listIncomingRequests(b.id);
     acceptFriendRequest(b.id, req!.id);
     expect(() => acceptFriendRequest(b.id, req!.id)).not.toThrow();
   });
 
-  it("throws for a request id that doesn't exist", () => {
-    const { b } = twoUsers();
+  it("throws for a request id that doesn't exist", async () => {
+    const { b } = await twoUsers();
     expect(() => acceptFriendRequest(b.id, "not-a-real-id")).toThrow(FriendLinkNotFoundError);
   });
 });
 
 describe("removeFriendLink (decline / unfriend)", () => {
-  it("declining a pending request removes it, and a new request can be sent later", () => {
-    const { a, b } = twoUsers();
+  it("declining a pending request removes it, and a new request can be sent later", async () => {
+    const { a, b } = await twoUsers();
     sendFriendRequest(a.id, b.id);
     const [req] = listIncomingRequests(b.id);
     removeFriendLink(b.id, req!.id);
@@ -124,8 +124,8 @@ describe("removeFriendLink (decline / unfriend)", () => {
     expect(() => sendFriendRequest(a.id, b.id)).not.toThrow();
   });
 
-  it("unfriending an accepted link removes it from both sides", () => {
-    const { a, b } = twoUsers();
+  it("unfriending an accepted link removes it from both sides", async () => {
+    const { a, b } = await twoUsers();
     sendFriendRequest(a.id, b.id);
     const [req] = listIncomingRequests(b.id);
     acceptFriendRequest(b.id, req!.id);
@@ -134,23 +134,23 @@ describe("removeFriendLink (decline / unfriend)", () => {
     expect(listFriends(b.id)).toEqual([]);
   });
 
-  it("a third party cannot remove a link they're not part of", () => {
-    const { a, b } = twoUsers();
-    const c = createUser("thirdparty", "correct-horse-battery");
+  it("a third party cannot remove a link they're not part of", async () => {
+    const { a, b } = await twoUsers();
+    const c = await createUser("thirdparty", "correct-horse-battery");
     sendFriendRequest(a.id, b.id);
     const [req] = listIncomingRequests(b.id);
     expect(() => removeFriendLink(c.id, req!.id)).toThrow(FriendRequestError);
   });
 
-  it("removing a nonexistent link is a harmless no-op", () => {
-    const { a } = twoUsers();
+  it("removing a nonexistent link is a harmless no-op", async () => {
+    const { a } = await twoUsers();
     expect(() => removeFriendLink(a.id, "not-a-real-id")).not.toThrow();
   });
 });
 
 describe("blockUser", () => {
-  it("tears down an existing accepted friendship", () => {
-    const { a, b } = twoUsers();
+  it("tears down an existing accepted friendship", async () => {
+    const { a, b } = await twoUsers();
     sendFriendRequest(a.id, b.id);
     const [req] = listIncomingRequests(b.id);
     acceptFriendRequest(b.id, req!.id);
@@ -160,26 +160,26 @@ describe("blockUser", () => {
     expect(listFriends(b.id)).toEqual([]);
   });
 
-  it("tears down a pending request in either direction", () => {
-    const { a, b } = twoUsers();
+  it("tears down a pending request in either direction", async () => {
+    const { a, b } = await twoUsers();
     sendFriendRequest(a.id, b.id);
     blockUser(a.id, b.id);
     expect(listIncomingRequests(b.id)).toEqual([]);
   });
 
-  it("rejects blocking yourself", () => {
-    const { a } = twoUsers();
+  it("rejects blocking yourself", async () => {
+    const { a } = await twoUsers();
     expect(() => blockUser(a.id, a.id)).toThrow(FriendRequestError);
   });
 
-  it("blocking twice does not error", () => {
-    const { a, b } = twoUsers();
+  it("blocking twice does not error", async () => {
+    const { a, b } = await twoUsers();
     blockUser(a.id, b.id);
     expect(() => blockUser(a.id, b.id)).not.toThrow();
   });
 
-  it("unblocking allows a new friend request afterward", () => {
-    const { a, b } = twoUsers();
+  it("unblocking allows a new friend request afterward", async () => {
+    const { a, b } = await twoUsers();
     blockUser(a.id, b.id);
     unblockUser(a.id, b.id);
     expect(() => sendFriendRequest(b.id, a.id)).not.toThrow();

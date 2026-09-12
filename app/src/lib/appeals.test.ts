@@ -6,14 +6,14 @@ import { setPlatformBlock } from "./moderation";
 
 process.env.IOFUS_DB_PATH = ":memory:";
 
-beforeEach(() => {
+beforeEach(async () => {
   resetDbForTests();
 });
 
 describe("appeals", () => {
-  it("files an appeal for a platform-blocked user", () => {
-    const mod = createUser("moduser", "correct-horse-battery");
-    const user = createUser("blockeduser", "correct-horse-battery");
+  it("files an appeal for a platform-blocked user", async () => {
+    const mod = await createUser("moduser", "correct-horse-battery");
+    const user = await createUser("blockeduser", "correct-horse-battery");
     setPlatformBlock(user.id, true, mod.id);
 
     fileAppeal(user.id, "I believe this was a mistake.");
@@ -22,35 +22,35 @@ describe("appeals", () => {
     expect(open[0]!.userHandle).toBe("blockeduser");
   });
 
-  it("rejects appeals from non-blocked users", () => {
-    const user = createUser("freeuser", "correct-horse-battery");
+  it("rejects appeals from non-blocked users", async () => {
+    const user = await createUser("freeuser", "correct-horse-battery");
     expect(() => fileAppeal(user.id, "please")).toThrow(AppealError);
   });
 
-  it("granting an appeal unblocks the user", () => {
-    const mod = createUser("moduser", "correct-horse-battery");
+  it("granting an appeal unblocks the user", async () => {
+    const mod = await createUser("moduser", "correct-horse-battery");
     getDb().prepare("UPDATE users SET is_moderator = 1 WHERE id = ?").run(mod.id);
-    const user = createUser("blockeduser", "correct-horse-battery");
+    const user = await createUser("blockeduser", "correct-horse-battery");
     setPlatformBlock(user.id, true, mod.id);
     fileAppeal(user.id, "sorry");
 
     const [appeal] = listOpenAppeals();
     reviewAppeal(appeal!.id, mod.id, "granted", "ok");
     expect(listOpenAppeals()).toHaveLength(0);
-    expect(() => authenticateBlockedForAppeal("blockeduser", "correct-horse-battery")).toThrow(ValidationError);
+    await expect(authenticateBlockedForAppeal("blockeduser", "correct-horse-battery")).rejects.toThrow(ValidationError);
   });
 
-  it("authenticateBlockedForAppeal requires platform block", () => {
-    createUser("freeuser", "correct-horse-battery");
-    expect(() => authenticateBlockedForAppeal("freeuser", "correct-horse-battery")).toThrow(ValidationError);
-    expect(() => authenticateBlockedForAppeal("freeuser", "wrong-password")).toThrow(InvalidCredentialsError);
+  it("authenticateBlockedForAppeal requires platform block", async () => {
+    await createUser("freeuser", "correct-horse-battery");
+    await expect(authenticateBlockedForAppeal("freeuser", "correct-horse-battery")).rejects.toThrow(ValidationError);
+    await expect(authenticateBlockedForAppeal("freeuser", "wrong-password")).rejects.toThrow(InvalidCredentialsError);
   });
 
-  it("rejects reviewAppeal from a non-moderator, even one referenced by a caller that forgot to gate it", () => {
-    const mod = createUser("moduser", "correct-horse-battery");
+  it("rejects reviewAppeal from a non-moderator, even one referenced by a caller that forgot to gate it", async () => {
+    const mod = await createUser("moduser", "correct-horse-battery");
     getDb().prepare("UPDATE users SET is_moderator = 1 WHERE id = ?").run(mod.id);
-    const notMod = createUser("regularuser", "correct-horse-battery");
-    const user = createUser("blockeduser", "correct-horse-battery");
+    const notMod = await createUser("regularuser", "correct-horse-battery");
+    const user = await createUser("blockeduser", "correct-horse-battery");
     setPlatformBlock(user.id, true, mod.id);
     fileAppeal(user.id, "sorry");
 
@@ -63,8 +63,8 @@ describe("appeals", () => {
   });
 
   it("concurrent open appeals leave exactly one row for the same user", async () => {
-    const mod = createUser("moduser", "correct-horse-battery");
-    const user = createUser("blockeduser", "correct-horse-battery");
+    const mod = await createUser("moduser", "correct-horse-battery");
+    const user = await createUser("blockeduser", "correct-horse-battery");
     setPlatformBlock(user.id, true, mod.id);
 
     const results = await Promise.allSettled([

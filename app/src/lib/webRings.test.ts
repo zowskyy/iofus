@@ -29,7 +29,7 @@ function createUser(handle: string): string {
   return id;
 }
 
-beforeEach(() => {
+beforeEach(async () => {
   const db = getDb();
   db.exec(
     "DELETE FROM graph_edges; DELETE FROM web_ring_join_requests; DELETE FROM web_ring_members; DELETE FROM web_rings; DELETE FROM page_documents; DELETE FROM users;",
@@ -37,7 +37,7 @@ beforeEach(() => {
 });
 
 describe("createWebRing", () => {
-  it("creates a ring with valid name", () => {
+  it("creates a ring with valid name", async () => {
     const owner = createUser("owner");
     const ring = createWebRing(owner, { name: "Test Ring", description: "", isOpen: true });
     expect(ring.name).toBe("Test Ring");
@@ -45,12 +45,12 @@ describe("createWebRing", () => {
     expect(ring.isOpen).toBe(true);
   });
 
-  it("throws on empty name", () => {
+  it("throws on empty name", async () => {
     const owner = createUser("owner2");
     expect(() => createWebRing(owner, { name: "  ", description: "", isOpen: true })).toThrow(WebRingError);
   });
 
-  it("generates unique slug on collision", () => {
+  it("generates unique slug on collision", async () => {
     const owner = createUser("owner3");
     const r1 = createWebRing(owner, { name: "My Ring", description: "", isOpen: true });
     const r2 = createWebRing(owner, { name: "My Ring", description: "", isOpen: true });
@@ -59,7 +59,7 @@ describe("createWebRing", () => {
 });
 
 describe("joinWebRing (open ring)", () => {
-  it("joins an open ring immediately", () => {
+  it("joins an open ring immediately", async () => {
     const owner = createUser("rowner");
     const user = createUser("joiner");
     const ring = createWebRing(owner, { name: "Open Ring", description: "", isOpen: true });
@@ -68,7 +68,7 @@ describe("joinWebRing (open ring)", () => {
     expect(isRingMember(ring.id, user)).toBe(true);
   });
 
-  it("is idempotent for existing member", () => {
+  it("is idempotent for existing member", async () => {
     const owner = createUser("rowner2");
     const user = createUser("joiner2");
     const ring = createWebRing(owner, { name: "Open Ring 2", description: "", isOpen: true });
@@ -77,7 +77,7 @@ describe("joinWebRing (open ring)", () => {
     expect(result).toBe("joined");
   });
 
-  it("records graph edges on join", () => {
+  it("records graph edges on join", async () => {
     const owner = createUser("rowner3");
     const a = createUser("memberA");
     const b = createUser("memberB");
@@ -91,7 +91,7 @@ describe("joinWebRing (open ring)", () => {
 });
 
 describe("joinWebRing (closed ring)", () => {
-  it("creates a join request for closed ring", () => {
+  it("creates a join request for closed ring", async () => {
     const owner = createUser("closedowner");
     const user = createUser("requester");
     const ring = createWebRing(owner, { name: "Closed Ring", description: "", isOpen: false });
@@ -102,7 +102,7 @@ describe("joinWebRing (closed ring)", () => {
 });
 
 describe("reviewJoinRequest", () => {
-  it("accepts a join request and adds member", () => {
+  it("accepts a join request and adds member", async () => {
     const owner = createUser("owner4");
     const user = createUser("req1");
     const ring = createWebRing(owner, { name: "Closed 2", description: "", isOpen: false });
@@ -111,7 +111,7 @@ describe("reviewJoinRequest", () => {
     expect(isRingMember(ring.id, user)).toBe(true);
   });
 
-  it("rejects a join request", () => {
+  it("rejects a join request", async () => {
     const owner = createUser("owner5");
     const user = createUser("req2");
     const ring = createWebRing(owner, { name: "Closed 3", description: "", isOpen: false });
@@ -120,7 +120,7 @@ describe("reviewJoinRequest", () => {
     expect(isRingMember(ring.id, user)).toBe(false);
   });
 
-  it("throws when not the owner", () => {
+  it("throws when not the owner", async () => {
     const owner = createUser("owner6");
     const other = createUser("notowner");
     const user = createUser("req3");
@@ -131,7 +131,7 @@ describe("reviewJoinRequest", () => {
 });
 
 describe("getRingNavigation", () => {
-  it("returns prev and next for middle member", () => {
+  it("returns prev and next for middle member", async () => {
     const owner = createUser("navowner");
     const a = createUser("navA");
     const b = createUser("navB");
@@ -145,7 +145,7 @@ describe("getRingNavigation", () => {
     expect(nav.next?.handle).toBe("navC");
   });
 
-  it("returns null prev for first member", () => {
+  it("returns null prev for first member", async () => {
     const owner = createUser("navowner2");
     const a = createUser("navFirst");
     const b = createUser("navSecond");
@@ -157,7 +157,7 @@ describe("getRingNavigation", () => {
     expect(nav.next).not.toBeNull();
   });
 
-  it("returns null next for last member", () => {
+  it("returns null next for last member", async () => {
     const owner = createUser("navowner3");
     const a = createUser("navLast1");
     const b = createUser("navLast2");
@@ -168,7 +168,7 @@ describe("getRingNavigation", () => {
     expect(nav.next).toBeNull();
   });
 
-  it("returns null,null for non-member", () => {
+  it("returns null,null for non-member", async () => {
     const owner = createUser("navowner4");
     const ring = createWebRing(owner, { name: "Nav Ring 4", description: "", isOpen: true });
     const nonmember = createUser("nonmember");
@@ -179,7 +179,7 @@ describe("getRingNavigation", () => {
 });
 
 describe("deleteWebRing", () => {
-  it("deletes a ring owned by the user", () => {
+  it("deletes a ring owned by the user", async () => {
     const owner = createUser("delowner");
     const ring = createWebRing(owner, { name: "To Delete", description: "", isOpen: true });
     deleteWebRing(ring.id, owner);
@@ -187,7 +187,7 @@ describe("deleteWebRing", () => {
     expect(db.prepare("SELECT * FROM web_rings WHERE id = ?").get(ring.id)).toBeUndefined();
   });
 
-  it("throws when not the owner", () => {
+  it("throws when not the owner", async () => {
     const owner = createUser("delowner2");
     const other = createUser("notowner2");
     const ring = createWebRing(owner, { name: "Protected", description: "", isOpen: true });
@@ -196,7 +196,7 @@ describe("deleteWebRing", () => {
 });
 
 describe("leaveWebRing", () => {
-  it("removes member and graph edges", () => {
+  it("removes member and graph edges", async () => {
     const owner = createUser("leaveowner");
     const a = createUser("leaveA");
     const b = createUser("leaveB");

@@ -6,15 +6,15 @@ import { addStamp, clearStamps, countStamps, listStamps, StampError } from "./st
 
 process.env.IOFUS_DB_PATH = ":memory:";
 
-beforeEach(() => {
+beforeEach(async () => {
   resetDbForTests();
   vi.useRealTimers();
 });
 
 describe("stamps", () => {
-  it("adds a stamp from a signed-in user", () => {
-    const owner = createUser("pageowner", "correct-horse-battery");
-    const stamper = createUser("stamper", "correct-horse-battery");
+  it("adds a stamp from a signed-in user", async () => {
+    const owner = await createUser("pageowner", "correct-horse-battery");
+    const stamper = await createUser("stamper", "correct-horse-battery");
 
     addStamp(owner.id, stamper.id, stamper.handle, ALLOWED_STAMPS[0]!);
 
@@ -25,32 +25,32 @@ describe("stamps", () => {
     expect(countStamps(owner.id)).toBe(1);
   });
 
-  it("rejects an emoji that isn't in the allowed list", () => {
-    const owner = createUser("pageowner", "correct-horse-battery");
-    const stamper = createUser("stamper", "correct-horse-battery");
+  it("rejects an emoji that isn't in the allowed list", async () => {
+    const owner = await createUser("pageowner", "correct-horse-battery");
+    const stamper = await createUser("stamper", "correct-horse-battery");
 
     expect(() => addStamp(owner.id, stamper.id, stamper.handle, "🚫")).toThrow(StampError);
     expect(countStamps(owner.id)).toBe(0);
   });
 
-  it("rejects a stamp with no stamperId (must be signed in)", () => {
-    const owner = createUser("pageowner", "correct-horse-battery");
+  it("rejects a stamp with no stamperId (must be signed in)", async () => {
+    const owner = await createUser("pageowner", "correct-horse-battery");
     expect(() => addStamp(owner.id, null, null, ALLOWED_STAMPS[0]!)).toThrow(StampError);
     expect(countStamps(owner.id)).toBe(0);
   });
 
-  it("rejects a second stamp from the same user on the same page within 24h", () => {
-    const owner = createUser("pageowner", "correct-horse-battery");
-    const stamper = createUser("stamper", "correct-horse-battery");
+  it("rejects a second stamp from the same user on the same page within 24h", async () => {
+    const owner = await createUser("pageowner", "correct-horse-battery");
+    const stamper = await createUser("stamper", "correct-horse-battery");
 
     addStamp(owner.id, stamper.id, stamper.handle, ALLOWED_STAMPS[0]!);
     expect(() => addStamp(owner.id, stamper.id, stamper.handle, ALLOWED_STAMPS[1]!)).toThrow(StampError);
     expect(countStamps(owner.id)).toBe(1);
   });
 
-  it("allows a stamp again once the prior one is more than 24h old", () => {
-    const owner = createUser("pageowner", "correct-horse-battery");
-    const stamper = createUser("stamper", "correct-horse-battery");
+  it("allows a stamp again once the prior one is more than 24h old", async () => {
+    const owner = await createUser("pageowner", "correct-horse-battery");
+    const stamper = await createUser("stamper", "correct-horse-battery");
     addStamp(owner.id, stamper.id, stamper.handle, ALLOWED_STAMPS[0]!);
 
     // Backdate the existing stamp past the 24h window instead of mocking
@@ -67,10 +67,10 @@ describe("stamps", () => {
     expect(countStamps(owner.id)).toBe(2);
   });
 
-  it("allows different users to stamp the same page independently", () => {
-    const owner = createUser("pageowner", "correct-horse-battery");
-    const stamperA = createUser("stampera", "correct-horse-battery");
-    const stamperB = createUser("stamperb", "correct-horse-battery");
+  it("allows different users to stamp the same page independently", async () => {
+    const owner = await createUser("pageowner", "correct-horse-battery");
+    const stamperA = await createUser("stampera", "correct-horse-battery");
+    const stamperB = await createUser("stamperb", "correct-horse-battery");
 
     addStamp(owner.id, stamperA.id, stamperA.handle, ALLOWED_STAMPS[0]!);
     addStamp(owner.id, stamperB.id, stamperB.handle, ALLOWED_STAMPS[1]!);
@@ -78,8 +78,8 @@ describe("stamps", () => {
     expect(countStamps(owner.id)).toBe(2);
   });
 
-  it("listStamps returns newest first and respects the limit", () => {
-    const owner = createUser("pageowner", "correct-horse-battery");
+  it("listStamps returns newest first and respects the limit", async () => {
+    const owner = await createUser("pageowner", "correct-horse-battery");
     const db = getDb();
     // Insert directly with distinct timestamps to avoid the 24h same-user cap.
     for (let i = 0; i < 3; i++) {
@@ -94,16 +94,16 @@ describe("stamps", () => {
     expect(limited[0]!.id).toBe("stamp-2");
   });
 
-  it("listStamps and countStamps return empty/zero for a page with no stamps", () => {
-    const owner = createUser("pageowner", "correct-horse-battery");
+  it("listStamps and countStamps return empty/zero for a page with no stamps", async () => {
+    const owner = await createUser("pageowner", "correct-horse-battery");
     expect(listStamps(owner.id)).toEqual([]);
     expect(countStamps(owner.id)).toBe(0);
   });
 
-  it("clearStamps deletes all stamps for that page only", () => {
-    const owner = createUser("pageowner", "correct-horse-battery");
-    const other = createUser("otherowner", "correct-horse-battery");
-    const stamper = createUser("stamper", "correct-horse-battery");
+  it("clearStamps deletes all stamps for that page only", async () => {
+    const owner = await createUser("pageowner", "correct-horse-battery");
+    const other = await createUser("otherowner", "correct-horse-battery");
+    const stamper = await createUser("stamper", "correct-horse-battery");
 
     addStamp(owner.id, stamper.id, stamper.handle, ALLOWED_STAMPS[0]!);
     addStamp(other.id, stamper.id, stamper.handle, ALLOWED_STAMPS[0]!);

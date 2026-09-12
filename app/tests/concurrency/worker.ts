@@ -19,14 +19,21 @@ function requireArg(index: number): string {
 
 process.env.IOFUS_DB_PATH = requireArg(2);
 process.env.IOFUS_AUTO_MODERATOR_SEED = "false";
+// These workers create accounts in a loop to generate real lock contention.
+// At the production cost factor the KDF, not SQLite, would dominate the run
+// and the contention window this test exists to exercise would barely open.
+process.env.IOFUS_SCRYPT_LOG_N ??= "10";
 
 const mode = requireArg(3);
 
 type Result = { ok: true; value?: unknown } | { ok: false; error: string };
 
-function record(op: string, fn: () => unknown): Result {
+async function record(op: string, fn: () => unknown): Promise<Result> {
   try {
-    const value = fn();
+    // Awaited so a rejected promise is still captured as a failed Result.
+    // Account creation hashes a password and is therefore async; without this
+    // the contention assertions would see an unsettled promise as a success.
+    const value = await fn();
     return { ok: true, value };
   } catch (e) {
     return { ok: false, error: e instanceof Error ? `${e.constructor.name}: ${e.message}` : String(e) };
@@ -45,7 +52,7 @@ async function main() {
     const prefix = requireArg(4);
     const count = Number(requireArg(5));
     for (let i = 0; i < count; i++) {
-      results.push({ op: "createUser", result: record("createUser", () => createUser(`${prefix}${i}`, "correct-horse-battery")) });
+      results.push({ op: "createUser", result: await record("createUser", () => createUser(`${prefix}${i}`, "correct-horse-battery")) });
     }
   } else if (mode === "rate-limit-race") {
     const { checkRateLimit } = await import("../../src/lib/rateLimit.ts");
@@ -53,7 +60,7 @@ async function main() {
     const max = Number(requireArg(5));
     const attempts = Number(requireArg(6));
     for (let i = 0; i < attempts; i++) {
-      results.push({ op: "checkRateLimit", result: record("checkRateLimit", () => checkRateLimit(key, max, 60_000)) });
+      results.push({ op: "checkRateLimit", result: await record("checkRateLimit", () => checkRateLimit(key, max, 60_000)) });
     }
   } else if (mode === "block-vs-friend-race") {
     // One process repeatedly tries to establish/accept a friendship while
@@ -70,16 +77,16 @@ async function main() {
     const attempts = Number(requireArg(7));
     for (let i = 0; i < attempts; i++) {
       if (role === "friend") {
-        results.push({ op: "sendFriendRequest", result: record("sendFriendRequest", () => sendFriendRequest(userA, userB)) });
+        results.push({ op: "sendFriendRequest", result: await record("sendFriendRequest", () => sendFriendRequest(userA, userB)) });
         results.push({
           op: "acceptFriendRequest",
-          result: record("acceptFriendRequest", () => {
+          result: await record("acceptFriendRequest", () => {
             const incoming = listIncomingRequests(userB);
             for (const r of incoming) acceptFriendRequest(userB, r.id);
           }),
         });
       } else {
-        results.push({ op: "blockUser", result: record("blockUser", () => blockUser(userA, userB)) });
+        results.push({ op: "blockUser", result: await record("blockUser", () => blockUser(userA, userB)) });
       }
     }
   } else if (mode === "guestbook-race") {
@@ -92,7 +99,7 @@ async function main() {
     const ownerId = requireArg(4);
     const handlePrefix = requireArg(5);
     const count = Number(requireArg(6));
-    const visitorResult = record("createVisitor", () => createUser(handlePrefix, "correct-horse-battery"));
+    const visitorResult = await record("createVisitor", () => createUser(handlePrefix, "correct-horse-battery"));
     results.push({ op: "createVisitor", result: visitorResult });
     if (!visitorResult.ok) {
       process.stdout.write(JSON.stringify(results) + "\n");
@@ -102,7 +109,7 @@ async function main() {
     for (let i = 0; i < count; i++) {
       results.push({
         op: "signGuestbook",
-        result: record("signGuestbook", () =>
+        result: await record("signGuestbook", () =>
           signGuestbook(ownerId, visitor.id, visitor.handle, `msg ${i} from ${visitor.handle}`, true, visitor.id),
         ),
       });
