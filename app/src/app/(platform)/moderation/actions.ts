@@ -77,7 +77,12 @@ export async function dismissThemeReportAction(reportId: string, formData: FormD
 export async function grantAppealAction(appealId: string, formData: FormData): Promise<void> {
   const moderator = await requireModerator();
   const note = String(formData.get("note") ?? "");
-  reviewAppeal(appealId, moderator.id, "granted", note);
+  try {
+    reviewAppeal(appealId, moderator.id, "granted", note);
+  } catch (e) {
+    console.error("[grantAppealAction] reviewAppeal failed", { appealId, moderatorId: moderator.id }, e);
+    throw e;
+  }
   logModeratorAction(moderator.id, "appeal_granted", null, note);
   revalidatePath("/moderation");
 }
@@ -85,7 +90,12 @@ export async function grantAppealAction(appealId: string, formData: FormData): P
 export async function dismissAppealAction(appealId: string, formData: FormData): Promise<void> {
   const moderator = await requireModerator();
   const note = String(formData.get("note") ?? "");
-  reviewAppeal(appealId, moderator.id, "dismissed", note);
+  try {
+    reviewAppeal(appealId, moderator.id, "dismissed", note);
+  } catch (e) {
+    console.error("[dismissAppealAction] reviewAppeal failed", { appealId, moderatorId: moderator.id }, e);
+    throw e;
+  }
   logModeratorAction(moderator.id, "appeal_dismissed", null, note);
   revalidatePath("/moderation");
 }

@@ -67,6 +67,15 @@ function migrate(db: DatabaseSync): void {
   addColumnIfMissing(db, "users", "reachable_for_asks INTEGER NOT NULL DEFAULT 0");
   addColumnIfMissing(db, "web_rings", "creator_user_id TEXT REFERENCES users(id) ON DELETE SET NULL");
   addColumnIfMissing(db, "web_rings", "is_open INTEGER NOT NULL DEFAULT 1");
+  addColumnIfMissing(db, "users", "email TEXT");
+  db.exec(`
+    CREATE TABLE IF NOT EXISTS password_reset_tokens (
+      token_hash TEXT PRIMARY KEY,
+      user_id TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+      created_at TEXT NOT NULL,
+      expires_at TEXT NOT NULL
+    )
+  `);
   db.exec(`
     CREATE TABLE IF NOT EXISTS web_ring_join_requests (
       ring_id TEXT NOT NULL REFERENCES web_rings(id) ON DELETE CASCADE,

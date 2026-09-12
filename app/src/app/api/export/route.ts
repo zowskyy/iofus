@@ -24,6 +24,7 @@ export async function GET() {
       },
     });
   } catch (err) {
+    console.error("[export] page export failed for user", viewer.id, err);
     const message = err instanceof Error ? err.message : "Export failed";
     return new Response(message, { status: 500 });
   }

@@ -1,6 +1,6 @@
 "use client";
 
-export default function GlobalError({ error, retry }: { error: Error & { digest?: string }; retry: () => void }) {
+export default function GlobalError({ error, reset }: { error: Error & { digest?: string }; reset: () => void }) {
   return (
     <html lang="en">
       <body style={{ fontFamily: "system-ui, sans-serif", margin: 0, padding: "2rem", background: "#111", color: "#eee" }}>
@@ -13,7 +13,7 @@ export default function GlobalError({ error, retry }: { error: Error & { digest?
           <div style={{ display: "flex", gap: "0.75rem", marginTop: "1rem" }}>
             <button
               type="button"
-              onClick={() => retry()}
+              onClick={() => reset()}
               style={{ padding: "0.5rem 1rem", cursor: "pointer", border: "1px solid #555", background: "#222", color: "#eee", borderRadius: "4px" }}
             >
               Try again

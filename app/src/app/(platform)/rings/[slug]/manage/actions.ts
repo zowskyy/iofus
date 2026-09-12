@@ -62,6 +62,7 @@ export async function deleteRingAction(
     // an unexpected error must surface to the user, not silently redirect as
     // if the deletion succeeded when the ring may still exist.
     if (e instanceof WebRingError) return { error: e.message };
+    console.error("[deleteRingAction] unexpected error deleting ring", slug, e);
     throw e;
   }
 

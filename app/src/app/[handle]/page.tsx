@@ -40,7 +40,28 @@ export async function generateMetadata({ params }: { params: Promise<{ handle: s
     types["application/rss+xml; devlog"] = `/@${handle}/devlog/feed.xml`;
   }
 
-  return { alternates: { types } };
+  const displayName = doc.identity?.displayName ?? `@${handle}`;
+  const bio = doc.identity?.bio?.trim() ?? "";
+  const description = bio || `${displayName}'s corner of the internet on iofus.`;
+  const url = `/@${handle}`;
+
+  return {
+    title: `${displayName} (@${handle})`,
+    description,
+    alternates: { types },
+    openGraph: {
+      type: "profile",
+      title: `${displayName} (@${handle})`,
+      description,
+      url,
+      siteName: "iofus",
+    },
+    twitter: {
+      card: "summary",
+      title: `${displayName} (@${handle})`,
+      description,
+    },
+  };
 }
 
 interface Props {
