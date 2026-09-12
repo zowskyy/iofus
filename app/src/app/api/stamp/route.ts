@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getCurrentUser } from "@/lib/session";
 import { addStamp, listStamps, StampError } from "@/lib/stamps";
+import { checkRateLimit, RateLimitError, rateLimitActorKey } from "@/lib/rateLimit";
 import { getDb } from "@/lib/db";
 
 export async function GET(req: NextRequest) {
@@ -9,6 +10,13 @@ export async function GET(req: NextRequest) {
     return NextResponse.json({ error: "pageOwnerId required" }, { status: 400 });
   }
   const viewer = await getCurrentUser();
+  try {
+    const key = await rateLimitActorKey("stamp:read", viewer?.id ?? null);
+    checkRateLimit(key, 60);
+  } catch (e) {
+    if (e instanceof RateLimitError) return NextResponse.json({ error: e.message }, { status: 429 });
+    throw e;
+  }
   const stamps = listStamps(pageOwnerId);
   let viewerStampedToday = false;
   if (viewer) {
@@ -27,6 +35,14 @@ export async function POST(req: NextRequest) {
   const viewer = await getCurrentUser();
   if (!viewer) {
     return NextResponse.json({ error: "Sign in to leave a stamp." }, { status: 401 });
+  }
+
+  try {
+    const key = await rateLimitActorKey("stamp:write", viewer.id);
+    checkRateLimit(key, 20);
+  } catch (e) {
+    if (e instanceof RateLimitError) return NextResponse.json({ error: e.message }, { status: 429 });
+    throw e;
   }
 
   let body: { pageOwnerId?: string; emoji?: string };

@@ -130,7 +130,8 @@ export function listConversations(userId: string): Conversation[] {
        FROM conversations c
        JOIN users u ON u.id = (CASE WHEN c.user_a_id = ? THEN c.user_b_id ELSE c.user_a_id END)
        WHERE c.user_a_id = ? OR c.user_b_id = ?
-       ORDER BY c.last_message_at DESC`,
+       ORDER BY c.last_message_at DESC
+       LIMIT 200`,
     )
     .all(userId, userId, userId, userId) as {
     id: string;
@@ -196,7 +197,7 @@ export function listMessages(conversationId: string, viewerId: string): Message[
 
   const rows = db
     .prepare(
-      "SELECT id, conversation_id, sender_id, body, created_at, read_at FROM messages WHERE conversation_id = ? ORDER BY created_at ASC",
+      "SELECT id, conversation_id, sender_id, body, created_at, read_at FROM messages WHERE conversation_id = ? ORDER BY created_at ASC LIMIT 500",
     )
     .all(conversationId) as {
     id: string;
