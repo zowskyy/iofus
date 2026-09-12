@@ -21,12 +21,12 @@ export interface SettingsActionState {
 
 /**
  * Every action below is bound with its row-specific argument(s) before being
- * handed to `useActionState` (`unblockAction.bind(null, handle)`, matching
- * ManageRingControls' established convention) so the component gets a
- * pending flag (disables the button — the mobile-network duplicate-submit
- * guard) and an `{ error }` state to render inline, via
- * `withNetworkErrorHandling` from `@/lib/actionResilience`, instead of a
- * silently-swallowed network failure.
+ * handed to `useActionState` directly (`unblockAction.bind(null, handle)`
+ * — see SettingsRows.tsx for why it's *not* further wrapped in
+ * `withNetworkErrorHandling` the way ManageRingControls.tsx is), giving the
+ * component a pending flag (disables the button — the mobile-network
+ * duplicate-submit guard) and an `{ error }` state to render inline for
+ * every expected failure these actions catch themselves.
  */
 
 export async function unblockUserAction(blockedUserId: string): Promise<void> {
@@ -110,7 +110,7 @@ export async function approveGuestbookAction(
     revalidatePath(`/@${viewer.handle}`);
     return {};
   } catch (e) {
-    if (e instanceof GuestbookError) return { error: "That entry was already moderated." };
+    if (e instanceof GuestbookError) return { error: "That entry is no longer available." };
     throw e;
   }
 }
@@ -128,7 +128,7 @@ export async function rejectGuestbookAction(
     revalidatePath("/settings");
     return {};
   } catch (e) {
-    if (e instanceof GuestbookError) return { error: "That entry was already moderated." };
+    if (e instanceof GuestbookError) return { error: "That entry is no longer available." };
     throw e;
   }
 }
