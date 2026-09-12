@@ -110,7 +110,11 @@ jobs:
             docker run -d --name "$1" -v iofus-ci-data:/data -p 3000:3000 \
               -e IOFUS_DB_PATH=/data/iofus.db \
               -e IOFUS_SMTP_HOST=smtp.example.com \
-              -e IOFUS_ALLOWED_ORIGIN=http://localhost:3000 \
+              # Canonical origin for generated links, not the bind address --
+              # the checks below reach the container on localhost regardless.
+              # It must be https: the boot gate rejects a cleartext origin,
+              # because reset links carry a credential.
+              -e IOFUS_ALLOWED_ORIGIN=https://iofus.example \
               -e IOFUS_MODERATOR_HANDLE=rootmod \
               -e IOFUS_TRUSTED_PROXY_HOPS=1 \
               iofus:ci
@@ -163,6 +167,11 @@ jobs:
           "
           docker rm -f iofus-second
 
-      - name: Clean up volume
+      - name: Clean up
         if: always()
-        run: docker volume rm -f iofus-ci-data || true
+        # Containers first: a volume still attached to one that failed before
+        # its own `docker rm` cannot be removed, which turned a real failure
+        # into a second, noisier one.
+        run: |
+          docker rm -f iofus-first iofus-second 2>/dev/null || true
+          docker volume rm -f iofus-ci-data || true
