@@ -44,7 +44,7 @@ export default async function SettingsPage() {
         <p className="settings-description">
           Add an email address to enable password reset. iofus won't send you anything else.
         </p>
-        <EmailForm userId={viewer.id} currentEmail={currentEmail} />
+        <EmailForm currentEmail={currentEmail} />
       </section>
 
       <section className="settings-section">

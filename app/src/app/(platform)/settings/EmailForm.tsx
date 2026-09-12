@@ -5,9 +5,8 @@ import { updateEmailAction, type EmailState } from "./actions";
 
 const initialState: EmailState = {};
 
-export function EmailForm({ userId, currentEmail }: { userId: string; currentEmail: string | null }) {
-  const action = updateEmailAction.bind(null, userId);
-  const [state, formAction, pending] = useActionState(action, initialState);
+export function EmailForm({ currentEmail }: { currentEmail: string | null }) {
+  const [state, formAction, pending] = useActionState(updateEmailAction, initialState);
 
   return (
     <>
