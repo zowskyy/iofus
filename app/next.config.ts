@@ -12,7 +12,11 @@ const nextConfig: NextConfig = {
   // it's running on unless that origin is explicitly allowed here.
   experimental: {
     serverActions: {
-      allowedOrigins: ["localhost:3000", "*.trycloudflare.com"],
+      allowedOrigins: [
+        "localhost:3000",
+        ...(process.env.NODE_ENV === "development" ? ["*.trycloudflare.com"] : []),
+        ...(process.env.IOFUS_ALLOWED_ORIGIN ? [process.env.IOFUS_ALLOWED_ORIGIN] : []),
+      ],
     },
   },
 };

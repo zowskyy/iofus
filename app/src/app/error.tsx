@@ -13,7 +13,7 @@ import { useEffect } from "react";
  * product's "a page can be chaotic, it can never trap a visitor" standard
  * applied to the platform chrome itself, not just profile pages.
  */
-export default function GlobalError({ error, reset }: { error: Error & { digest?: string }; reset: () => void }) {
+export default function Error({ error, retry }: { error: Error & { digest?: string }; retry: () => void }) {
   useEffect(() => {
     // Errors here are unexpected by definition — keep a trace in the
     // browser console for whoever's debugging, same as any other uncaught
@@ -32,7 +32,7 @@ export default function GlobalError({ error, reset }: { error: Error & { digest?
         lost — this only affects the page you were just on.
       </p>
       <div style={{ display: "flex", gap: "0.75rem", flexWrap: "wrap", marginTop: "1rem" }}>
-        <button type="button" className="btn" onClick={() => reset()}>
+        <button type="button" className="btn" onClick={() => retry()}>
           Try again
         </button>
         <Link href="/" className="btn secondary">
