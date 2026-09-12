@@ -189,8 +189,17 @@ export function searchPages(query: string, limit = 24): DiscoverablePage[] {
   });
 }
 
-/** All public discoverable handles with their last-updated timestamp, for sitemap generation. */
-export function listAllPublicHandles(): { handle: string; updatedAt: string }[] {
+/** Count of all public discoverable profiles, for sitemap pagination. */
+export function countPublicProfiles(): number {
+  const db = getDb();
+  const row = db
+    .prepare(`SELECT COUNT(*) AS n FROM page_documents pd WHERE ${DISCOVERABLE_WHERE}`)
+    .get() as { n: number };
+  return row.n;
+}
+
+/** One bounded page of public discoverable handles for sitemap generation. */
+export function listPublicProfilesPage(offset: number, limit: number): { handle: string; updatedAt: string }[] {
   const db = getDb();
   return db
     .prepare(
@@ -198,7 +207,8 @@ export function listAllPublicHandles(): { handle: string; updatedAt: string }[] 
        FROM page_documents pd
        JOIN users u ON u.id = pd.user_id
        WHERE ${DISCOVERABLE_WHERE}
-       ORDER BY pd.updated_at DESC`,
+       ORDER BY pd.updated_at DESC
+       LIMIT ? OFFSET ?`,
     )
-    .all() as { handle: string; updatedAt: string }[];
+    .all(limit, offset) as { handle: string; updatedAt: string }[];
 }
