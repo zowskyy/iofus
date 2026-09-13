@@ -49,7 +49,10 @@
 }
 
 .site-logo {
-  height: 24rem;
+  /* `vh` is relative to the actual viewport, immune to root-font-size zoom
+     (unlike `rem`), so it caps runaway growth at 200% text zoom (WCAG 1.4.4)
+     without affecting the normal-zoom size below its threshold. */
+  height: min(24rem, 55vh);
   width: auto;
   display: block;
   filter: none;
@@ -304,7 +307,7 @@
     font-size: 0.78rem;
   }
   .site-logo {
-    height: 18rem;
+    height: min(18rem, 45vh);
   }
   .top-bar .controls {
     gap: 0.3rem;
@@ -348,7 +351,7 @@
     margin-bottom: -0.4rem;
   }
   .site-logo {
-    height: 4rem;
+    height: min(4rem, 14vh);
   }
   .top-bar .controls a,
   .top-bar .controls button {
