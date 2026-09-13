@@ -93,6 +93,12 @@ h3 {
   color: var(--paper);
   -webkit-text-stroke: 2px var(--ink);
   paint-order: stroke fill;
+  /* Several headings interpolate variable-length, no-space content
+     (handles up to 30 chars, ring/collection/theme names, blog titles).
+     Without this, one such "word" can't wrap and overflows the viewport
+     horizontally at phone widths instead of breaking onto its own line —
+     confirmed on the home page's "Back on the wall, @handle" heading. */
+  overflow-wrap: anywhere;
 }
 
 h1 { font-size: 6rem; }
