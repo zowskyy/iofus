@@ -17,8 +17,17 @@
 .top-bar-logo {
   display: flex;
   justify-content: center;
-  align-items: center;
+  align-items: flex-end;
   text-decoration: none;
+  /* Rests flush on the top bar's bottom border rather than floating
+     vertically centered, while staying horizontally centered via its
+     grid-column: 2 assignment below. align-self (not the container's
+     align-items) so only the logo cell is affected, not its siblings.
+     The negative margin cancels .top-bar's own padding-bottom (kept in
+     sync with it at each breakpoint below) so the logo touches the
+     border line instead of floating above it by that padding amount. */
+  align-self: end;
+  margin-bottom: -0.5rem;
 }
 
 /* Explicit column assignments, not auto-placement: `display: none` removes
@@ -40,7 +49,10 @@
 }
 
 .site-logo {
-  height: 12rem;
+  /* `vh` is relative to the actual viewport, immune to root-font-size zoom
+     (unlike `rem`), so it caps runaway growth at 200% text zoom (WCAG 1.4.4)
+     without affecting the normal-zoom size below its threshold. */
+  height: min(24rem, 55vh);
   width: auto;
   display: block;
   filter: none;
@@ -287,6 +299,18 @@
   display: block;
 }
 
+/* Narrow desktop (769–900px): between the tablet breakpoint and the point
+   where the full-size logo actually fits. The desktop logo's ~660px width
+   plus the nav controls' own min-content widths overflow the viewport in
+   this range (e.g. common 800px portrait tablets) even though it's wider
+   than the tablet breakpoint — so it needs the tablet's smaller logo size
+   without the rest of the tablet layout changes. */
+@media (min-width: 769px) and (max-width: 900px) {
+  .site-logo {
+    height: min(18rem, 45vh);
+  }
+}
+
 /* Tablet (≤ 768px) */
 @media (max-width: 768px) {
   .top-bar {
@@ -295,7 +319,7 @@
     font-size: 0.78rem;
   }
   .site-logo {
-    height: 9rem;
+    height: min(18rem, 45vh);
   }
   .top-bar .controls {
     gap: 0.3rem;
@@ -336,9 +360,10 @@
   }
   .top-bar-logo {
     justify-content: center;
+    margin-bottom: -0.4rem;
   }
   .site-logo {
-    height: 2rem;
+    height: min(4rem, 14vh);
   }
   .top-bar .controls a,
   .top-bar .controls button {
