@@ -93,6 +93,12 @@ h3 {
   color: var(--paper);
   -webkit-text-stroke: 2px var(--ink);
   paint-order: stroke fill;
+  /* Several headings interpolate variable-length, no-space content
+     (handles up to 30 chars, ring/collection/theme names, blog titles).
+     Without this, one such "word" can't wrap and overflows the viewport
+     horizontally at phone widths instead of breaking onto its own line —
+     confirmed on the home page's "Back on the wall, @handle" heading. */
+  overflow-wrap: anywhere;
 }
 
 h1 { font-size: 6rem; }
@@ -121,6 +127,20 @@ a {
 
 .mono {
   font-family: "Space Mono", ui-monospace, monospace;
+}
+
+/* Visually hidden but still reachable by screen readers — for content like
+   a live-region status announcement that has a visual, aria-hidden twin. */
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
 }
 
 button,

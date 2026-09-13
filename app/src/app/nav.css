@@ -226,6 +226,11 @@
   display: flex;
   flex-direction: column;
   min-width: 10rem;
+  max-height: calc(100vh - var(--nav-height, 74px) - env(safe-area-inset-top, 0px) - 1rem);
+  overflow-y: auto;
+  /* The device's home-indicator/gesture-bar area must never sit under the
+     last tappable row. */
+  padding-bottom: env(safe-area-inset-bottom, 0px);
 }
 
 .nav-drawer-panel a,

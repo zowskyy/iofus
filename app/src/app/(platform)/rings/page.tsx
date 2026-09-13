@@ -31,10 +31,10 @@ export default async function RingsPage() {
           <h2>Your rings</h2>
           <ul style={{ listStyle: "none", padding: 0, margin: 0, display: "flex", flexDirection: "column", gap: "0.5rem" }}>
             {mine.map((ring) => (
-              <li key={ring.id} style={{ display: "flex", alignItems: "center", gap: "1rem" }}>
+              <li key={ring.id} className="ring-row">
                 <Link href={`/explore/ring/${ring.slug}`}>{ring.name}</Link>
                 {owned.some((o) => o.id === ring.id) && (
-                  <Link href={`/rings/${ring.slug}/manage`} className="btn secondary" style={{ fontSize: "0.75rem", padding: "0.2rem 0.6rem" }}>
+                  <Link href={`/rings/${ring.slug}/manage`} className="btn secondary ring-action-btn">
                     Manage
                   </Link>
                 )}
@@ -52,20 +52,20 @@ export default async function RingsPage() {
           <ul style={{ listStyle: "none", padding: 0, margin: 0, display: "flex", flexDirection: "column", gap: "0.75rem" }}>
             {all.map((ring) => (
               <li key={ring.id}>
-                <div style={{ display: "flex", alignItems: "baseline", gap: "0.75rem", flexWrap: "wrap" }}>
+                <div className="ring-row ring-row-wrap">
                   <Link href={`/explore/ring/${ring.slug}`} style={{ fontWeight: 500 }}>{ring.name}</Link>
                   <span className="mono" style={{ fontSize: "0.75rem", color: "var(--ink-soft)" }}>
                     {ring.isOpen ? "open" : "invite-only"}
                   </span>
                   {memberIds.has(ring.id) ? (
                     <form action={leaveRingAction.bind(null, ring.slug)}>
-                      <button type="submit" className="btn secondary" style={{ fontSize: "0.75rem", padding: "0.2rem 0.6rem" }}>
+                      <button type="submit" className="btn secondary ring-action-btn">
                         Leave
                       </button>
                     </form>
                   ) : (
                     <form action={joinRingAction.bind(null, ring.slug)}>
-                      <button type="submit" className="btn" style={{ fontSize: "0.75rem", padding: "0.2rem 0.6rem" }}>
+                      <button type="submit" className="btn ring-action-btn">
                         {ring.isOpen ? "Join" : "Request to join"}
                       </button>
                     </form>

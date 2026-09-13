@@ -144,6 +144,68 @@
   color: var(--ink-soft);
 }
 
+/* At phone widths, stack each row's label and its action buttons instead of
+   letting them wrap into a cramped side-by-side line, and make the buttons
+   full-width so Accept/Decline/Approve/Reject are easy single-thumb targets
+   rather than small adjacent hit areas. */
+@media (max-width: 480px) {
+  .settings-list-item {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .settings-actions-row {
+    flex-direction: column;
+  }
+
+  .settings-actions-row .btn,
+  .settings-actions-row form {
+    width: 100%;
+  }
+
+  .settings-actions-row .btn {
+    width: 100%;
+    justify-content: center;
+  }
+}
+
+/* Rings list */
+.ring-row {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+}
+
+.ring-row-wrap {
+  align-items: baseline;
+  gap: 0.75rem;
+  flex-wrap: wrap;
+}
+
+/* A small badge-style button still needs a full 44px touch target, not just
+   a small font/padding combination sized for a mouse pointer. */
+.ring-action-btn {
+  font-size: 0.75rem;
+  padding: 0.2rem 0.75rem;
+  min-height: 44px;
+  display: inline-flex;
+  align-items: center;
+}
+
+@media (max-width: 480px) {
+  .ring-row,
+  .ring-row-wrap {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 0.5rem;
+  }
+
+  .ring-action-btn {
+    width: 100%;
+    justify-content: center;
+  }
+}
+
 /* Asks */
 .ask-card {
   display: flex;
