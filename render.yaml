@@ -1,0 +1,46 @@
+services:
+  - type: web
+    name: iofus
+    runtime: docker
+    dockerfilePath: ./app/Dockerfile
+    dockerContext: ./app
+    plan: starter
+    healthCheckPath: /api/health
+    disk:
+      name: iofus-data
+      mountPath: /data
+      sizeGB: 1
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: IOFUS_DB_PATH
+        value: /data/iofus.db
+      # Render terminates TLS in front of the container and always adds
+      # exactly one hop to X-Forwarded-For, so the client IP sits one entry
+      # in from the right on every request. Confirm after first deploy with
+      # GET /api/_diag/ip rather than trusting this blindly.
+      - key: IOFUS_TRUSTED_PROXY_HOPS
+        value: "1"
+      # Render's `fromService`/`host` gives the service's *private* network
+      # hostname, not its public one — wrong here, since this becomes the
+      # origin baked into public-facing reset links and sitemap URLs. There
+      # is no blueprint field for a service's own public hostname, so this
+      # must be set by hand after the first deploy. See docs/DEPLOY.md.
+      - key: IOFUS_ALLOWED_ORIGIN
+        sync: false
+      # Secrets and operator-specific values — must be set by hand in the
+      # Render dashboard after the first deploy. See docs/DEPLOY.md.
+      - key: IOFUS_SMTP_HOST
+        sync: false
+      - key: IOFUS_SMTP_PORT
+        value: "587"
+      - key: IOFUS_SMTP_SECURE
+        value: "false"
+      - key: IOFUS_SMTP_USER
+        sync: false
+      - key: IOFUS_SMTP_PASS
+        sync: false
+      - key: IOFUS_SMTP_FROM
+        sync: false
+      - key: IOFUS_MODERATOR_HANDLE
+        sync: false
