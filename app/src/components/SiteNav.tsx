@@ -60,6 +60,7 @@ export async function SiteNav() {
       {viewer && <Link href="/feed">Feed</Link>}
       {viewer && <Link href="/vibe">Vibe</Link>}
       {viewer && <Link href="/rings">Rings</Link>}
+      <Link href="/make">Make</Link>
       <Link href="/policy">Policy</Link>
       {viewer ? (
         <>
