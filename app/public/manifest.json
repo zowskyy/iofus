@@ -11,8 +11,8 @@
     {
       "src": "/logo.png",
       "sizes": "any",
-      "type": "image/png",
-      "purpose": "any maskable"
+      "type": "image/jpeg",
+      "purpose": "any"
     }
   ],
   "categories": ["social", "lifestyle"],
