@@ -296,6 +296,13 @@
   .nav-desktop-right {
     display: none !important;
   }
+  /* The Discover dropdown + Make link duplicate what's already in the
+     drawer (every mobileLinks entry, including Make, covers the same
+     destinations) — showing both left the top bar cluttered with two
+     overlapping menus. The drawer is the single mobile menu now. */
+  .top-bar .controls-left {
+    display: none !important;
+  }
   .nav-mobile-right {
     display: flex;
   }
@@ -310,10 +317,6 @@
   }
   .site-logo {
     height: 2rem;
-  }
-  .top-bar .controls-left {
-    justify-content: flex-start;
-    gap: 0.4rem;
   }
   .top-bar .controls a,
   .top-bar .controls button {

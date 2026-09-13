@@ -750,6 +750,10 @@
   }
   .wonder-spark {
     border-radius: var(--radius);
+    /* Hiding the hint above leaves a single line of text, which drops
+       height below the 44px touch-target floor unless padding compensates. */
+    min-height: 44px;
+    justify-content: center;
   }
   .wonder-spark-row {
     overflow-x: auto;
