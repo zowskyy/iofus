@@ -299,6 +299,18 @@
   display: block;
 }
 
+/* Narrow desktop (769–900px): between the tablet breakpoint and the point
+   where the full-size logo actually fits. The desktop logo's ~660px width
+   plus the nav controls' own min-content widths overflow the viewport in
+   this range (e.g. common 800px portrait tablets) even though it's wider
+   than the tablet breakpoint — so it needs the tablet's smaller logo size
+   without the rest of the tablet layout changes. */
+@media (min-width: 769px) and (max-width: 900px) {
+  .site-logo {
+    height: min(18rem, 45vh);
+  }
+}
+
 /* Tablet (≤ 768px) */
 @media (max-width: 768px) {
   .top-bar {
