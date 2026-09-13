@@ -1,8 +1,11 @@
-const CACHE = "iofus-v1";
+const CACHE = "iofus-v2";
 
-// Static assets that are safe to cache indefinitely
+// Static assets that are safe to cache indefinitely. caches.addAll() rejects
+// entirely if any single URL 404s, so every entry here must actually exist —
+// VandalBlowGraffiti.ttf was removed from the repo (font reverted to Bebas
+// Neue) but left in this list, which meant the service worker's install step
+// silently failed outright, so it never activated at all.
 const PRECACHE = [
-  "/fonts/VandalBlowGraffiti.ttf",
   "/fonts/BebasNeue-Regular.ttf",
   "/logo.png",
   "/manifest.json",
